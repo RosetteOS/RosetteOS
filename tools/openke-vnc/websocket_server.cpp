@@ -656,29 +656,29 @@ bool WebSocketServer::handle_http_request(std::shared_ptr<WsClientState>& client
         return (client->in_buffer.size() < 8192); // Keep waiting if not too large
     }
 
+    std::string req_lower = req;
+    std::transform(req_lower.begin(), req_lower.end(), req_lower.begin(), ::tolower);
+
     // Check if WebSocket Upgrade request
-    size_t ws_pos = req.find("Upgrade: websocket");
-    if (ws_pos == std::string::npos) {
-        ws_pos = req.find("upgrade: websocket");
-    }
-
-    if (ws_pos != std::string::npos) {
-        // Extract Sec-WebSocket-Key
-        std::string key_hdr = "Sec-WebSocket-Key: ";
-        size_t key_pos = req.find(key_hdr);
-        if (key_pos == std::string::npos) {
-            key_hdr = "sec-websocket-key: ";
-            key_pos = req.find(key_hdr);
-        }
-
+    if (req_lower.find("upgrade: websocket") != std::string::npos ||
+        (req_lower.find("upgrade:") != std::string::npos && req_lower.find("websocket") != std::string::npos)) {
+        
+        std::string key_hdr = "sec-websocket-key:";
+        size_t key_pos = req_lower.find(key_hdr);
         if (key_pos == std::string::npos) {
             send_http_response(client->fd, 400, "text/plain", "Missing Sec-WebSocket-Key");
             return false;
         }
 
         size_t val_start = key_pos + key_hdr.length();
+        while (val_start < req.length() && (req[val_start] == ' ' || req[val_start] == '\t')) {
+            val_start++;
+        }
         size_t val_end = req.find("\r\n", val_start);
         std::string sec_key = req.substr(val_start, val_end - val_start);
+        while (!sec_key.empty() && (sec_key.back() == ' ' || sec_key.back() == '\r' || sec_key.back() == '\t')) {
+            sec_key.pop_back();
+        }
 
         // Compute accept key: SHA1(sec_key + GUID)
         std::string magic = sec_key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
@@ -693,8 +693,12 @@ bool WebSocketServer::handle_http_request(std::shared_ptr<WsClientState>& client
         oss << "HTTP/1.1 101 Switching Protocols\r\n"
             << "Upgrade: websocket\r\n"
             << "Connection: Upgrade\r\n"
-            << "Sec-WebSocket-Accept: " << accept_val << "\r\n"
-            << "Sec-WebSocket-Protocol: binary\r\n\r\n";
+            << "Sec-WebSocket-Accept: " << accept_val << "\r\n";
+        
+        if (req_lower.find("sec-websocket-protocol:") != std::string::npos) {
+            oss << "Sec-WebSocket-Protocol: binary\r\n";
+        }
+        oss << "\r\n";
 
         std::string resp = oss.str();
         send(client->fd, resp.data(), resp.length(), MSG_NOSIGNAL);

@@ -233,7 +233,7 @@ bool RfbServer::handle_handshake(std::shared_ptr<RfbClient>& client) {
     auto& buf = client->in_buffer;
 
     // Step 1: Wait for client version string "RFB 003.00x\n" (12 bytes)
-    if (!client->handshake_done) {
+    if (client->handshake_state == HS_WAIT_VERSION) {
         if (buf.size() < 12) return true; // Wait for full header
 
         if (std::memcmp(buf.data(), "RFB ", 4) != 0) {
@@ -241,17 +241,31 @@ bool RfbServer::handle_handshake(std::shared_ptr<RfbClient>& client) {
             return false;
         }
 
-        buf.erase(buf.begin(), buf.begin() + 12);
-        client->handshake_done = true;
+        int major = 3, minor = 8;
+        char ver_str[13];
+        std::memcpy(ver_str, buf.data(), 12);
+        ver_str[12] = '\0';
+        std::sscanf(ver_str, "RFB %03d.%03d", &major, &minor);
+        client->rfb_minor = minor;
 
-        // Send Security Types: 1 type supported -> None (1)
-        uint8_t sec_types[2] = { 1, RFB_SEC_NONE };
-        send_data(client, sec_types, 2);
+        buf.erase(buf.begin(), buf.begin() + 12);
+
+        if (minor >= 7) {
+            // Send Security Types: 1 type supported -> None (1)
+            uint8_t sec_types[2] = { 1, RFB_SEC_NONE };
+            send_data(client, sec_types, 2);
+            client->handshake_state = HS_WAIT_SECURITY_TYPE;
+        } else {
+            // RFB 3.3: Send 4-byte security type directly (1 = None)
+            uint32_t sec_none = htobe32(RFB_SEC_NONE);
+            send_data(client, &sec_none, 4);
+            client->handshake_state = HS_WAIT_CLIENT_INIT;
+        }
         return true;
     }
 
     // Step 2: Client selects security type (1 byte)
-    if (!client->initialized) {
+    if (client->handshake_state == HS_WAIT_SECURITY_TYPE) {
         if (buf.empty()) return true;
 
         uint8_t chosen_sec = buf[0];
@@ -264,12 +278,18 @@ bool RfbServer::handle_handshake(std::shared_ptr<RfbClient>& client) {
             return false;
         }
 
-        // Send SecurityResult: 0 (OK)
-        uint32_t ok = htobe32(RFB_SEC_RESULT_OK);
-        send_data(client, &ok, 4);
+        if (client->rfb_minor >= 8) {
+            // Send SecurityResult: 0 (OK)
+            uint32_t ok = htobe32(RFB_SEC_RESULT_OK);
+            send_data(client, &ok, 4);
+        }
 
-        // Step 3: Wait for ClientInit (1 byte shared flag)
-        if (buf.empty()) return true; // Will read in next cycle
+        client->handshake_state = HS_WAIT_CLIENT_INIT;
+    }
+
+    // Step 3: Wait for ClientInit (1 byte shared flag)
+    if (client->handshake_state == HS_WAIT_CLIENT_INIT) {
+        if (buf.empty()) return true;
 
         uint8_t shared_flag = buf[0];
         buf.erase(buf.begin());
@@ -277,6 +297,7 @@ bool RfbServer::handle_handshake(std::shared_ptr<RfbClient>& client) {
 
         // Send ServerInit
         send_server_init(client);
+        client->handshake_state = HS_INITIALIZED;
         client->initialized = true;
         client->has_pending_update = true;
         client->req_incremental = false;

@@ -10,10 +10,18 @@
 #include "fb_device.h"
 #include "uinput_injector.h"
 
+enum HandshakeState {
+    HS_WAIT_VERSION = 0,
+    HS_WAIT_SECURITY_TYPE = 1,
+    HS_WAIT_CLIENT_INIT = 2,
+    HS_INITIALIZED = 3
+};
+
 struct RfbClient {
     int fd;
     bool is_websocket;
-    bool handshake_done;
+    HandshakeState handshake_state;
+    int rfb_minor;
     bool initialized;
     bool has_pending_update;
     bool req_incremental;
@@ -24,7 +32,8 @@ struct RfbClient {
     RfbClient(int sock_fd, bool ws = false)
         : fd(sock_fd)
         , is_websocket(ws)
-        , handshake_done(false)
+        , handshake_state(HS_WAIT_VERSION)
+        , rfb_minor(8)
         , initialized(false)
         , has_pending_update(false)
         , req_incremental(false)
