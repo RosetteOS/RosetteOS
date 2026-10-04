@@ -60,7 +60,7 @@ elif [ -n "$CHANGELOG_ARG" ]; then
 elif [ -f "$REPO_ROOT/CHANGELOG.md" ]; then
 	cp "$REPO_ROOT/CHANGELOG.md" "$WORK_DIR/changelog.txt"
 else
-	git -C "$REPO_ROOT" log --oneline -n 5 2>/dev/null > "$WORK_DIR/changelog.txt" || echo "OpenKE System Firmware Release v${VERSION}" > "$WORK_DIR/changelog.txt"
+	git -C "$REPO_ROOT" log --pretty=format:"• %h %s" -n 10 2>/dev/null > "$WORK_DIR/changelog.txt" || echo "• OpenKE System Firmware Release v${VERSION}" > "$WORK_DIR/changelog.txt"
 fi
 
 cp "$KERNEL_IMAGE" "$WORK_DIR/xImage"

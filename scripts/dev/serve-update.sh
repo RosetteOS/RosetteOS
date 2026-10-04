@@ -69,7 +69,7 @@ if [ -f "$ARTIFACTS_DIR/${SWU_FILENAME}.changelog.txt" ]; then
 elif [ -f "$REPO_ROOT/CHANGELOG.md" ]; then
     DEV_CHANGELOG=$(head -n 20 "$REPO_ROOT/CHANGELOG.md" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | awk '{if (NR>1) printf "\\n"; printf "%s", $0}')
 else
-    DEV_CHANGELOG="• Local development build (${VERSION_NAME})\n• Built from commit $(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo "unknown")"
+    DEV_CHANGELOG=$(git -C "$REPO_ROOT" log --pretty=format:"• %h %s" -n 10 2>/dev/null | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | awk '{if (NR>1) printf "\\n"; printf "%s", $0}' || echo "• Local development build (${VERSION_NAME})")
 fi
 
 # Generate releases.json
