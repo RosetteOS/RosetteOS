@@ -172,9 +172,9 @@ migrate_apps_if_needed() {
 	log "generation mismatch: installed='$installed_version' expected='$expected_version' - migration needed"
 	maintenance_gate_ok || return 0
 
-	# Automatically prune old migration backups to prevent disk exhaustion (keep at most 1 previous)
+	# Automatically prune old migration backups to prevent disk exhaustion (keep at most 3 previous)
 	if [ -d "$BACKUP_ROOT" ]; then
-		for old_b in $(ls -dt "$BACKUP_ROOT"/* 2>/dev/null | tail -n +2); do
+		for old_b in $(ls -dt "$BACKUP_ROOT"/* 2>/dev/null | tail -n +4); do
 			[ -d "$old_b" ] && rm -rf "$old_b"
 		done
 	fi
