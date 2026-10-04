@@ -799,7 +799,7 @@ if [ "$GUPPY_ARTIFACT_COMMIT" = "$GUPPYSCREEN_PIN" ] && \
 else
 	GUPPYSCREEN_COMMIT=$(git -C "$GUPPYSCREEN_SRC" rev-parse HEAD)
 	echo "== cross-compiling GuppyScreen (pinned commit $GUPPYSCREEN_COMMIT; Bootlin mips32el-musl toolchain) =="
-	rm -rf "$GUPPYSCREEN_SRC/build"
+	rm -rf "$GUPPYSCREEN_SRC/build" "$GUPPYSCREEN_SRC/spdlog/build" "$GUPPYSCREEN_SRC/spdlog/build-mips" "$GUPPYSCREEN_SRC/libhv/build" "$GUPPYSCREEN_SRC/libhv/build-mips"
 	(
 	set -e
 	cd "$GUPPYSCREEN_SRC"
