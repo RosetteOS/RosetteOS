@@ -161,6 +161,17 @@ clean_obsolete_versions() {
 	done
 }
 
+clean_migration_backups() {
+	mb_dir="$OPENKE_ROOT/system/migration-backups"
+	[ -d "$mb_dir" ] || return 0
+	count=$(find "$mb_dir" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)
+	[ "$count" -le 1 ] && return 0
+	( cd "$mb_dir" && ls -1td * 2>/dev/null ) | tail -n "+2" | while read -r name; do
+		f="$mb_dir/$name"
+		path_is_namespace_safe "$f" && delete "$f" "old-migration-backup"
+	done
+}
+
 clean_pip_cache() {
 	[ -d /root/.cache ] && [ "$dryrun" != "true" ] && rm -rf /root/.cache
 }
@@ -230,6 +241,7 @@ start() {
 	clean_old_config_backups
 	clean_abandoned_staging
 	clean_obsolete_versions
+	clean_migration_backups
 
 	free=$(free_mb)
 	if [ -z "$free" ]; then
