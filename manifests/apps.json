@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "name": "OpenKE App Store Catalog",
-  "updated_at": "2026-10-04T11:06:44Z",
+  "updated_at": "2026-10-04T11:19:33Z",
   "categories": [
     {
       "id": "web_ui",
@@ -141,7 +141,7 @@
       "type": "tool",
       "is_builtin": false,
       "download_url": "https://github.com/OpenKlipperEdition/AppStore/releases/download/packages-v1.0/vnc-v1.0.0.zip",
-      "sha256": "b30edccc56ef96e7679367ae5e91cab99e8a42761219157b416f0e79f92581b5",
+      "sha256": "12df9ac4b0296277dd6ff1c0198a60077184794663d8306652ece4561de24726",
       "install_path": "/usr/data/openke/apps/vnc",
       "service": {
         "exec": "/usr/data/openke/apps/vnc/openke-vnc -p 5900 -w 5800",
@@ -149,8 +149,8 @@
         "oom_score_adj": -200
       },
       "probe_path": "/usr/data/openke/apps/vnc/openke-vnc",
-      "website": "https://github.com/OpenKlipperEdition/OpenKE",
-      "source_url": "https://github.com/OpenKlipperEdition/OpenKE/tree/apps/tools/openke-vnc"
+      "website": "https://github.com/OpenKlipperEdition/AppStore",
+      "source_url": "https://github.com/OpenKlipperEdition/AppStore/tree/main/tools/openke-vnc"
     },
     {
       "id": "guppyscreen",
