@@ -1111,8 +1111,8 @@ def find_app_pids(app_id: str) -> list:
             except Exception:
                 pass
 
-    # 2. Process table scan if no PID found or for active UIs
-    if not pids and os.path.isdir("/proc"):
+    # 2. Process table scan: scan /proc to discover any app processes by comm or cmdline
+    if os.path.isdir("/proc"):
         try:
             for entry in os.listdir("/proc"):
                 if entry.isdigit():
@@ -1915,6 +1915,42 @@ def remove_app_service(app: dict):
                 pass
 
 
+def sync_installed_service_scripts():
+    """
+    Ensures all installed app service scripts in services.d are up to date with the latest service runner template.
+    """
+    services_dir = get_services_dir()
+    if not os.path.isdir(services_dir):
+        return
+    catalog = load_catalog()
+    apps_by_id = {a.get("id"): a for a in catalog.get("apps", []) if a.get("id")}
+
+    try:
+        for fname in os.listdir(services_dir):
+            svc_path = os.path.join(services_dir, fname)
+            if not os.path.isfile(svc_path):
+                continue
+            base = re.sub(r"\.disabled$", "", fname)
+            norm_id = re.sub(r"^[SK]\d+", "", base)
+            if norm_id in apps_by_id:
+                app = apps_by_id[norm_id]
+                install_path = get_install_path(app)
+                if os.path.isdir(install_path) and app.get("service"):
+                    try:
+                        with open(svc_path, "r", encoding="utf-8", errors="ignore") as f:
+                            content = f.read()
+                        if "pkill -TERM -f" not in content or "ALIVE=0" not in content:
+                            new_script = generate_service_script(app, install_path)
+                            if new_script:
+                                with open(svc_path, "w", encoding="utf-8") as f:
+                                    f.write(new_script)
+                                os.chmod(svc_path, 0o755)
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+
+
 def cmd_service(args):
     action = args.action
     app_id = getattr(args, "app_id", None)
@@ -1982,6 +2018,64 @@ def cmd_service(args):
         sys.exit(0 if enabled else 1)
 
     svc_path = find_app_service_script(app_id)
+
+    if action == "stop":
+        if svc_path and os.path.isfile(svc_path):
+            try:
+                subprocess.run([svc_path, "stop"], check=False)
+            except Exception:
+                pass
+
+        # Thoroughly terminate all app processes (main PID + children + /proc matches)
+        pids = find_app_pids(app_id)
+        if pids:
+            for p in pids:
+                try:
+                    os.kill(p, signal.SIGTERM)
+                except Exception:
+                    pass
+            time.sleep(0.3)
+            pids = find_app_pids(app_id)
+            for p in pids:
+                try:
+                    os.kill(p, signal.SIGKILL)
+                except Exception:
+                    pass
+
+        # Cleanup pid files
+        for pf in (f"/var/run/{app_id}.pid", f"/tmp/{app_id}.pid", f"/var/run/{app_id}/{app_id}.pid", f"/var/run/S60{app_id}.pid", f"/var/run/K60{app_id}.pid"):
+            if os.path.isfile(pf):
+                try:
+                    os.remove(pf)
+                except Exception:
+                    pass
+
+        # Purge CPU cache
+        if os.path.isfile(CPU_CACHE_FILE):
+            try:
+                with open(CPU_CACHE_FILE, "r", encoding="utf-8") as f:
+                    cache = json.load(f)
+                if app_id in cache.get("apps", {}):
+                    del cache["apps"][app_id]
+                    with open(CPU_CACHE_FILE, "w", encoding="utf-8") as f:
+                        json.dump(cache, f)
+            except Exception:
+                pass
+
+        print(f"OK: Stopped {app_id} service")
+        sys.exit(0)
+
+    # For start/restart/status: dynamically create service runner if missing
+    if not svc_path:
+        catalog = load_catalog()
+        for a in catalog.get("apps", []):
+            if a.get("id") == app_id:
+                install_path = get_install_path(a)
+                if os.path.isdir(install_path):
+                    install_app_service(install_path, a)
+                    svc_path = find_app_service_script(app_id)
+                    break
+
     if not svc_path:
         print(f"ERROR: No service found for app '{app_id}' in {services_dir} or /etc/init.d", file=sys.stderr)
         sys.exit(1)
@@ -2007,42 +2101,21 @@ def cmd_service(args):
             print(out if out else f"{app_id} is stopped.")
             sys.exit(res.returncode if res.returncode != 0 else 3)
 
-    if action == "stop":
-        subprocess.run([svc_path, "stop"])
-        # Ensure any orphan / leftover PIDs are killed
-        pids = find_app_pids(app_id)
-        if pids:
-            for p in pids:
-                try:
-                    os.kill(p, signal.SIGTERM)
-                except Exception:
-                    pass
-            time.sleep(0.3)
-            pids = find_app_pids(app_id)
-            for p in pids:
-                try:
-                    os.kill(p, signal.SIGKILL)
-                except Exception:
-                    pass
-
-        for pf in (f"/var/run/{app_id}.pid", f"/tmp/{app_id}.pid", f"/var/run/{app_id}/{app_id}.pid"):
-            if os.path.isfile(pf):
-                try:
-                    os.remove(pf)
-                except Exception:
-                    pass
-
-        if os.path.isfile(CPU_CACHE_FILE):
+    if action == "restart":
+        if svc_path and os.path.isfile(svc_path):
             try:
-                with open(CPU_CACHE_FILE, "r", encoding="utf-8") as f:
-                    cache = json.load(f)
-                if app_id in cache.get("apps", {}):
-                    del cache["apps"][app_id]
-                    with open(CPU_CACHE_FILE, "w", encoding="utf-8") as f:
-                        json.dump(cache, f)
+                subprocess.run([svc_path, "stop"], check=False)
             except Exception:
                 pass
-        sys.exit(0)
+        pids = find_app_pids(app_id)
+        for p in pids:
+            try:
+                os.kill(p, signal.SIGKILL)
+            except Exception:
+                pass
+        time.sleep(0.5)
+        res = subprocess.run([svc_path, "start"])
+        sys.exit(res.returncode)
 
     res = subprocess.run([svc_path, action])
     sys.exit(res.returncode)
@@ -2655,6 +2728,7 @@ def main():
         parser.print_help()
         sys.exit(1)
 
+    sync_installed_service_scripts()
     args.func(args)
 
 
