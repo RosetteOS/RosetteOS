@@ -1249,7 +1249,7 @@ def get_apps_resource_usage(app_list: list, sample_cpu: bool = True, sample_inte
             ram_str = format_bytes(ram_bytes)
             ram_pct = round(100.0 * rss_kb / mem_total_kb, 1) if mem_total_kb > 0 else 0.0
             cpu_pct = cpu_map.get(app_id, 0.0)
-            res_summary = f"CPU: {cpu_pct:.1f}% | RAM: {ram_str} ({ram_pct:.1f}%)" if ram_pct > 0 or cpu_pct > 0 else f"RAM: {ram_str}"
+            res_summary = f"CPU: {cpu_pct:.1f}% | RAM: {ram_str}"
             results[app_id] = {
                 "pid": main_pid,
                 "pids": pids,
