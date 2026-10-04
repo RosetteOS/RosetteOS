@@ -65,11 +65,19 @@ bool FBDevice::open_device(const std::string& dev_path) {
         m_height = m_vinfo.yres;
         m_bpp = m_vinfo.bits_per_pixel;
         m_stride = m_finfo.line_length ? m_finfo.line_length : (m_width * (m_bpp / 8));
-        m_fb_size = m_finfo.smem_len ? m_finfo.smem_len : (m_stride * m_height);
+        
+        size_t map_len = (size_t)m_stride * (m_vinfo.yres_virtual ? m_vinfo.yres_virtual : m_height);
+        if (m_finfo.smem_len > 0 && (size_t)m_finfo.smem_len > map_len) {
+            map_len = m_finfo.smem_len;
+        }
+        m_fb_size = map_len;
 
-        m_fb_mem = (uint8_t*)mmap(nullptr, m_fb_size, PROT_READ, MAP_SHARED, m_fd, 0);
+        m_fb_mem = (uint8_t*)mmap(nullptr, m_fb_size, PROT_READ | PROT_WRITE, MAP_SHARED, m_fd, 0);
         if (m_fb_mem == MAP_FAILED) {
-            fprintf(stderr, "[FBDevice] Error: mmap failed on %s.\n", dev_path.c_str());
+            m_fb_mem = (uint8_t*)mmap(nullptr, m_fb_size, PROT_READ, MAP_SHARED, m_fd, 0);
+        }
+        if (m_fb_mem == MAP_FAILED) {
+            fprintf(stderr, "[FBDevice] Error: mmap failed on %s: %s\n", dev_path.c_str(), strerror(errno));
             m_fb_mem = nullptr;
             close_device();
             return false;
@@ -135,11 +143,17 @@ bool FBDevice::detect_dirty_regions(std::vector<Rect>& dirty_rects, bool force_f
     dirty_rects.clear();
     if (!m_fb_mem) return false;
 
+    uint32_t y_offset = 0;
+    if (m_fd >= 0 && ioctl(m_fd, FBIOGET_VSCREENINFO, &m_vinfo) == 0) {
+        y_offset = m_vinfo.yoffset;
+    }
+    const uint8_t* active_fb = m_fb_mem + (y_offset * m_stride);
+
     if (force_full) {
         Rect full_rect = { 0, 0, m_width, m_height };
         dirty_rects.push_back(full_rect);
         // Copy entire frame to prev_frame
-        std::memcpy(m_prev_frame.data(), m_fb_mem, m_stride * m_height);
+        std::memcpy(m_prev_frame.data(), active_fb, m_stride * m_height);
         return true;
     }
 
@@ -159,10 +173,10 @@ bool FBDevice::detect_dirty_regions(std::vector<Rect>& dirty_rects, bool force_f
             bool tile_changed = false;
             for (uint16_t y = y_start; y < y_end; ++y) {
                 size_t offset = y * m_stride + (x_start * bytes_per_pixel);
-                if (std::memcmp(m_fb_mem + offset, m_prev_frame.data() + offset, row_bytes) != 0) {
+                if (std::memcmp(active_fb + offset, m_prev_frame.data() + offset, row_bytes) != 0) {
                     tile_changed = true;
                     // Update previous frame snapshot for this line
-                    std::memcpy(m_prev_frame.data() + offset, m_fb_mem + offset, row_bytes);
+                    std::memcpy(m_prev_frame.data() + offset, active_fb + offset, row_bytes);
                 }
             }
 
@@ -207,6 +221,12 @@ bool FBDevice::detect_dirty_regions(std::vector<Rect>& dirty_rects, bool force_f
 void FBDevice::extract_rect(const Rect& rect, const RfbPixelFormat& target_format, std::vector<uint8_t>& out_data) {
     if (!m_fb_mem) return;
 
+    uint32_t y_offset = 0;
+    if (m_fd >= 0 && ioctl(m_fd, FBIOGET_VSCREENINFO, &m_vinfo) == 0) {
+        y_offset = m_vinfo.yoffset;
+    }
+    const uint8_t* active_fb = m_fb_mem + (y_offset * m_stride);
+
     uint32_t src_bpp = m_bpp;
     uint32_t dst_bpp = target_format.bits_per_pixel;
     uint32_t src_bytes_per_pixel = src_bpp / 8;
@@ -224,7 +244,7 @@ void FBDevice::extract_rect(const Rect& rect, const RfbPixelFormat& target_forma
         // Fast direct row copy
         size_t row_bytes = rect.w * src_bytes_per_pixel;
         for (uint16_t y = 0; y < rect.h; ++y) {
-            const uint8_t* src_row = m_fb_mem + ((rect.y + y) * m_stride) + (rect.x * src_bytes_per_pixel);
+            const uint8_t* src_row = active_fb + ((rect.y + y) * m_stride) + (rect.x * src_bytes_per_pixel);
             uint8_t* dst_row = out_data.data() + (y * row_bytes);
             std::memcpy(dst_row, src_row, row_bytes);
         }
@@ -235,7 +255,7 @@ void FBDevice::extract_rect(const Rect& rect, const RfbPixelFormat& target_forma
     uint8_t* dst_ptr = out_data.data();
 
     for (uint16_t y = 0; y < rect.h; ++y) {
-        const uint8_t* src_row = m_fb_mem + ((rect.y + y) * m_stride) + (rect.x * src_bytes_per_pixel);
+        const uint8_t* src_row = active_fb + ((rect.y + y) * m_stride) + (rect.x * src_bytes_per_pixel);
 
         for (uint16_t x = 0; x < rect.w; ++x) {
             uint32_t r = 0, g = 0, b = 0;

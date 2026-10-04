@@ -514,6 +514,14 @@ def extract_with_progress(archive_file: str, stage_dir: str, desc: str = "Instal
                     return True
                 for idx, member in enumerate(members, 1):
                     zf.extract(member, stage_dir)
+                    mode = member.external_attr >> 16
+                    if mode:
+                        extracted_path = os.path.join(stage_dir, member.filename)
+                        if os.path.exists(extracted_path):
+                            try:
+                                os.chmod(extracted_path, mode)
+                            except Exception:
+                                pass
                     suffix = f"({idx}/{total} files)"
                     line = render_progress_bar(f"{desc}:", idx, total, suffix=suffix, bar_length=25)
                     sys.stdout.write("\r" + line.ljust(cols - 1))
@@ -1759,6 +1767,17 @@ def install_app_service(install_path: str, app: dict):
                 print(f"OK: Installed dynamic service script {target_svc_path}")
             except Exception as e:
                 print(f"WARNING: Failed installing service script: {e}", file=sys.stderr)
+
+    # Ensure all binaries and scripts in install_path are executable
+    if os.path.isdir(install_path):
+        for root, _, files in os.walk(install_path):
+            for f in files:
+                fpath = os.path.join(root, f)
+                if not f.endswith(('.txt', '.md', '.json', '.conf', '.cfg', '.png', '.jpg', '.css', '.html', '.js')):
+                    try:
+                        os.chmod(fpath, os.stat(fpath).st_mode | 0o755)
+                    except Exception:
+                        pass
 
     # Start the service if script exists
     if os.path.isfile(target_svc_path) and os.access(target_svc_path, os.X_OK):
