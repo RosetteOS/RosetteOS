@@ -123,9 +123,8 @@ int main(int argc, char** argv) {
 
         // Detect dirty regions and broadcast to connected clients
         if (rfb.get_client_count() > 0) {
-            if (fb.detect_dirty_regions(dirty_rects)) {
-                rfb.broadcast_updates(dirty_rects);
-            }
+            fb.detect_dirty_regions(dirty_rects);
+            rfb.broadcast_updates(dirty_rects);
         }
 
         auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start_time);

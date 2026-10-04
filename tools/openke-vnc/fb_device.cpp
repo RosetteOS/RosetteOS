@@ -124,18 +124,30 @@ void FBDevice::update_native_format() {
         m_native_format.red_max   = htobe16(31);
         m_native_format.green_max = htobe16(63);
         m_native_format.blue_max  = htobe16(31);
-        m_native_format.red_shift   = m_vinfo.red.offset ? m_vinfo.red.offset : 11;
-        m_native_format.green_shift = m_vinfo.green.offset ? m_vinfo.green.offset : 5;
-        m_native_format.blue_shift  = m_vinfo.blue.offset ? m_vinfo.blue.offset : 0;
+        if (m_vinfo.red.length > 0) {
+            m_native_format.red_shift   = m_vinfo.red.offset;
+            m_native_format.green_shift = m_vinfo.green.offset;
+            m_native_format.blue_shift  = m_vinfo.blue.offset;
+        } else {
+            m_native_format.red_shift   = 11;
+            m_native_format.green_shift = 5;
+            m_native_format.blue_shift  = 0;
+        }
     } else {
         m_native_format.depth = 24;
         m_native_format.bits_per_pixel = 32;
         m_native_format.red_max   = htobe16(255);
         m_native_format.green_max = htobe16(255);
         m_native_format.blue_max  = htobe16(255);
-        m_native_format.red_shift   = m_vinfo.red.offset ? m_vinfo.red.offset : 16;
-        m_native_format.green_shift = m_vinfo.green.offset ? m_vinfo.green.offset : 8;
-        m_native_format.blue_shift  = m_vinfo.blue.offset ? m_vinfo.blue.offset : 0;
+        if (m_vinfo.red.length > 0) {
+            m_native_format.red_shift   = m_vinfo.red.offset;
+            m_native_format.green_shift = m_vinfo.green.offset;
+            m_native_format.blue_shift  = m_vinfo.blue.offset;
+        } else {
+            m_native_format.red_shift   = 16;
+            m_native_format.green_shift = 8;
+            m_native_format.blue_shift  = 0;
+        }
     }
 }
 

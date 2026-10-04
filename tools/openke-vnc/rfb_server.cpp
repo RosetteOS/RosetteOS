@@ -400,8 +400,6 @@ bool RfbServer::handle_client_messages(std::shared_ptr<RfbClient>& client) {
 }
 
 void RfbServer::broadcast_updates(const std::vector<Rect>& dirty_rects) {
-    if (dirty_rects.empty()) return;
-
     std::vector<std::shared_ptr<RfbClient>> clients_copy;
     {
         std::lock_guard<std::mutex> lock(m_clients_mutex);
@@ -412,14 +410,16 @@ void RfbServer::broadcast_updates(const std::vector<Rect>& dirty_rects) {
         if (!client->initialized || !client->has_pending_update) continue;
 
         if (!client->req_incremental) {
-            // Full screen update requested
+            // Full screen update requested (e.g. initial connection or full refresh)
             Rect full_rect = { 0, 0, m_fb.get_width(), m_fb.get_height() };
             std::vector<Rect> full_vec = { full_rect };
             send_framebuffer_update(client, full_vec);
-        } else {
+            client->has_pending_update = false;
+            client->req_incremental = true;
+        } else if (!dirty_rects.empty()) {
             send_framebuffer_update(client, dirty_rects);
+            client->has_pending_update = false;
         }
-        client->has_pending_update = false;
     }
 }
 
