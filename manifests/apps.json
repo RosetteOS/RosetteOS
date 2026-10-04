@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "name": "OpenKE App Store Catalog",
-  "updated_at": "2026-10-04T12:16:42Z",
+  "updated_at": "2026-10-04T13:37:18Z",
   "categories": [
     {
       "id": "web_ui",
@@ -141,7 +141,7 @@
       "type": "tool",
       "is_builtin": false,
       "download_url": "https://github.com/OpenKlipperEdition/AppStore/releases/download/packages-v1.0/vnc-v1.0.0.zip",
-      "sha256": "6aec6316e3b3359c00ec38d295b717c6965286c27230b42c5fff35c001713624",
+      "sha256": "61e8214ea56a12bff5313cb91781270d6afa4c0a2c1eb51a777c34398467ef77",
       "executable": "openke-vnc",
       "install_path": "/usr/data/openke/apps/vnc",
       "service": {
