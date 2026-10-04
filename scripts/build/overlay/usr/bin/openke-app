@@ -1651,6 +1651,7 @@ PIDFILE="{pid_file}"
 NAME="{app_id}"
 DESC="{app_name}"
 OOM_ADJ="{oom_score_adj}"
+LOGFILE="/var/log/${{NAME}}.log"
 
 # Embedded memory optimizations: strip docstrings/asserts and restrict glibc heap arenas
 export PYTHONOPTIMIZE=2
@@ -1662,7 +1663,8 @@ start() {{
 		echo "already running."
 		return 0
 	fi
-	start-stop-daemon -S -b -m -p "$PIDFILE" -x /bin/sh -- -c "exec $EXEC_CMD"
+	mkdir -p "$(dirname "$LOGFILE")" 2>/dev/null || true
+	start-stop-daemon -S -b -m -p "$PIDFILE" -x /bin/sh -- -c "exec $EXEC_CMD >> \"$LOGFILE\" 2>&1"
 	status=$?
 	if [ $status -eq 0 ]; then
 		if [ -n "$OOM_ADJ" ] && [ -f "$PIDFILE" ]; then
@@ -2205,6 +2207,108 @@ def cmd_top(args):
         print(f"Total System Memory: {format_bytes(mem_total_kb * 1024)} | Active App Footprint: {format_bytes(total_app_rss_kb * 1024)} ({total_pct}%)")
 
 
+def cmd_logs(args):
+    app_id = getattr(args, "app_id", None)
+    lines = getattr(args, "lines", 50)
+    follow = getattr(args, "follow", False)
+
+    log_dirs = ["/var/log", "/usr/data/openke/logs", "/tmp"]
+
+    # If no app_id is provided, list all discovered log files with sizes
+    if not app_id:
+        print("Available App & Service Logs:")
+        print(f"{'APP/SERVICE':<22} {'SIZE':<10} {'PATH'}")
+        print("-" * 75)
+        found = False
+        seen_paths = set()
+        for d in log_dirs:
+            if os.path.isdir(d):
+                for f in sorted(os.listdir(d)):
+                    if f.endswith(".log"):
+                        fpath = os.path.join(d, f)
+                        if fpath in seen_paths:
+                            continue
+                        seen_paths.add(fpath)
+                        sz = os.path.getsize(fpath)
+                        sz_str = f"{sz / 1024:.1f} KB" if sz < 1024*1024 else f"{sz / (1024*1024):.1f} MB"
+                        app_name = f[:-4]
+                        print(f"{app_name:<22} {sz_str:<10} {fpath}")
+                        found = True
+        if not found:
+            print("No log files found in /var/log or /usr/data/openke/logs.")
+        return
+
+    app_id = app_id.lower()
+    norm_id = re.sub(r"^[SK]\d+", "", app_id)
+
+    # Candidate paths for app_id
+    candidates = [
+        f"/var/log/{app_id}.log",
+        f"/var/log/{norm_id}.log",
+        f"/usr/data/openke/logs/{app_id}.log",
+        f"/usr/data/openke/logs/{norm_id}.log",
+        f"/tmp/{app_id}.log",
+        f"/tmp/{norm_id}.log",
+    ]
+    if app_id == "vnc":
+        candidates.insert(0, "/var/log/vnc.log")
+        candidates.insert(1, "/var/log/openke-vnc.log")
+    elif app_id == "klipper":
+        candidates.insert(0, "/var/log/klipper.log")
+        candidates.insert(1, "/tmp/klipper.log")
+    elif app_id == "moonraker":
+        candidates.insert(0, "/var/log/moonraker.log")
+        candidates.insert(1, "/tmp/moonraker.log")
+    elif app_id in ("guppy", "guppyscreen"):
+        candidates.insert(0, "/var/log/guppyscreen.log")
+        candidates.insert(1, "/tmp/guppyscreen.log")
+
+    log_file = None
+    for cand in candidates:
+        if os.path.isfile(cand):
+            log_file = cand
+            break
+
+    if not log_file:
+        print(f"ERROR: No log file found for app '{app_id}'.", file=sys.stderr)
+        print("Checked paths:", file=sys.stderr)
+        for c in candidates:
+            print(f"  - {c}", file=sys.stderr)
+        sys.exit(1)
+
+    if follow:
+        try:
+            # Use native tail if available
+            os.execvp("tail", ["tail", "-n", str(lines), "-f", log_file])
+        except Exception:
+            # Fallback in Python
+            try:
+                with open(log_file, "r", encoding="utf-8", errors="replace") as f:
+                    all_lines = f.readlines()
+                    for l in all_lines[-lines:]:
+                        sys.stdout.write(l)
+                    sys.stdout.flush()
+                    while True:
+                        line = f.readline()
+                        if line:
+                            sys.stdout.write(line)
+                            sys.stdout.flush()
+                        else:
+                            time.sleep(0.5)
+            except KeyboardInterrupt:
+                pass
+    else:
+        try:
+            with open(log_file, "r", encoding="utf-8", errors="replace") as f:
+                all_lines = f.readlines()
+                for l in all_lines[-lines:]:
+                    sys.stdout.write(l)
+                sys.stdout.flush()
+        except Exception as e:
+            print(f"ERROR: Failed reading {log_file}: {e}", file=sys.stderr)
+            sys.exit(1)
+
+
 def cmd_status(args):
     active_web = get_active_web_ui()
     active_touch = get_active_touch_ui()
@@ -2333,6 +2437,19 @@ def main():
     p_ps.add_argument("--all", "-a", action="store_true", help="Show all installed apps even if stopped")
     p_ps.set_defaults(func=cmd_top)
 
+    # logs / log
+    p_logs = subparsers.add_parser("logs", help="View output and error logs for an app service")
+    p_logs.add_argument("app_id", nargs="?", help="App ID to view logs for (lists all logs if omitted)")
+    p_logs.add_argument("-f", "--follow", action="store_true", help="Follow log output in real time")
+    p_logs.add_argument("-n", "--lines", type=int, default=50, help="Number of trailing log lines to display (default: 50)")
+    p_logs.set_defaults(func=cmd_logs)
+
+    p_log = subparsers.add_parser("log", help="Alias for logs")
+    p_log.add_argument("app_id", nargs="?", help="App ID to view logs for (lists all logs if omitted)")
+    p_log.add_argument("-f", "--follow", action="store_true", help="Follow log output in real time")
+    p_log.add_argument("-n", "--lines", type=int, default=50, help="Number of trailing log lines to display (default: 50)")
+    p_log.set_defaults(func=cmd_logs)
+
     # update
     p_upd = subparsers.add_parser("update", help="Update catalog from remote AppStore repository")
     p_upd.add_argument("--url", help="Override catalog URL")
@@ -2403,3 +2520,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
