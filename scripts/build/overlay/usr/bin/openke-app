@@ -1199,45 +1199,31 @@ def get_process_rss_kb(pids: list) -> int:
     return total_rss
 
 
+CPU_CACHE_FILE = "/tmp/.openke_app_cpu_cache.json"
+
+
 def get_process_cpu_jiffies(pids: list) -> int:
     total_jiffies = 0
     for p in pids:
-        # Sum all thread jiffies in /proc/<pid>/task/
-        task_dir = f"/proc/{p}/task"
-        thread_jiffies = 0
-        if os.path.isdir(task_dir):
-            try:
-                for tid in os.listdir(task_dir):
-                    try:
-                        with open(f"{task_dir}/{tid}/stat", "r", encoding="utf-8") as f:
-                            content = f.read()
-                        rparen = content.rfind(")")
-                        if rparen != -1:
-                            fields = content[rparen + 2:].split()
-                            thread_jiffies += int(fields[11]) + int(fields[12])
-                    except Exception:
-                        pass
-            except Exception:
-                pass
-
-        if thread_jiffies > 0:
-            total_jiffies += thread_jiffies
-        else:
-            try:
-                with open(f"/proc/{p}/stat", "r", encoding="utf-8") as f:
-                    content = f.read()
-                rparen = content.rfind(")")
-                if rparen != -1:
-                    fields = content[rparen + 2:].split()
-                    total_jiffies += int(fields[11]) + int(fields[12]) + int(fields[13]) + int(fields[14])
-            except Exception:
-                pass
+        if not p or p <= 0:
+            continue
+        try:
+            with open(f"/proc/{p}/stat", "r", encoding="utf-8") as f:
+                content = f.read()
+            rparen = content.rfind(")")
+            if rparen != -1:
+                fields = content[rparen + 2:].split()
+                # fields[11] is utime, fields[12] is stime (sum across all threads)
+                total_jiffies += int(fields[11]) + int(fields[12])
+        except Exception:
+            pass
     return total_jiffies
 
 
-def get_apps_resource_usage(app_list: list, sample_cpu: bool = True, sample_interval: float = 0.15) -> dict:
+def get_apps_resource_usage(app_list: list, sample_cpu: bool = True, sample_interval: float = 0.2) -> dict:
     """
     Computes CPU % and RAM usage for all apps in `app_list`.
+    Uses persistent historical tick cache for high resolution & jitter-free metrics.
     Returns a dict mapping app_id -> resource stat dict.
     """
     app_pids_map = {}
@@ -1247,20 +1233,71 @@ def get_apps_resource_usage(app_list: list, sample_cpu: bool = True, sample_inte
         if pids:
             app_pids_map[app_id] = pids
 
+    now = time.time()
+    num_cpus = os.cpu_count() or 1
     cpu_map = {}
-    if sample_cpu and app_pids_map and os.path.exists("/proc/stat"):
-        try:
-            sys1 = get_system_cpu_jiffies()
-            proc1 = {app_id: get_process_cpu_jiffies(pids) for app_id, pids in app_pids_map.items()}
-            time.sleep(sample_interval)
-            sys2 = get_system_cpu_jiffies()
-            proc2 = {app_id: get_process_cpu_jiffies(pids) for app_id, pids in app_pids_map.items()}
 
-            dsys = max(1, sys2 - sys1)
-            num_cpus = os.cpu_count() or 1
-            for app_id in app_pids_map:
-                dproc = max(0, proc2.get(app_id, 0) - proc1.get(app_id, 0))
-                cpu_map[app_id] = round(min(100.0 * num_cpus, 100.0 * dproc / dsys * num_cpus), 1)
+    if sample_cpu and app_pids_map and os.path.exists("/proc/stat"):
+        cache = {}
+        if os.path.isfile(CPU_CACHE_FILE):
+            try:
+                with open(CPU_CACHE_FILE, "r", encoding="utf-8") as f:
+                    cache = json.load(f)
+            except Exception:
+                cache = {}
+
+        cache_time = cache.get("timestamp", 0)
+        cache_sys = cache.get("sys_jiffies", 0)
+        cache_apps = cache.get("apps", {})
+
+        sys_now = get_system_cpu_jiffies()
+        proc_now = {app_id: get_process_cpu_jiffies(pids) for app_id, pids in app_pids_map.items()}
+
+        time_delta = now - cache_time
+        # If cache exists and is fresh (0.3s to 15.0s), compute instantaneous delta without sleeping
+        if 0.3 <= time_delta <= 15.0 and cache_sys > 0 and sys_now > cache_sys:
+            dsys = float(sys_now - cache_sys)
+            for app_id, p_now in proc_now.items():
+                p_prev = cache_apps.get(app_id, {}).get("proc_jiffies", p_now)
+                dproc = max(0.0, float(p_now - p_prev))
+                instant_cpu = min(100.0 * num_cpus, (dproc / dsys) * 100.0 * num_cpus)
+                prev_smooth = cache_apps.get(app_id, {}).get("smoothed_cpu", instant_cpu)
+                smoothed_cpu = round(0.6 * instant_cpu + 0.4 * prev_smooth, 1)
+                cpu_map[app_id] = smoothed_cpu
+        else:
+            # Cold baseline measurement
+            baseline_interval = max(0.2, sample_interval)
+            time.sleep(baseline_interval)
+            sys_after = get_system_cpu_jiffies()
+            proc_after = {app_id: get_process_cpu_jiffies(pids) for app_id, pids in app_pids_map.items()}
+            dsys = max(1.0, float(sys_after - sys_now))
+            for app_id, p_after in proc_after.items():
+                p_before = proc_now.get(app_id, p_after)
+                dproc = max(0.0, float(p_after - p_before))
+                instant_cpu = round(min(100.0 * num_cpus, (dproc / dsys) * 100.0 * num_cpus), 1)
+                cpu_map[app_id] = instant_cpu
+
+            sys_now = sys_after
+            proc_now = proc_after
+            now = time.time()
+
+        # Update cache atomically
+        try:
+            cache_data = {
+                "timestamp": now,
+                "sys_jiffies": sys_now,
+                "apps": {
+                    app_id: {
+                        "proc_jiffies": proc_now.get(app_id, 0),
+                        "smoothed_cpu": cpu_map.get(app_id, 0.0)
+                    }
+                    for app_id in proc_now
+                }
+            }
+            tmp_cache = f"{CPU_CACHE_FILE}.tmp.{os.getpid()}"
+            with open(tmp_cache, "w", encoding="utf-8") as f:
+                json.dump(cache_data, f)
+            os.replace(tmp_cache, CPU_CACHE_FILE)
         except Exception:
             pass
 
