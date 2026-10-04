@@ -60,7 +60,23 @@ elif [ -n "$CHANGELOG_ARG" ]; then
 elif [ -f "$REPO_ROOT/CHANGELOG.md" ]; then
 	cp "$REPO_ROOT/CHANGELOG.md" "$WORK_DIR/changelog.txt"
 else
-	git -C "$REPO_ROOT" log --pretty=format:"• %h %s" -n 10 2>/dev/null > "$WORK_DIR/changelog.txt" || echo "• OpenKE System Firmware Release v${VERSION}" > "$WORK_DIR/changelog.txt"
+	{
+		echo "[ OpenKE System ]"
+		git -C "$REPO_ROOT" log --pretty=format:"• %h %s" -n 6 2>/dev/null || echo "• OpenKE System Firmware Release v${VERSION}"
+		echo ""
+		GUPPY_DIR=""
+		if git -C "$REPO_ROOT/vendor/guppyscreen" rev-parse --git-dir >/dev/null 2>&1; then
+			GUPPY_DIR="$REPO_ROOT/vendor/guppyscreen"
+		elif git -C "$REPO_ROOT/../GuppyScreen" rev-parse --git-dir >/dev/null 2>&1; then
+			GUPPY_DIR="$REPO_ROOT/../GuppyScreen"
+		fi
+		if [ -n "$GUPPY_DIR" ]; then
+			echo ""
+			echo "[ GuppyScreen UI ]"
+			git -C "$GUPPY_DIR" log --pretty=format:"• %h %s" -n 6 2>/dev/null || true
+			echo ""
+		fi
+	} > "$WORK_DIR/changelog.txt"
 fi
 
 cp "$KERNEL_IMAGE" "$WORK_DIR/xImage"
@@ -361,3 +377,4 @@ fi
 SWU_SHA=$(sha256sum "$SWU_OUTPUT" | awk '{print $1}')
 echo "OK   Created $SWU_OUTPUT (${SWU_SHA})"
 echo "${SWU_SHA}  ${SWU_NAME}" > "$OUTPUT_DIR/${SWU_NAME}.sha256"
+cp "$WORK_DIR/changelog.txt" "$OUTPUT_DIR/${SWU_NAME}.changelog.txt"

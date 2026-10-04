@@ -69,7 +69,24 @@ if [ -f "$ARTIFACTS_DIR/${SWU_FILENAME}.changelog.txt" ]; then
 elif [ -f "$REPO_ROOT/CHANGELOG.md" ]; then
     DEV_CHANGELOG=$(head -n 20 "$REPO_ROOT/CHANGELOG.md" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | awk '{if (NR>1) printf "\\n"; printf "%s", $0}')
 else
-    DEV_CHANGELOG=$(git -C "$REPO_ROOT" log --pretty=format:"• %h %s" -n 10 2>/dev/null | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | awk '{if (NR>1) printf "\\n"; printf "%s", $0}' || echo "• Local development build (${VERSION_NAME})")
+    GUPPY_DIR=""
+    if git -C "$REPO_ROOT/vendor/guppyscreen" rev-parse --git-dir >/dev/null 2>&1; then
+        GUPPY_DIR="$REPO_ROOT/vendor/guppyscreen"
+    elif git -C "$REPO_ROOT/../GuppyScreen" rev-parse --git-dir >/dev/null 2>&1; then
+        GUPPY_DIR="$REPO_ROOT/../GuppyScreen"
+    fi
+    RAW_CHANGELOG=$(
+        echo "[ OpenKE System ]"
+        git -C "$REPO_ROOT" log --pretty=format:"• %h %s" -n 6 2>/dev/null || echo "• Local development build (${VERSION_NAME})"
+        echo ""
+        if [ -n "$GUPPY_DIR" ]; then
+            echo ""
+            echo "[ GuppyScreen UI ]"
+            git -C "$GUPPY_DIR" log --pretty=format:"• %h %s" -n 6 2>/dev/null || true
+            echo ""
+        fi
+    )
+    DEV_CHANGELOG=$(printf "%s" "$RAW_CHANGELOG" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | awk '{if (NR>1) printf "\\n"; printf "%s", $0}')
 fi
 
 # Generate releases.json
