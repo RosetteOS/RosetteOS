@@ -1202,19 +1202,40 @@ def get_process_rss_kb(pids: list) -> int:
 def get_process_cpu_jiffies(pids: list) -> int:
     total_jiffies = 0
     for p in pids:
-        try:
-            with open(f"/proc/{p}/stat", "r", encoding="utf-8") as f:
-                content = f.read()
-            rparen = content.rfind(")")
-            if rparen != -1:
-                fields = content[rparen + 2:].split()
-                total_jiffies += int(fields[11]) + int(fields[12]) + int(fields[13]) + int(fields[14])
-        except Exception:
-            pass
+        # Sum all thread jiffies in /proc/<pid>/task/
+        task_dir = f"/proc/{p}/task"
+        thread_jiffies = 0
+        if os.path.isdir(task_dir):
+            try:
+                for tid in os.listdir(task_dir):
+                    try:
+                        with open(f"{task_dir}/{tid}/stat", "r", encoding="utf-8") as f:
+                            content = f.read()
+                        rparen = content.rfind(")")
+                        if rparen != -1:
+                            fields = content[rparen + 2:].split()
+                            thread_jiffies += int(fields[11]) + int(fields[12])
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+        if thread_jiffies > 0:
+            total_jiffies += thread_jiffies
+        else:
+            try:
+                with open(f"/proc/{p}/stat", "r", encoding="utf-8") as f:
+                    content = f.read()
+                rparen = content.rfind(")")
+                if rparen != -1:
+                    fields = content[rparen + 2:].split()
+                    total_jiffies += int(fields[11]) + int(fields[12]) + int(fields[13]) + int(fields[14])
+            except Exception:
+                pass
     return total_jiffies
 
 
-def get_apps_resource_usage(app_list: list, sample_cpu: bool = True, sample_interval: float = 0.1) -> dict:
+def get_apps_resource_usage(app_list: list, sample_cpu: bool = True, sample_interval: float = 0.15) -> dict:
     """
     Computes CPU % and RAM usage for all apps in `app_list`.
     Returns a dict mapping app_id -> resource stat dict.
