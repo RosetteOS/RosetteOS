@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "name": "OpenKE App Store Catalog",
-  "updated_at": "2026-10-03T02:12:08Z",
+  "updated_at": "2026-10-04T10:36:00Z",
   "categories": [
     {
       "id": "web_ui",
@@ -129,6 +129,28 @@
       "probe_path": "/usr/data/openke/apps/timelapse/component/timelapse.py",
       "website": "https://github.com/mainsail-crew/moonraker-timelapse",
       "source_url": "https://github.com/mainsail-crew/moonraker-timelapse"
+    },
+    {
+      "id": "vnc",
+      "name": "Remote VNC Display",
+      "category": "tool",
+      "icon": "vnc",
+      "description": "High-performance remote desktop VNC server and responsive HTML5 browser viewer for OpenKE. Connect remotely from PC, tablet, or smartphone to control the touchscreen, run updates, and manage prints.",
+      "author": "OpenKE Team",
+      "version": "1.0.0",
+      "type": "tool",
+      "is_builtin": false,
+      "download_url": "https://github.com/OpenKlipperEdition/AppStore/releases/download/packages-v1.0/vnc-v1.0.0.zip",
+      "sha256": "fdc633a5b6670a124e9d7e375655e4e7d50cfd86321e6830c36d801e06267f08",
+      "install_path": "/usr/data/openke/apps/vnc",
+      "service": {
+        "exec": "/usr/data/openke/apps/vnc/openke-vnc -p 5900 -w 5800",
+        "priority": 60,
+        "oom_score_adj": -200
+      },
+      "probe_path": "/usr/data/openke/apps/vnc/openke-vnc",
+      "website": "https://github.com/OpenKlipperEdition/OpenKE",
+      "source_url": "https://github.com/OpenKlipperEdition/OpenKE/tree/apps/tools/openke-vnc"
     },
     {
       "id": "guppyscreen",

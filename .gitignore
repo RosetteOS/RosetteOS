@@ -60,3 +60,5 @@ scripts/build/overlay/lib/firmware/regulatory.db.LICENSE
 # (fb-vsync-test.c) stays tracked; rebuild via the MIPS toolchain per
 # tools/fb-vsync-test/README.md.
 tools/fb-vsync-test/fb-vsync-test
+tools/openke-vnc/openke-vnc
+tools/openke-vnc/*.o
