@@ -13,6 +13,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import ssl
 import subprocess
 import sys
@@ -1738,21 +1739,50 @@ start() {{
 
 stop() {{
 	echo -n "Stopping $DESC ($NAME)... "
+	PID=""
+	[ -f "$PIDFILE" ] && PID=$(cat "$PIDFILE" 2>/dev/null)
+
 	if [ -f "$PIDFILE" ]; then
-		start-stop-daemon -K -q -p "$PIDFILE"
-		status=$?
-		rm -f "$PIDFILE"
-		echo "OK"
-		return $status
-	else
-		echo "not running."
-		return 0
+		start-stop-daemon -K -q -p "$PIDFILE" 2>/dev/null || true
 	fi
+
+	if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+		kill -TERM "$PID" 2>/dev/null || true
+	fi
+	pkill -TERM -f "$NAME" 2>/dev/null || true
+	pkill -TERM -f "$EXEC_CMD" 2>/dev/null || true
+
+	for i in 1 2 3 4 5 6; do
+		ALIVE=0
+		if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+			ALIVE=1
+		fi
+		if pgrep -f "$NAME" >/dev/null 2>&1 || pgrep -f "$EXEC_CMD" >/dev/null 2>&1; then
+			ALIVE=1
+		fi
+		[ $ALIVE -eq 0 ] && break
+		usleep 500000 2>/dev/null || sleep 1
+	done
+
+	if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+		kill -9 "$PID" 2>/dev/null || true
+	fi
+	pkill -9 -f "$NAME" 2>/dev/null || true
+	pkill -9 -f "$EXEC_CMD" 2>/dev/null || true
+
+	rm -f "$PIDFILE"
+	echo "OK"
+	return 0
 }}
 
 status() {{
-	if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
-		echo "$NAME (pid $(cat "$PIDFILE" 2>/dev/null)) is running."
+	PID=""
+	[ -f "$PIDFILE" ] && PID=$(cat "$PIDFILE" 2>/dev/null)
+	if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+		echo "$NAME (pid $PID) is running."
+		return 0
+	elif pgrep -f "$NAME" >/dev/null 2>&1 || pgrep -f "$EXEC_CMD" >/dev/null 2>&1; then
+		echo "$NAME is running."
 		return 0
 	else
 		echo "$NAME is stopped."
@@ -1929,6 +1959,21 @@ def cmd_service(args):
 
     if action == "disable":
         ok = disable_app_service(app_id)
+        # Terminate any lingering processes
+        pids = find_app_pids(app_id)
+        if pids:
+            for p in pids:
+                try:
+                    os.kill(p, signal.SIGTERM)
+                except Exception:
+                    pass
+            time.sleep(0.3)
+            pids = find_app_pids(app_id)
+            for p in pids:
+                try:
+                    os.kill(p, signal.SIGKILL)
+                except Exception:
+                    pass
         sys.exit(0 if ok else 1)
 
     if action == "is-enabled":
@@ -1961,6 +2006,43 @@ def cmd_service(args):
             out = res.stdout.strip()
             print(out if out else f"{app_id} is stopped.")
             sys.exit(res.returncode if res.returncode != 0 else 3)
+
+    if action == "stop":
+        subprocess.run([svc_path, "stop"])
+        # Ensure any orphan / leftover PIDs are killed
+        pids = find_app_pids(app_id)
+        if pids:
+            for p in pids:
+                try:
+                    os.kill(p, signal.SIGTERM)
+                except Exception:
+                    pass
+            time.sleep(0.3)
+            pids = find_app_pids(app_id)
+            for p in pids:
+                try:
+                    os.kill(p, signal.SIGKILL)
+                except Exception:
+                    pass
+
+        for pf in (f"/var/run/{app_id}.pid", f"/tmp/{app_id}.pid", f"/var/run/{app_id}/{app_id}.pid"):
+            if os.path.isfile(pf):
+                try:
+                    os.remove(pf)
+                except Exception:
+                    pass
+
+        if os.path.isfile(CPU_CACHE_FILE):
+            try:
+                with open(CPU_CACHE_FILE, "r", encoding="utf-8") as f:
+                    cache = json.load(f)
+                if app_id in cache.get("apps", {}):
+                    del cache["apps"][app_id]
+                    with open(CPU_CACHE_FILE, "w", encoding="utf-8") as f:
+                        json.dump(cache, f)
+            except Exception:
+                pass
+        sys.exit(0)
 
     res = subprocess.run([svc_path, action])
     sys.exit(res.returncode)
