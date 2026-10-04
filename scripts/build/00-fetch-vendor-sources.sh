@@ -324,7 +324,7 @@ if [ ! -d guppyscreen/.git ]; then
 	echo "== initializing GuppyScreen at pinned commit $GUPPYSCREEN_PIN =="
 	git init guppyscreen >/dev/null
 	git -C guppyscreen remote add origin "$GUPPYSCREEN_REPO"
-	git -C guppyscreen fetch --depth 1 origin "$GUPPYSCREEN_PIN"
+	git -C guppyscreen fetch origin || true
 	git -C guppyscreen checkout --detach "$GUPPYSCREEN_PIN"
 else
 	guppyscreen_actual=$(git -C guppyscreen rev-parse HEAD)
@@ -334,7 +334,7 @@ else
 		git -C guppyscreen reset --hard >/dev/null
 		git -C guppyscreen clean -fdx >/dev/null
 		git -C guppyscreen submodule foreach --recursive 'git reset --hard && git clean -fdx' >/dev/null 2>&1 || true
-		git -C guppyscreen fetch --depth 1 origin "$GUPPYSCREEN_PIN"
+		git -C guppyscreen fetch origin || true
 		git -C guppyscreen checkout --detach "$GUPPYSCREEN_PIN"
 	fi
 fi

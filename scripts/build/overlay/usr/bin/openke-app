@@ -1111,12 +1111,18 @@ def find_app_pids(app_id: str) -> list:
             except Exception:
                 pass
 
+    curr_pid = os.getpid()
+    parent_pid = os.getppid()
+
     # 2. Process table scan: scan /proc to discover any app processes by comm or cmdline
     if os.path.isdir("/proc"):
         try:
             for entry in os.listdir("/proc"):
                 if entry.isdigit():
                     p = int(entry)
+                    if p == curr_pid or p == parent_pid:
+                        continue
+
                     cmdline_path = f"/proc/{p}/cmdline"
                     comm_path = f"/proc/{p}/comm"
                     cmdline = ""
@@ -1132,20 +1138,14 @@ def find_app_pids(app_id: str) -> list:
                     except Exception:
                         pass
 
+                    if "openke-app" in cmdline:
+                        continue
+
                     matched = False
-                    if normalized_id in ("guppyscreen", "klipperscreen", "mobileraker", "spoolman", "octoapp", "octoprint"):
-                        if comm == normalized_id or comm == app_id:
-                            matched = True
-                        elif normalized_id == "spoolman" and ("spoolman" in cmdline or "spoolman" in comm):
-                            matched = True
-                        elif normalized_id == "mobileraker" and ("mobileraker" in cmdline or "mobileraker" in comm):
-                            matched = True
-                        elif normalized_id == "octoapp" and ("octoapp" in cmdline or "octoapp" in comm):
-                            matched = True
-                        elif normalized_id == "klipperscreen" and ("KlipperScreen" in cmdline or "klipperscreen" in cmdline):
-                            matched = True
-                        elif normalized_id == "guppyscreen" and ("guppyscreen" in cmdline or "guppyscreen" in comm):
-                            matched = True
+                    if comm == normalized_id or comm == app_id:
+                        matched = True
+                    elif f"/openke/apps/{normalized_id}/" in cmdline or f"/apps/{normalized_id}/" in cmdline or f"/{normalized_id}.py" in cmdline or f"/{normalized_id}.sh" in cmdline:
+                        matched = True
                     elif cmdline and (f"/{normalized_id}/" in cmdline or f"/{normalized_id} " in cmdline or f" {normalized_id} " in cmdline or cmdline.endswith(f"/{normalized_id}") or cmdline.endswith(f" {normalized_id}")):
                         matched = True
 
@@ -1749,15 +1749,15 @@ stop() {{
 	if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
 		kill -TERM "$PID" 2>/dev/null || true
 	fi
-	pkill -TERM -f "$NAME" 2>/dev/null || true
 	pkill -TERM -f "$EXEC_CMD" 2>/dev/null || true
+	pkill -TERM -f "/usr/data/openke/apps/$NAME/" 2>/dev/null || true
 
 	for i in 1 2 3 4 5 6; do
 		ALIVE=0
 		if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
 			ALIVE=1
 		fi
-		if pgrep -f "$NAME" >/dev/null 2>&1 || pgrep -f "$EXEC_CMD" >/dev/null 2>&1; then
+		if pgrep -f "$EXEC_CMD" >/dev/null 2>&1 || pgrep -f "/usr/data/openke/apps/$NAME/" >/dev/null 2>&1; then
 			ALIVE=1
 		fi
 		[ $ALIVE -eq 0 ] && break
@@ -1767,8 +1767,8 @@ stop() {{
 	if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
 		kill -9 "$PID" 2>/dev/null || true
 	fi
-	pkill -9 -f "$NAME" 2>/dev/null || true
 	pkill -9 -f "$EXEC_CMD" 2>/dev/null || true
+	pkill -9 -f "/usr/data/openke/apps/$NAME/" 2>/dev/null || true
 
 	rm -f "$PIDFILE"
 	echo "OK"
@@ -1939,7 +1939,7 @@ def sync_installed_service_scripts():
                     try:
                         with open(svc_path, "r", encoding="utf-8", errors="ignore") as f:
                             content = f.read()
-                        if "pkill -TERM -f" not in content or "ALIVE=0" not in content:
+                        if 'pkill -TERM -f "$NAME"' in content or "pkill -TERM -f" not in content or "ALIVE=0" not in content:
                             new_script = generate_service_script(app, install_path)
                             if new_script:
                                 with open(svc_path, "w", encoding="utf-8") as f:
