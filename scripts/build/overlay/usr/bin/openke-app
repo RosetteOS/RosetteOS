@@ -1515,6 +1515,7 @@ def cmd_install(args):
 
         print(f"OK: Successfully installed {app_id} into {install_path}")
         save_installed_app_meta(app)
+        sync_app_icons([app])
 
         # Declarative generic component hooks
         install_app_moonraker_components(install_path, app)
@@ -2245,6 +2246,42 @@ def set_active_touch(target: str, force: bool = False):
     print(f"OK: Active Touch UI set to '{target}'.")
 
 
+ICONS_DIR = os.path.join(STATE_DIR, "icons")
+
+
+def sync_app_icons(apps: list, only_id: str = None):
+    """
+    Best-effort download of per-app icons (catalog 'icon_url') into ICONS_DIR/<id>.png
+    for display by the touchscreen App Store. Never raises; stops after the first
+    network failure so an offline printer is not slowed down.
+    """
+    try:
+        os.makedirs(ICONS_DIR, exist_ok=True)
+    except Exception:
+        return
+    ctx = get_ssl_context()
+    for app in apps:
+        app_id = app.get("id", "")
+        url = app.get("icon_url", "")
+        if not app_id or not url or (only_id and app_id != only_id):
+            continue
+        if not re.fullmatch(r"[A-Za-z0-9_.-]+", app_id):
+            continue
+        dest = os.path.join(ICONS_DIR, f"{app_id}.png")
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "OpenKE-App/1.0"})
+            with urllib.request.urlopen(req, timeout=5, context=ctx) as resp:
+                data = resp.read(256 * 1024)
+            if not data.startswith(b"\x89PNG"):
+                continue
+            tmp = dest + ".tmp"
+            with open(tmp, "wb") as f:
+                f.write(data)
+            os.replace(tmp, dest)
+        except Exception:
+            break
+
+
 def cmd_update(args):
     urls = []
     if getattr(args, "url", None):
@@ -2290,7 +2327,9 @@ def cmd_update(args):
         except Exception as e:
             print(f"NOTE: Could not fetch from {url} ({e})")
 
-    if not success:
+    if success:
+        sync_app_icons(load_catalog().get("apps", []))
+    else:
         print("INFO: Keeping existing local catalog.", file=sys.stderr)
 
 
