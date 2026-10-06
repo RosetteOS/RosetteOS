@@ -2675,7 +2675,15 @@ def cmd_sync(args=None):
             if app.get("output_dirs"):
                 install_app_output_dirs(app)
             if app.get("moonraker_config") and os.path.isdir(install_path):
-                install_app_moonraker_conf(install_path, app)
+                # Boot sync must preserve the user's service enablement choice.
+                # In particular, don't restore Moonraker sections for a service
+                # whose runner was renamed to K* by `service disable`.
+                svc_script = find_app_service_script(app_id)
+                has_managed_service = bool(app.get("service") or app.get("service_init"))
+                if has_managed_service and svc_script and not is_app_service_enabled(app_id):
+                    remove_app_moonraker_conf(app)
+                else:
+                    install_app_moonraker_conf(install_path, app)
             if app.get("klipper_include") and os.path.isdir(install_path):
                 install_app_printer_cfg(install_path, app)
 
