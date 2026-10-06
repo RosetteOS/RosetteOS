@@ -730,18 +730,56 @@ def install_app_config_files(install_path: str, app: dict):
 
 def remove_app_config_files(app: dict):
     target_rel = app.get("config_target")
-    if not target_rel:
+    cleanup_targets = app.get("cleanup_config_files", [])
+    if isinstance(cleanup_targets, str):
+        cleanup_targets = [cleanup_targets]
+
+    targets = []
+    if target_rel:
+        targets.append(target_rel)
+    targets.extend(path for path in cleanup_targets if isinstance(path, str) and path)
+    if not targets:
         return
 
     cfg_dirs = get_config_dirs()
     for cfg_dir in cfg_dirs:
-        dest_path = os.path.join(cfg_dir, target_rel)
-        if os.path.isfile(dest_path):
-            try:
-                os.remove(dest_path)
-                print(f"OK: Removed {dest_path}")
-            except Exception as e:
-                print(f"WARNING: Failed to remove {dest_path}: {e}", file=sys.stderr)
+        for target in targets:
+            dest_path = os.path.abspath(os.path.join(cfg_dir, target))
+            if not dest_path.startswith(os.path.abspath(cfg_dir) + os.sep):
+                print(f"WARNING: Ignoring unsafe app config path: {target}", file=sys.stderr)
+                continue
+            if os.path.isfile(dest_path):
+                try:
+                    os.remove(dest_path)
+                    print(f"OK: Removed {dest_path}")
+                except Exception as e:
+                    print(f"WARNING: Failed to remove {dest_path}: {e}", file=sys.stderr)
+
+        # Remove only explicit app-owned config includes. This lets Moonraker
+        # stop loading generated OctoApp files after they have been deleted.
+        cleanup_names = {os.path.basename(path) for path in cleanup_targets if isinstance(path, str) and path}
+        if cleanup_names:
+            moonraker_conf = os.path.join(cfg_dir, "moonraker.conf")
+            if os.path.isfile(moonraker_conf):
+                try:
+                    with open(moonraker_conf, "r", encoding="utf-8") as f:
+                        lines = f.readlines()
+                    new_lines = []
+                    changed = False
+                    for line in lines:
+                        match = re.match(r"^\s*\[include\s+([^]]+)\]\s*(?:#.*)?$", line.strip(), re.IGNORECASE)
+                        include_target = match.group(1).strip().strip("\\\"'") if match else ""
+                        if include_target and os.path.basename(include_target) in cleanup_names:
+                            changed = True
+                            continue
+                        new_lines.append(line)
+                    if changed:
+                        with open(moonraker_conf, "w", encoding="utf-8") as f:
+                            f.writelines(new_lines)
+                        print(f"OK: Removed app config includes from {moonraker_conf}")
+                        notify_moonraker_restart()
+                except Exception as e:
+                    print(f"WARNING: Failed to clean app config includes from {moonraker_conf}: {e}", file=sys.stderr)
 
 
 def install_app_output_dirs(app: dict):

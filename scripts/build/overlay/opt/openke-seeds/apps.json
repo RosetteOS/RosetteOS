@@ -77,7 +77,11 @@
       },
       "probe_path": "/usr/data/openke/apps/octoapp/server.py",
       "website": "https://octoapp.eu",
-      "source_url": "https://github.com/crysxd/OctoApp-Plugin"
+      "source_url": "https://github.com/crysxd/OctoApp-Plugin",
+      "cleanup_config_files": [
+        "octoapp.conf",
+        "octoapp-system.cfg"
+      ]
     },
     {
       "id": "spoolman",
