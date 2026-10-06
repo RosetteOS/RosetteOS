@@ -27,9 +27,6 @@ DEFAULT_CATALOG_PATHS = [
     "/usr/data/openke/apps.json",
     "/usr/data/openke-seeds/apps.json",
     "/opt/openke-seeds/apps.json",
-    "/opt/openke/apps.json",
-    "/etc/openke/apps.json",
-    "/etc/openke-apps.json",
     # Development repository fallbacks
     os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../../manifests/apps.json")),
     os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../manifests/apps.json")),
