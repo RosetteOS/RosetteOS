@@ -77,7 +77,8 @@ import json, sys
 with open(sys.argv[1]) as f:
     data = json.load(f)
 assert "apps" in data, "manifest missing apps list"
-assert len(data["apps"]) == 8, f"expected exactly 8 apps, got {len(data['apps'])}"
+apps = data["apps"]
+assert len(apps) == 9, f"expected exactly 9 apps, got {len(apps)}"
 categories = {a["category"] for a in data["apps"]}
 assert {"web_ui", "touch_ui", "plugin"}.issubset(categories), f"missing core categories in {categories}"
 
@@ -91,6 +92,7 @@ assert "timelapse" in ids, "timelapse missing from catalog"
 assert "mobileraker" in ids, "mobileraker missing from catalog"
 assert "spoolman" in ids, "spoolman missing from catalog"
 assert "octoapp" in ids, "octoapp missing from catalog"
+assert "vnc" in ids, "vnc missing from catalog"
 ' "$MANIFEST" && pass "apps.json manifest schema and required applications validated" || fail "apps.json validation failed"
 
 echo "=== Test 2: CLI Syntax & Output Modes ==="
@@ -1117,8 +1119,6 @@ echo "=========================================="
 echo "OpenKE App Store Tests: $PASS passed, $FAIL failed"
 echo "=========================================="
 [ "$FAIL" -eq 0 ]
-
-
 
 
 

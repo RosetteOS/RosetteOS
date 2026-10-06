@@ -1623,6 +1623,12 @@ def enable_app_service(app_id: str) -> bool:
     except Exception:
         pass
 
+    # Restore the app's catalog-managed Moonraker sections when its service is
+    # enabled again. This also refreshes sections changed by a catalog update.
+    app = next((a for a in load_catalog().get("apps", []) if a.get("id") == app_id), None)
+    if app:
+        install_app_moonraker_conf(get_install_path(app), app)
+
     print(f"OK: Enabled service for {app_id} ({os.path.basename(svc_path)})")
     return True
 
@@ -1658,6 +1664,12 @@ def disable_app_service(app_id: str) -> bool:
         except Exception as e:
             print(f"ERROR: Failed disabling service script {svc_path} -> {new_path}: {e}", file=sys.stderr)
             return False
+
+    # Remove the app's Moonraker integration while its service is disabled so
+    # Moonraker cannot keep loading a component that is no longer running.
+    app = next((a for a in load_catalog().get("apps", []) if a.get("id") == app_id), None)
+    if app:
+        remove_app_moonraker_conf(app)
 
     print(f"OK: Disabled service for {app_id} ({os.path.basename(new_path)})")
     return True
@@ -2063,6 +2075,10 @@ def cmd_service(args):
             except Exception:
                 pass
 
+        app = next((a for a in load_catalog().get("apps", []) if a.get("id") == app_id), None)
+        if app:
+            remove_app_moonraker_conf(app)
+
         print(f"OK: Stopped {app_id} service")
         sys.exit(0)
 
@@ -2119,6 +2135,10 @@ def cmd_service(args):
         sys.exit(res.returncode)
 
     res = subprocess.run([svc_path, action])
+    if action == "start" and res.returncode == 0:
+        app = next((a for a in load_catalog().get("apps", []) if a.get("id") == app_id), None)
+        if app:
+            install_app_moonraker_conf(get_install_path(app), app)
     sys.exit(res.returncode)
 
 
@@ -2773,4 +2793,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
