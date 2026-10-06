@@ -933,7 +933,6 @@ mkdir -p /tmp/printerdata-check/hardware /tmp/printerdata-check/macros /tmp/prin
 	sq_dump /opt/openke-seeds/printer_data-config/hardware/nebula_pad.cfg /tmp/printerdata-check/hardware/nebula_pad.cfg
 	sq_dump /opt/openke-seeds/printer_data-config/hardware/v3_features.cfg /tmp/printerdata-check/hardware/v3_features.cfg
 	sq_dump /opt/openke-seeds/printer_data-config/macros/mainsail.cfg /tmp/printerdata-check/macros/mainsail.cfg
-	sq_dump /opt/openke-seeds/printer_data-config/macros/fluidd.cfg /tmp/printerdata-check/macros/fluidd.cfg
 	sq_dump /opt/openke-seeds/printer_data-config/macros/adaptive_meshing.cfg /tmp/printerdata-check/macros/adaptive_meshing.cfg
 	sq_dump /opt/openke-seeds/printer_data-config/macros/line_purge.cfg /tmp/printerdata-check/macros/line_purge.cfg
 	sq_dump /opt/openke-seeds/printer_data-config/macros/smart_park.cfg /tmp/printerdata-check/macros/smart_park.cfg
@@ -977,7 +976,7 @@ AWKPROG
 		awk -f /tmp/blank-required-option.awk "$1"
 	}
 	blank_found=0
-	for f in /tmp/printerdata-check/printer.cfg /tmp/printerdata-check/moonraker.conf /tmp/printerdata-check/macros/mainsail.cfg /tmp/printerdata-check/macros/fluidd.cfg /tmp/printerdata-check/hardware/nebula_pad.cfg; do
+	for f in /tmp/printerdata-check/printer.cfg /tmp/printerdata-check/moonraker.conf /tmp/printerdata-check/macros/mainsail.cfg /tmp/printerdata-check/hardware/nebula_pad.cfg; do
 		[ -s "$f" ] || continue
 		if ! blank_required_option "$f" >/dev/null; then
 			blank_found=1
