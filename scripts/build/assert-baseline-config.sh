@@ -80,7 +80,7 @@ pre-build)
 	# The tracked Kconfig fragment should now (post apply-qualified-baseline.sh,
 	# pre 02) carry every accepted variant's marker block.
 	# Standard PREEMPT baseline: CONFIG_PREEMPT_RT must NOT be selected.
-	FRAGMENT="$ARTIFACT_DIR/halley5-openke-fragment.config"
+	FRAGMENT="$ARTIFACT_DIR/halley5-rosetteos-fragment.config"
 	if grep -q "CONFIG_PREEMPT_RT=y" "$FRAGMENT" 2>/dev/null; then
 		check "CONFIG_PREEMPT_RT=y absent from tracked fragment" 1
 	else
@@ -265,7 +265,7 @@ post-build)
 		elif diff -u "$expected_tmp" "$actual_tmp" > "$diff_tmp"; then
 			echo "  PASS: $file matches pinned baseline tag $BASELINE_REF after environment-path normalization"
 		else
-			if [ "${OPENKE_CANDIDATE_BUILD:-0}" = "1" ]; then
+			if [ "${ROSETTEOS_CANDIDATE_BUILD:-0}" = "1" ]; then
 				echo "  WARN: $file differs from pinned baseline tag $BASELINE_REF (candidate build allowed diff):"
 				sed -n '1,160p' "$diff_tmp"
 			else

@@ -1,4 +1,4 @@
-# OpenKE unified build environment (Migration A).
+# RosetteOS unified build environment (Migration A).
 #
 # Replaces two previously-nested container dependencies with one:
 #   - pellcorp/k1-bash-build (the outer Buildroot/kernel/rootfs environment)
@@ -11,7 +11,7 @@
 # socket, no `docker run` from inside the container.
 #
 # What this image is: a host-level Linux environment with every build tool
-# OpenKE's scripts/build/00-06 pipeline actually invokes, baked in
+# RosetteOS's scripts/build/00-06 pipeline actually invokes, baked in
 # at image-build time instead of `apt-get install`'d mid-firmware-build.
 #
 # What this image is NOT: a place that contains project source, or a place
@@ -123,7 +123,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	&& rm -rf /var/lib/apt/lists/*
 
 # --- Migration A: GuppyScreen's exact current toolchain, preserved --------
-# Identical pin to OpenKlipperEdition/GuppyScreen/docker/Dockerfile's own ARGs (see
+# Identical pin to RosetteOS/GuppyScreen/docker/Dockerfile's own ARGs (see
 # build-env/versions.env - single source of truth for these values, kept in
 # sync with that Dockerfile by inspection, not by import, since they live in
 # different repos). Migration A's proof is that ONLY container ownership
@@ -158,8 +158,8 @@ ENV GUPPYSCREEN_TOOLCHAIN_BIN=/toolchains/${GUPPYSCREEN_MIPS_TOOLCHAIN}/bin
 
 WORKDIR /work
 
-LABEL org.opencontainers.image.source="https://github.com/OpenKlipperEdition/OpenKE" \
-      org.opencontainers.image.title="OpenKE Build Environment" \
-      org.opencontainers.image.description="Canonical unified build environment for OpenKE - replaces pellcorp/k1-bash-build and ghcr.io/coreflake1/guppydev with one OpenKE-owned, digest-pinned image. Does not contain project source or the Buildroot-generated target toolchain (that's built from source at build time, per manifests/dependencies.conf)."
+LABEL org.opencontainers.image.source="https://github.com/RosetteOS/RosetteOS" \
+      org.opencontainers.image.title="RosetteOS Build Environment" \
+      org.opencontainers.image.description="Canonical unified build environment for RosetteOS - replaces pellcorp/k1-bash-build and ghcr.io/coreflake1/guppydev with one project-owned, digest-pinned image. Does not contain project source or the Buildroot-generated target toolchain (that's built from source at build time, per manifests/dependencies.conf)."
 
 ENTRYPOINT ["sh", "-c"]

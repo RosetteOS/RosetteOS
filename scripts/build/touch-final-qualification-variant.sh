@@ -107,7 +107,7 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/../.." && pwd)
 SYSTEM_DIR="$REPO_ROOT/vendor/system"
 PATCH="$SCRIPT_DIR/patches/touch-final-qualification.patch"
-FRAGMENT="$REPO_ROOT/artifacts/buildroot-halley5-v30-image/halley5-openke-fragment.config"
+FRAGMENT="$REPO_ROOT/artifacts/buildroot-halley5-v30-image/halley5-rosetteos-fragment.config"
 MARKER="$REPO_ROOT/build-work/touch-final-qualification-variant-applied.txt"
 
 KCONFIG_REL="kernel/kernel-6.6/drivers/input/touchscreen/Kconfig"
@@ -115,8 +115,8 @@ MAKEFILE_REL="kernel/kernel-6.6/drivers/input/touchscreen/Makefile"
 NS2009_REL="kernel/kernel-6.6/drivers/input/touchscreen/ns2009.c"
 NEWFILE_REL="kernel/kernel-6.6/drivers/input/touchscreen/ns2009_final_qualification.c"
 
-BEGIN_MARK="#--- OPENKE_TOUCH_FINAL_QUALIFICATION_VARIANT_BEGIN ---"
-END_MARK="#--- OPENKE_TOUCH_FINAL_QUALIFICATION_VARIANT_END ---"
+BEGIN_MARK="#--- ROSETTEOS_TOUCH_FINAL_QUALIFICATION_VARIANT_BEGIN ---"
+END_MARK="#--- ROSETTEOS_TOUCH_FINAL_QUALIFICATION_VARIANT_END ---"
 
 # A stable, unique marker string this patch alone ever adds to each shared
 # file - used to detect the file's ACTUAL current content (never assumed

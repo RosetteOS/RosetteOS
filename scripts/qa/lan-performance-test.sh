@@ -138,7 +138,7 @@ s.close()
 fi
 
 {
-	echo "OpenKE LAN performance test - host=$HOST $(date -u +%Y%m%dT%H%M%SZ)"
+	echo "RosetteOS LAN performance test - host=$HOST $(date -u +%Y%m%dT%H%M%SZ)"
 	echo ""
 	echo "=== ping ($PING_COUNT packets, LAN host, never a public endpoint) ==="
 	echo "sent=${PING_SENT:-n/a} received=${PING_RECEIVED:-n/a} loss=${PACKET_LOSS_PCT}%"

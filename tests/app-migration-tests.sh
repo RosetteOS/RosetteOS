@@ -1,10 +1,10 @@
 #!/bin/sh
 #
-# Offline, repeatable tests for S04openke-migrate (Clean-Update + Virgin
+# Offline, repeatable tests for S04rosetteos-migrate (Clean-Update + Virgin
 # Baseline mission, Phase 3). Same fixture convention as
 # tests/factory-seed-git-tests.sh: real, locally-built git repositories
 # under a temp directory, never touching GitHub or a real device. Sources
-# S04openke-migrate with S04OPENKE_MIGRATE_NO_AUTORUN=1 (same seam
+# S04rosetteos-migrate with S04ROSETTEOS_MIGRATE_NO_AUTORUN=1 (same seam
 # pattern as S04's own NO_AUTORUN convention) and SEEDS/APPS/SYSTEM/
 # LOCKDIR pointed at fixture directories.
 #
@@ -15,14 +15,14 @@ set -u
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 # Points every sourced init script's own GATE_LIB override at the real,
-# tracked shared gate (not the real device path /etc/openke-
+# tracked shared gate (not the real device path /etc/rosetteos-
 # maintenance-gate.sh, which does not exist on a dev machine) - exported
 # once so every `env ... sh -c` call below inherits it automatically.
-export GATE_LIB="$REPO_ROOT/scripts/build/overlay/etc/openke-maintenance-gate.sh"
+export GATE_LIB="$REPO_ROOT/scripts/build/overlay/etc/rosetteos-maintenance-gate.sh"
 export SKIP_SWAP_CHECK=1
 MAKE_ARCHIVE_LIB="$REPO_ROOT/scripts/build/lib/make-seed-archive.sh"
-MIGRATE_SCRIPT="$REPO_ROOT/scripts/build/overlay/etc/init.d/S04openke-migrate"
-FACTORY_SEED_SCRIPT="$REPO_ROOT/scripts/build/overlay/etc/init.d/S04openke-factory-seed"
+MIGRATE_SCRIPT="$REPO_ROOT/scripts/build/overlay/etc/init.d/S04rosetteos-migrate"
+FACTORY_SEED_SCRIPT="$REPO_ROOT/scripts/build/overlay/etc/init.d/S04rosetteos-factory-seed"
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/app-migration-tests.XXXXXX")
 trap 'rm -rf "$WORK"' EXIT INT TERM
 
@@ -92,7 +92,7 @@ test_json_get() {
   "build_date": "2026-08-08T00:00:00Z"
 }
 EOF
-	result=$(env S04OPENKE_MIGRATE_NO_AUTORUN=1 sh -c ". '$MIGRATE_SCRIPT'; json_get '$f' migration_version")
+	result=$(env S04ROSETTEOS_MIGRATE_NO_AUTORUN=1 sh -c ". '$MIGRATE_SCRIPT'; json_get '$f' migration_version")
 	if [ "$result" = "abc123" ]; then
 		pass "json_get extracts migration_version correctly"
 	else
@@ -109,7 +109,7 @@ test_fresh_namespace() {
 	setup_seeds "$SEEDS_DIR" > /dev/null
 	# No $APPS_DIR/klipper/.git - simulates factory-seed not having run
 	# yet, or a namespace this script has never touched.
-	env S04OPENKE_MIGRATE_NO_AUTORUN=1 SEEDS="$SEEDS_DIR" APPS="$APPS_DIR" SYSTEM="$SYSTEM_DIR" LOCKDIR="$WORK/no-lock" \
+	env S04ROSETTEOS_MIGRATE_NO_AUTORUN=1 SEEDS="$SEEDS_DIR" APPS="$APPS_DIR" SYSTEM="$SYSTEM_DIR" LOCKDIR="$WORK/no-lock" \
 		sh -c ". '$MIGRATE_SCRIPT'; start" > "$WORK/t2.log" 2>&1
 
 	if [ -f "$SYSTEM_DIR/app-generation.json" ] && [ ! -d "$APPS_DIR/klipper" ]; then
@@ -130,7 +130,7 @@ test_matching_generation_noop() {
 	echo '{"migration_version": "gen-v2"}' > "$SYSTEM_DIR/app-generation.json"
 	before_hash=$(git -C "$APPS_DIR/klipper" rev-parse HEAD)
 
-	env S04OPENKE_MIGRATE_NO_AUTORUN=1 SEEDS="$SEEDS_DIR" APPS="$APPS_DIR" SYSTEM="$SYSTEM_DIR" LOCKDIR="$WORK/no-lock" \
+	env S04ROSETTEOS_MIGRATE_NO_AUTORUN=1 SEEDS="$SEEDS_DIR" APPS="$APPS_DIR" SYSTEM="$SYSTEM_DIR" LOCKDIR="$WORK/no-lock" \
 		sh -c ". '$MIGRATE_SCRIPT'; start" > "$WORK/t3.log" 2>&1
 
 	after_hash=$(git -C "$APPS_DIR/klipper" rev-parse HEAD)
@@ -157,7 +157,7 @@ test_migration_happens() {
 	expected_new_hash=$(git -C "$SEEDS_DIR/../src-repo" rev-parse HEAD 2>/dev/null || \
 		grep -o '"seed_commit": "[^"]*"' "$SEEDS_DIR/seed-manifest.json" | sed 's/.*"\([a-f0-9]*\)"$/\1/')
 
-	env S04OPENKE_MIGRATE_NO_AUTORUN=1 SEEDS="$SEEDS_DIR" APPS="$APPS_DIR" SYSTEM="$SYSTEM_DIR" LOCKDIR="$WORK/no-lock" \
+	env S04ROSETTEOS_MIGRATE_NO_AUTORUN=1 SEEDS="$SEEDS_DIR" APPS="$APPS_DIR" SYSTEM="$SYSTEM_DIR" LOCKDIR="$WORK/no-lock" \
 		sh -c ". '$MIGRATE_SCRIPT'; start" > "$WORK/t4.log" 2>&1
 
 	new_hash=$(git -C "$APPS_DIR/klipper" rev-parse HEAD 2>/dev/null)
@@ -193,7 +193,7 @@ test_failure_leaves_existing_untouched() {
 	echo '{"migration_version": "gen-v1"}' > "$SYSTEM_DIR/app-generation.json"
 	old_hash=$(git -C "$APPS_DIR/klipper" rev-parse HEAD)
 
-	env S04OPENKE_MIGRATE_NO_AUTORUN=1 SEEDS="$SEEDS_DIR" APPS="$APPS_DIR" SYSTEM="$SYSTEM_DIR" LOCKDIR="$WORK/no-lock" \
+	env S04ROSETTEOS_MIGRATE_NO_AUTORUN=1 SEEDS="$SEEDS_DIR" APPS="$APPS_DIR" SYSTEM="$SYSTEM_DIR" LOCKDIR="$WORK/no-lock" \
 		sh -c ". '$MIGRATE_SCRIPT'; start" > "$WORK/t5.log" 2>&1
 
 	new_hash=$(git -C "$APPS_DIR/klipper" rev-parse HEAD 2>/dev/null)
@@ -214,10 +214,10 @@ test_no_redundant_reseed_after_fresh_factory_seed() {
 	mkdir -p "$APPS_DIR" "$SYSTEM_DIR"
 	setup_seeds "$SEEDS_DIR" > /dev/null
 
-	# Same S04openke-factory-seed function real boot uses to seed klipper
+	# Same S04rosetteos-factory-seed function real boot uses to seed klipper
 	# into a fresh namespace - sourced directly (NO_AUTORUN), same
 	# convention tests/factory-seed-git-tests.sh already uses.
-	env S04OPENKE_FACTORY_SEED_NO_AUTORUN=1 SEEDS="$SEEDS_DIR" APPS="$APPS_DIR" SYSTEM="$SYSTEM_DIR" \
+	env S04ROSETTEOS_FACTORY_SEED_NO_AUTORUN=1 SEEDS="$SEEDS_DIR" APPS="$APPS_DIR" SYSTEM="$SYSTEM_DIR" \
 		sh -c ". '$FACTORY_SEED_SCRIPT'; seed_git_app klipper master '$KLIPPER_PROD_ORIGIN' klippy/chelper/c_helper.so; record_initial_generation" \
 		> "$WORK/t6-seed.log" 2>&1
 	seeded_hash=$(git -C "$APPS_DIR/klipper" rev-parse HEAD 2>/dev/null)
@@ -227,7 +227,7 @@ test_no_redundant_reseed_after_fresh_factory_seed() {
 		return
 	fi
 
-	env S04OPENKE_MIGRATE_NO_AUTORUN=1 SEEDS="$SEEDS_DIR" APPS="$APPS_DIR" SYSTEM="$SYSTEM_DIR" LOCKDIR="$WORK/no-lock" \
+	env S04ROSETTEOS_MIGRATE_NO_AUTORUN=1 SEEDS="$SEEDS_DIR" APPS="$APPS_DIR" SYSTEM="$SYSTEM_DIR" LOCKDIR="$WORK/no-lock" \
 		sh -c ". '$MIGRATE_SCRIPT'; start" > "$WORK/t6-migrate.log" 2>&1
 
 	after_hash=$(git -C "$APPS_DIR/klipper" rev-parse HEAD 2>/dev/null)
@@ -256,15 +256,15 @@ test_stale_lock_does_not_block_virgin_first_boot() {
 	# Verification mission, 2026-08-08 - a lock that survived an
 	# off-device persistent-state reset because the reset's own scope
 	# missed updates/locks/). Deliberately a real, non-empty file (an
-	# empty klipper.lock is exactly what openke-update-supervisor.sh
+	# empty klipper.lock is exactly what rosetteos-update-supervisor.sh
 	# itself creates), not a directory placeholder.
 	echo -n "" > "$LOCKDIR/klipper.lock"
 
 	# maintenance_gate_ok() is what real boot calls before ever
-	# attempting to seed - test it exactly as S04openke-factory-seed's
+	# attempting to seed - test it exactly as S04rosetteos-factory-seed's
 	# own start() does: gate first, only seed if it returns success.
 	env SEEDS="$SEEDS_DIR" APPS="$APPS_DIR" SYSTEM="$SYSTEM_DIR" LOCKDIR="$LOCKDIR" \
-		S04OPENKE_FACTORY_SEED_NO_AUTORUN=1 \
+		S04ROSETTEOS_FACTORY_SEED_NO_AUTORUN=1 \
 		sh -c ". '$FACTORY_SEED_SCRIPT'; \
 			if maintenance_gate_ok; then \
 				echo GATE_PASSED; \
@@ -307,7 +307,7 @@ test_stale_lock_still_blocks_when_namespace_already_seeded() {
 	echo -n "" > "$LOCKDIR/klipper.lock"
 
 	env SEEDS="$SEEDS_DIR" APPS="$APPS_DIR" SYSTEM="$SYSTEM_DIR" LOCKDIR="$LOCKDIR" \
-		S04OPENKE_FACTORY_SEED_NO_AUTORUN=1 \
+		S04ROSETTEOS_FACTORY_SEED_NO_AUTORUN=1 \
 		sh -c ". '$FACTORY_SEED_SCRIPT'; \
 			if maintenance_gate_ok; then echo GATE_PASSED; else echo GATE_BLOCKED; fi" \
 		> "$WORK/t8.log" 2>&1
@@ -315,7 +315,7 @@ test_stale_lock_still_blocks_when_namespace_already_seeded() {
 	if grep -q "GATE_BLOCKED" "$WORK/t8.log" && [ -e "$LOCKDIR/klipper.lock" ]; then
 		pass "stale lock: an ALREADY-seeded namespace's lock is still correctly treated as a real, blocking, human-review-needed lock - the fix stays narrow"
 	else
-		fail "stale lock: an already-seeded namespace's lock was incorrectly bypassed - this would silently defeat openke-update-supervisor.sh's own deliberate 'needs human review' failed-update safety property ($(cat "$WORK/t8.log"))"
+		fail "stale lock: an already-seeded namespace's lock was incorrectly bypassed - this would silently defeat rosetteos-update-supervisor.sh's own deliberate 'needs human review' failed-update safety property ($(cat "$WORK/t8.log"))"
 	fi
 }
 

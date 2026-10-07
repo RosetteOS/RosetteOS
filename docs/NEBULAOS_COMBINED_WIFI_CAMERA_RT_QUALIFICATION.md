@@ -10,7 +10,7 @@ established safety discipline.
 
 **Before starting any step in this runbook**: confirm the printer is
 powered on and reachable, and re-read
-`reference_device_access` conventions (SSH root/`openke` on custom,
+`reference_device_access` conventions (SSH root/`rosetteos` on custom,
 `Creality2023` on stock, DHCP IP drifts every reboot, dropbear host key
 regenerates every boot). Every state-changing device action below follows
 the two-invocation rule: a read-only query first, review, then a separate

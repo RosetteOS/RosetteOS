@@ -52,7 +52,7 @@ class VersionCollectionTest(unittest.TestCase):
         return repo_root
 
     def _instantiate_against(self, repo_root, version_data=None, generation_data=None):
-        version_file = os.path.join(self.work, 'openke-version.json')
+        version_file = os.path.join(self.work, 'rosetteos-version.json')
         generation_file = os.path.join(self.work, 'app-generation.json')
         if version_data is not None:
             with open(version_file, 'w') as f:

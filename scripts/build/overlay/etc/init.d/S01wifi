@@ -1,11 +1,11 @@
 #!/bin/sh
 #
-# OpenKE addition (FIRMWARE.md sec 17/18, sec 60): starts wpa_supplicant on
+# RosetteOS addition (FIRMWARE.md sec 17/18, sec 60): starts wpa_supplicant on
 # wlan0 against real credentials.
 #
 # NebulaOS auto-updates-camera-complete mission (2026-07-28): renumbered
 # from S39 to S01 (real bug found live on a fresh-namespace boot). At S39
-# this ran AFTER S04openke-factory-seed - a step that writes real,
+# this ran AFTER S04rosetteos-factory-seed - a step that writes real,
 # previously-uncommitted-scale amounts of data (Klipper's real git
 # history, two Python venvs) and can legitimately take several minutes on
 # this hardware. With WiFi gated behind that, a device had zero network/
@@ -16,19 +16,19 @@
 # because of this - an operator with no way to check progress assumed the
 # device was stuck and power-cycled it mid-seed, which is what actually
 # left Klipper/Moonraker's app directories incompletely seeded (not a
-# WiFi defect in itself - see S04openke-factory-seed's own history for
+# WiFi defect in itself - see S04rosetteos-factory-seed's own history for
 # the real fix to that half of the incident).
 #
 # S01 is the earliest safe position: this script's only real dependency
 # is S01persistent-datastore's mount of /usr/data (needed before
 # seed_default_conf() below can create $CONF) - it needs nothing from
-# S02openke-namespace, S03openke-diskswap, or S04's factory seed at
+# S02rosetteos-namespace, S03rosetteos-diskswap, or S04's factory seed at
 # all. Same S-number as S01persistent-datastore is intentional and safe
 # (this project's own precedent: S00revert-safety/S00zram-swap already
 # share a number) - conflicts resolve alphabetically ("persistent-
 # datastore" < "wifi"), so the mount always completes first.
 #
-# Still runs before S40openke-ntpsync's `ifup -a`-equivalent bring-up,
+# Still runs before S40rosetteos-ntpsync's `ifup -a`-equivalent bring-up,
 # so wlan0 has already associated by the time udhcpc tries it (this
 # script also explicitly re-runs `ifup wlan0` itself after associating,
 # as a real belt-and-suspenders rather than relying on ordering alone).
@@ -38,17 +38,17 @@
 # directly from its own config key and wpa_event.cpp's directory-scan logic,
 # not guessed).
 #
-# Lives under /usr/data/openke/ (S01persistent-datastore's DATA_ROOT)
+# Lives under /usr/data/rosetteos/ (S01persistent-datastore's DATA_ROOT)
 # rather than /usr/data/wpa_supplicant.conf directly - real, persistent
 # storage now (mmcblk0p10), kept in this build's own namespace rather than
 # the shared partition's top level, same as everything else this build owns.
 # NebulaOS mutable-runtime closure mission (2026-07-27): this previously
-# lived under /usr/data/openke/, a separate legacy path now fully retired -
-# relocated into the single authoritative OpenKE namespace instead.
+# lived under /usr/data/rosetteos/, a separate legacy path now fully retired -
+# relocated into the single authoritative RosetteOS namespace instead.
 #
 # Pre-qualification mission Phase A3 (2026-07-31): also stabilizes wlan0's
 # MAC address before wpa_supplicant/DHCP ever run - see
-# /etc/openke-stable-mac.sh's own header for the real bug this fixes
+# /etc/rosetteos-stable-mac.sh's own header for the real bug this fixes
 # (the shipped Wi-Fi firmware's placeholder NVRAM MAC fields make
 # brcmfmac generate a fresh random MAC every boot).
 #
@@ -68,7 +68,7 @@
 # here - a fresh device ships with zero saved networks, exactly like stock
 # does out of the box).
 
-CONF=/usr/data/openke/wpa_supplicant.conf
+CONF=/usr/data/rosetteos/wpa_supplicant.conf
 PIDFILE=/var/run/wpa_supplicant-wlan0.pid
 
 seed_default_conf() {
@@ -86,22 +86,22 @@ start() {
 		echo "S01wifi: $CONF not present, skipping"
 		return 0
 	fi
-	if [ -f /etc/openke-stable-mac.sh ]; then
-		. /etc/openke-stable-mac.sh
-		openke_stabilize_iface_mac wlan0 || true
+	if [ -f /etc/rosetteos-stable-mac.sh ]; then
+		. /etc/rosetteos-stable-mac.sh
+		rosetteos_stabilize_iface_mac wlan0 || true
 	fi
-	if [ -f /etc/openke-wifi-power-save.sh ]; then
-		. /etc/openke-wifi-power-save.sh
-		openke_wifi_ps_apply wlan0 || true
+	if [ -f /etc/rosetteos-wifi-power-save.sh ]; then
+		. /etc/rosetteos-wifi-power-save.sh
+		rosetteos_wifi_ps_apply wlan0 || true
 	fi
 	echo "Starting wpa_supplicant on wlan0"
 	mkdir -p /var/run/wpa_supplicant
 	start-stop-daemon -S -b -m -p "$PIDFILE" \
 		-x /usr/sbin/wpa_supplicant -- \
 		-i wlan0 -c "$CONF"
-	if [ -f /etc/openke-wifi-boot-wait.sh ]; then
-		. /etc/openke-wifi-boot-wait.sh
-		openke_wifi_boot_wait wlan0 || true
+	if [ -f /etc/rosetteos-wifi-boot-wait.sh ]; then
+		. /etc/rosetteos-wifi-boot-wait.sh
+		rosetteos_wifi_boot_wait wlan0 || true
 	else
 		sleep 2
 	fi

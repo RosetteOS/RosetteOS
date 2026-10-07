@@ -14,7 +14,7 @@ reasoning trail; treat the "What actually changed" section as authoritative wher
 This sketches the file/class layout for the rewrite scoped in `ANALYSIS.md` (read that first if
 you haven't - it's the source of truth for the protocol, algorithm, and real production scope this
 is built from). This is a layout + signatures sketch to review before any real logic gets written,
-per the "resume checklist" in the OpenKE memory file.
+per the "resume checklist" in the RosetteOS memory file.
 
 ## The one real design decision: match Creality's existing names, or not?
 

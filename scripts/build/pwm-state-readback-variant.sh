@@ -82,7 +82,7 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/../.." && pwd)
 SYSTEM_DIR="$REPO_ROOT/vendor/system"
 PATCH="$SCRIPT_DIR/patches/pwm-ingenic-v2-get-state.patch"
-FRAGMENT="$REPO_ROOT/artifacts/buildroot-halley5-v30-image/halley5-openke-fragment.config"
+FRAGMENT="$REPO_ROOT/artifacts/buildroot-halley5-v30-image/halley5-rosetteos-fragment.config"
 MARKER="$REPO_ROOT/build-work/pwm-state-readback-variant-applied.txt"
 
 AFFECTED_FILES="
@@ -90,8 +90,8 @@ kernel/kernel-6.6/module_drivers/drivers/pwm/Kconfig
 kernel/kernel-6.6/module_drivers/drivers/pwm/pwm-ingenic-v2.c
 "
 
-BEGIN_MARK="#--- OPENKE_PWM_STATE_READBACK_VARIANT_BEGIN ---"
-END_MARK="#--- OPENKE_PWM_STATE_READBACK_VARIANT_END ---"
+BEGIN_MARK="#--- ROSETTEOS_PWM_STATE_READBACK_VARIANT_BEGIN ---"
+END_MARK="#--- ROSETTEOS_PWM_STATE_READBACK_VARIANT_END ---"
 
 case "$VARIANT" in
 	GETSTATE0|GETSTATE1) ;;

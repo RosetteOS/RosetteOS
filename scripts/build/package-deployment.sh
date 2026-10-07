@@ -25,7 +25,7 @@ for required in "$ARTIFACT_DIR/xImage" "$ARTIFACT_DIR/rootfs.squashfs" "$ARTIFAC
 done
 
 TS=$(date -u +%Y%m%dT%H%M%SZ)
-PKG_DIR="$PACKAGE_ROOT/openke-deployment-${TS}"
+PKG_DIR="$PACKAGE_ROOT/rosetteos-deployment-${TS}"
 mkdir -p "$PKG_DIR"
 
 cp "$ARTIFACT_DIR/xImage" "$PKG_DIR/xImage"
@@ -117,7 +117,7 @@ If connecting the Nebula Pad to an Ender-3 V3 SE printer (GD32F303 mainboard):
 3. Turn off the printer.
 4. Insert the SD card into the Ender-3 V3 SE mainboard's SD card slot.
 5. Turn on the printer and wait ~15-20 seconds.
-6. Switch the active profile on Nebula Pad to Ender-3 V3 SE via GuppyScreen Settings -> Printer Model (or `openke-profile set creality-ender3-v3-se`).
+6. Switch the active profile on Nebula Pad to Ender-3 V3 SE via GuppyScreen Settings -> Printer Model (or `rosetteos-profile set creality-ender3-v3-se`).
 
 ## Ender-3 V2 Neo MCU Firmware Flashing (SD Card)
 
@@ -128,7 +128,7 @@ If connecting the Nebula Pad to an Ender-3 V2 Neo printer (STM32F103 4.2.2 / 4.2
 3. Turn off the printer.
 4. Insert the SD card into the Ender-3 V2 Neo mainboard's SD card slot.
 5. Turn on the printer and wait ~15-20 seconds.
-6. Switch the active profile on Nebula Pad to Ender-3 V2 Neo via GuppyScreen Settings -> Printer Model (or `openke-profile set creality-ender3-v2-neo`).
+6. Switch the active profile on Nebula Pad to Ender-3 V2 Neo via GuppyScreen Settings -> Printer Model (or `rosetteos-profile set creality-ender3-v2-neo`).
 EOF
 
 cat > "$PKG_DIR/ROLLBACK_INSTRUCTIONS.md" <<'EOF'

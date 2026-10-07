@@ -52,7 +52,7 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/../.." && pwd)
 SYSTEM_DIR="$REPO_ROOT/vendor/system"
 PATCH="$SCRIPT_DIR/patches/display-vsync-gate.patch"
-FRAGMENT="$REPO_ROOT/artifacts/buildroot-halley5-v30-image/halley5-openke-fragment.config"
+FRAGMENT="$REPO_ROOT/artifacts/buildroot-halley5-v30-image/halley5-rosetteos-fragment.config"
 MARKER="$REPO_ROOT/build-work/display-vsync-variant-applied.txt"
 
 AFFECTED_FILES="
@@ -61,8 +61,8 @@ kernel/kernel-6.6/module_drivers/drivers/video/fbdev/ingenic/fb_stage/ingenicfb.
 kernel/kernel-6.6/module_drivers/drivers/video/fbdev/ingenic/include/ingenicfb.h
 "
 
-BEGIN_MARK="#--- OPENKE_PAN_VSYNC_GATE_VARIANT_BEGIN ---"
-END_MARK="#--- OPENKE_PAN_VSYNC_GATE_VARIANT_END ---"
+BEGIN_MARK="#--- ROSETTEOS_PAN_VSYNC_GATE_VARIANT_BEGIN ---"
+END_MARK="#--- ROSETTEOS_PAN_VSYNC_GATE_VARIANT_END ---"
 
 case "$VARIANT" in
 	V0|V1) ;;

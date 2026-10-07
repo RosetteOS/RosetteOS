@@ -6,7 +6,7 @@
 # /printer/objects/query?nebulaos_version - firmware tag/SHA and kernel/GuppyScreen pins come
 # from /opt/nebulaos-version.json (immutable, squashfs-resident, written at build time by
 # 04-cross-compile-app-stack.sh); persistent app generation/migration_version come from
-# $OPENKE_ROOT/system/app-generation.json (written by S04nebulaos-factory-seed/
+# $ROSETTEOS_ROOT/system/app-generation.json (written by S04nebulaos-factory-seed/
 # S04nebulaos-migrate); Klipper's own commit and dirty state are read live from this checkout's
 # real .git directory, since - unlike the other three components - Klipper is the one thing
 # whose live state can legitimately differ from what was last recorded (e.g. between an update
@@ -34,9 +34,9 @@ import subprocess
 class NebulaOSVersion:
     def __init__(self, config):
         self.printer = config.get_printer()
-        self.version_file = config.get('version_file', '/opt/openke-version.json')
+        self.version_file = config.get('version_file', '/opt/rosetteos-version.json')
         self.generation_file = config.get(
-            'generation_file', '/usr/data/openke/system/app-generation.json')
+            'generation_file', '/usr/data/rosetteos/system/app-generation.json')
 
         # This file's own location is klippy/extras/nebulaos_version.py - the
         # klipper checkout root is two directories up. Computed once, not

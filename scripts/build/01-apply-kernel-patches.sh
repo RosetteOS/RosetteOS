@@ -5,7 +5,7 @@
 # are present in the checked-out kernel tree.
 #
 # FIRMWARE.md sec 39: these changes used to be applied here at build time from
-# patches/x2000_kernel_6.6-openke.patch. They're now carried by the requested
+# patches/x2000_kernel_6.6-rosetteos.patch. They're now carried by the requested
 # Open Klipper Edition System `OKE` checkout, and 00-fetch-vendor-sources.sh
 # verifies it against the pinned commit,
 # so there's nothing left to apply here. This script stays as stage "01" (kept
@@ -38,7 +38,7 @@ fi
 
 echo "== confirming pinned OKE HEAD ($ACTUAL_SHA) real changes are present =="
 test -f kernel/kernel-6.6/drivers/input/touchscreen/ns2009.c
-test -f kernel/kernel-6.6/module_drivers/drivers/video/fbdev/ingenic/displays/panel-openke-general-480x272.c
-grep -q "openke,bcm4343x-bt" kernel/kernel-6.6/drivers/bluetooth/hci_h5.c
+test -f kernel/kernel-6.6/module_drivers/drivers/video/fbdev/ingenic/displays/panel-rosetteos-general-480x272.c
+grep -q "rosetteos,bcm4343x-bt" kernel/kernel-6.6/drivers/bluetooth/hci_h5.c
 grep -q "ns2009@48" kernel/kernel-6.6/module_drivers/dts/x2000/halley5_v30.dts
 echo "== kernel source verified =="

@@ -1,4 +1,4 @@
-# OpenKE addition (USB/webcam stock-parity mission, 2026-07-26): custom
+# RosetteOS addition (USB/webcam stock-parity mission, 2026-07-26): custom
 # already runs a real udevd (Buildroot's own stock S10udev, unmodified -
 # confirmed live via `ps`, pid present) but ships with zero rules, so a USB
 # flash drive enumerates at the kernel level (real /dev/sdX node, confirmed

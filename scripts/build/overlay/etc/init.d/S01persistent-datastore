@@ -11,14 +11,14 @@
 # Now that the kernel side is a tagged, proven production baseline
 # (functional-production-baseline-2026-07-23) with working A/B fallback, this
 # mounts the real partition - but everything this build writes lives under
-# the single authoritative OpenKE namespace, /usr/data/openke, never
+# the single authoritative RosetteOS namespace, /usr/data/rosetteos, never
 # touching whatever else already exists on that shared partition from stock.
 # First-boot-only seeding (checked via existence, not reseeded every boot
 # like the tmpfs version had to be) means real user state - WiFi creds,
 # calibration, SAVE_CONFIG - survives reboots from here on.
 #
-# DATA_ROOT is /usr/data/openke, the same authoritative root
-# S02openke-namespace/S05openke-activate use. PDATA in particular
+# DATA_ROOT is /usr/data/rosetteos, the same authoritative root
+# S02rosetteos-namespace/S05rosetteos-activate use. PDATA in particular
 # intentionally uses the exact same path S05 later validates and (re-)binds -
 # this makes S01's own bind mount here a genuine, always-available fallback:
 # if S05's own validation ever fails (namespace missing/invalid), /opt/printer_data
@@ -30,7 +30,7 @@
 #
 # Runs after S00revert-safety, before anything that needs to read/write these
 # paths - webcam/klipper/moonraker/guppyscreen (S50+) all come later, and
-# before S02openke-namespace (this script's own mkdir -p calls below only
+# before S02rosetteos-namespace (this script's own mkdir -p calls below only
 # ever create the specific subdirectories it needs; S02's own layout
 # creation is a superset and is unaffected by running second).
 #
@@ -45,7 +45,7 @@
 # usr/data directory itself as a side effect - this whole script then failed
 # every mkdir/mount/cp call in sequence, and GuppyScreen never even started.
 
-DATA_ROOT=/usr/data/openke
+DATA_ROOT=/usr/data/rosetteos
 PDATA=$DATA_ROOT/printer_data
 GUPPY_STATE=$DATA_ROOT/guppyscreen
 
@@ -128,20 +128,20 @@ start() {
 		/usr/data/opt/tmp
 	[ -e /usr/data/opt/lib/ld-linux.so.2 ] || ln -sf /lib/ld.so.1 /usr/data/opt/lib/ld-linux.so.2
 
-	# Initialize OpenKE custom apps storage, dynamic services, Moonraker components, and dynamic web root
+	# Initialize RosetteOS custom apps storage, dynamic services, Moonraker components, and dynamic web root
 	mkdir -p "$DATA_ROOT/apps" "$DATA_ROOT/services.d" "$DATA_ROOT/installed" "$DATA_ROOT/components"
-	if [ -f /opt/openke-seeds/apps.json ]; then
-		if [ ! -f "$DATA_ROOT/apps.json" ] || [ /opt/openke-seeds/apps.json -nt "$DATA_ROOT/apps.json" ]; then
-			cp -a /opt/openke-seeds/apps.json "$DATA_ROOT/apps.json"
+	if [ -f /opt/rosetteos-seeds/apps.json ]; then
+		if [ ! -f "$DATA_ROOT/apps.json" ] || [ /opt/rosetteos-seeds/apps.json -nt "$DATA_ROOT/apps.json" ]; then
+			cp -a /opt/rosetteos-seeds/apps.json "$DATA_ROOT/apps.json"
 		fi
 	fi
-	[ -x /usr/bin/openke-app ] && /usr/bin/openke-app sync >/dev/null 2>&1 || true
+	[ -x /usr/bin/rosetteos-app ] && /usr/bin/rosetteos-app sync >/dev/null 2>&1 || true
 	active_web="mainsail"
 	[ -f "$DATA_ROOT/active_web_ui" ] && active_web=$(cat "$DATA_ROOT/active_web_ui" 2>/dev/null | tr -d ' \r\n')
 	if [ "$active_web" = "mainsail" ] || [ ! -d "$DATA_ROOT/apps/$active_web" ]; then
-		ln -sfn /usr/share/mainsail /var/run/openke-web-root
+		ln -sfn /usr/share/mainsail /var/run/rosetteos-web-root
 	else
-		ln -sfn "$DATA_ROOT/apps/$active_web" /var/run/openke-web-root
+		ln -sfn "$DATA_ROOT/apps/$active_web" /var/run/rosetteos-web-root
 	fi
 }
 

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# OpenKE addition: starts pellcorp/k1-ustreamer against the real UVC webcam,
+# RosetteOS addition: starts pellcorp/k1-ustreamer against the real UVC webcam,
 # mirroring Creality's own S50webcam pattern (see FIRMWARE.md sec 6/11) but
 # using an open replacement instead of their closed cam_app + proprietary
 # Helix/Felix encoder. "--encoder=HW" means the webcam's own onboard ISP does
@@ -102,7 +102,7 @@ DESIRED_FPS=30
 # figures above, both trivial on this 2-core SoC) - it's a smaller JPEG
 # payload crossing the WiFi hop, which is the actual constrained link
 # (see docs/NEBULAOS_WIFI_CAMERA_IRQ_CONTENTION_REPORT.md).
-CAMERA_QUALITY_MODE_MARKER=/usr/data/openke/maintenance/camera-quality-mode
+CAMERA_QUALITY_MODE_MARKER=/usr/data/rosetteos/maintenance/camera-quality-mode
 case "$(cat "$CAMERA_QUALITY_MODE_MARKER" 2>/dev/null)" in
 	LOW)
 		RESOLUTION=640x480

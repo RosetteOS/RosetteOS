@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Builds a self-contained, verified SWUpdate package (.swu) for OpenKE.
+# Builds a self-contained, verified SWUpdate package (.swu) for RosetteOS.
 #
 # Generates a libconfig-formatted sw-description with SHA256 digests, bundles
 # the kernel image (xImage -> /dev/mmcblk0p6), rootfs image (rootfs.squashfs
@@ -22,10 +22,10 @@ CHANGELOG_ARG="${3:-}"
 
 if [ -z "$VERSION" ]; then
 	if [ -f "$REPO_ROOT/manifests/dependencies.conf" ]; then
-		VERSION=$(grep -E "^OPENKE_VERSION=" "$REPO_ROOT/manifests/dependencies.conf" | cut -d= -f2 | tr -d '"' | tr -d ' ' || true)
+		VERSION=$(grep -E "^ROSETTEOS_VERSION=" "$REPO_ROOT/manifests/dependencies.conf" | cut -d= -f2 | tr -d '"' | tr -d ' ' || true)
 	fi
 	if [ -z "$VERSION" ] && [ -f "$ARTIFACT_DIR/build-manifest.txt" ]; then
-		VERSION=$(grep -E "^openke_commit=" "$ARTIFACT_DIR/build-manifest.txt" | cut -d= -f2 | cut -c1-8 || true)
+		VERSION=$(grep -E "^rosetteos_commit=" "$ARTIFACT_DIR/build-manifest.txt" | cut -d= -f2 | cut -c1-8 || true)
 	fi
 	if [ -z "$VERSION" ]; then
 		VERSION=$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo "1.0.0")
@@ -47,10 +47,10 @@ fi
 
 mkdir -p "$OUTPUT_DIR"
 OUTPUT_DIR=$(cd "$OUTPUT_DIR" && pwd)
-WORK_DIR=$(mktemp -d "/tmp/openke-swu-build.XXXXXX")
+WORK_DIR=$(mktemp -d "/tmp/rosetteos-swu-build.XXXXXX")
 trap 'rm -rf "$WORK_DIR"' EXIT INT TERM
 
-echo "== Packaging OpenKE SWUpdate (.swu) v${VERSION} =="
+echo "== Packaging RosetteOS SWUpdate (.swu) v${VERSION} =="
 
 # Prepare changelog
 if [ -n "$CHANGELOG_ARG" ] && [ -f "$CHANGELOG_ARG" ]; then
@@ -61,8 +61,8 @@ elif [ -f "$REPO_ROOT/CHANGELOG.md" ]; then
 	cp "$REPO_ROOT/CHANGELOG.md" "$WORK_DIR/changelog.txt"
 else
 	{
-		echo "[ OpenKE System ]"
-		git -C "$REPO_ROOT" log --pretty=format:"• %h %s" -n 6 2>/dev/null || echo "• OpenKE System Firmware Release v${VERSION}"
+		echo "[ RosetteOS System ]"
+		git -C "$REPO_ROOT" log --pretty=format:"• %h %s" -n 6 2>/dev/null || echo "• RosetteOS System Firmware Release v${VERSION}"
 		echo ""
 		GUPPY_DIR=""
 		if git -C "$REPO_ROOT/vendor/guppyscreen" rev-parse --git-dir >/dev/null 2>&1; then
@@ -84,7 +84,7 @@ cp "$ROOTFS_IMAGE" "$WORK_DIR/rootfs.squashfs"
 
 cat > "$WORK_DIR/postinstall.sh" <<'EOF'
 #!/bin/sh
-# OpenKE SWUpdate post-installation script
+# RosetteOS SWUpdate post-installation script
 # Pre-install (preinst): Verifies print/heater safety interlocks and target partition health.
 # Post-install (postinst): Arms target boot slot (ota:kernel / ota:kernel2) and clones RTOS for Slot 2.
 
@@ -126,7 +126,7 @@ if [ -z "$TARGET_SLOT" ]; then
 fi
 
 if [ "$HOOK_ACTION" = "preinst" ]; then
-	echo "== OpenKE SWUpdate Preflight Safety Checks =="
+	echo "== RosetteOS SWUpdate Preflight Safety Checks =="
 
 	# 1. Collision Check: Never overwrite the active running slot
 	if [ -n "$CURRENT_BOOT_SLOT" ] && [ "$TARGET_SLOT" = "$CURRENT_BOOT_SLOT" ]; then
@@ -179,10 +179,10 @@ try:
         print(f"FATAL: Printer heaters are active (extruder target: {ext_target}C, bed target: {bed_target}C). Please turn off all heaters before updating firmware!", file=sys.stderr)
         sys.exit(1)
 
-    print("OpenKE SWUpdate pre-install: Moonraker print & thermal safety checks passed.")
+    print("RosetteOS SWUpdate pre-install: Moonraker print & thermal safety checks passed.")
 except Exception as e:
     # If Moonraker service is not active (e.g. maintenance mode or manual update), allow update
-    print(f"OpenKE SWUpdate pre-install: Moonraker query skipped ({e})")
+    print(f"RosetteOS SWUpdate pre-install: Moonraker query skipped ({e})")
 PYEOF
 		if [ $? -ne 0 ]; then
 			echo "FATAL: Preflight safety checks failed." >&2
@@ -191,20 +191,20 @@ PYEOF
 	fi
 
 	# 5. Snapshot user printer configuration before update
-	if [ -d /usr/data/openke/printer_data/config ]; then
+	if [ -d /usr/data/rosetteos/printer_data/config ]; then
 		backup_tag=$(date +%Y%m%d_%H%M%S 2>/dev/null || echo "auto")
-		backup_dir="/usr/data/openke/backups/printer_config/pre_swupdate_${backup_tag}"
+		backup_dir="/usr/data/rosetteos/backups/printer_config/pre_swupdate_${backup_tag}"
 		mkdir -p "$backup_dir" 2>/dev/null || true
-		cp -a /usr/data/openke/printer_data/config/. "$backup_dir/" 2>/dev/null || true
-		echo "OpenKE SWUpdate pre-install: User configuration preserved to $backup_dir"
+		cp -a /usr/data/rosetteos/printer_data/config/. "$backup_dir/" 2>/dev/null || true
+		echo "RosetteOS SWUpdate pre-install: User configuration preserved to $backup_dir"
 	fi
 
-	echo "OpenKE SWUpdate pre-install: All preflight safety checks passed successfully."
+	echo "RosetteOS SWUpdate pre-install: All preflight safety checks passed successfully."
 	exit 0
 fi
 
 # Post-install Phase
-echo "OpenKE SWUpdate post-install: target slot is $TARGET_SLOT"
+echo "RosetteOS SWUpdate post-install: target slot is $TARGET_SLOT"
 
 if [ "$TARGET_SLOT" = "slot1" ]; then
 	echo "Setting next boot target to Slot 1 (ota:kernel)..."
@@ -233,13 +233,13 @@ fi
 
 # Sync runtime platform markers to persistent Klipper checkout if mounted
 klipper_app=""
-if [ -d /usr/data/openke/apps/klipper/.git ]; then
-	klipper_app="/usr/data/openke/apps/klipper"
+if [ -d /usr/data/rosetteos/apps/klipper/.git ]; then
+	klipper_app="/usr/data/rosetteos/apps/klipper"
 fi
 if [ -n "$klipper_app" ]; then
 	echo "Syncing platform runtime markers to persistent Klipper checkout..."
-	if [ -f /opt/openke-seeds/klipper-chelper-verdict.json ]; then
-		cp /opt/openke-seeds/klipper-chelper-verdict.json "$klipper_app/.nebulaos-chelper-verdict.json" 2>/dev/null || true
+	if [ -f /opt/rosetteos-seeds/klipper-chelper-verdict.json ]; then
+		cp /opt/rosetteos-seeds/klipper-chelper-verdict.json "$klipper_app/.nebulaos-chelper-verdict.json" 2>/dev/null || true
 	elif [ -f /opt/klipper/.nebulaos-chelper-verdict.json ]; then
 		cp /opt/klipper/.nebulaos-chelper-verdict.json "$klipper_app/.nebulaos-chelper-verdict.json" 2>/dev/null || true
 	fi
@@ -253,16 +253,16 @@ if [ -n "$klipper_app" ]; then
 fi
 
 # Record newly installed software version
-echo "openke ${VERSION}" > /etc/sw-versions 2>/dev/null || true
-echo "${VERSION}" > /etc/openke-version 2>/dev/null || true
+echo "rosetteos ${VERSION}" > /etc/sw-versions 2>/dev/null || true
+echo "${VERSION}" > /etc/rosetteos-version 2>/dev/null || true
 
 # Write pending what's new changelog for GuppyScreen on first boot
-mkdir -p /usr/data/openke 2>/dev/null || true
-cat > /usr/data/openke/.pending_whats_new <<'CL_EOF'
+mkdir -p /usr/data/rosetteos 2>/dev/null || true
+cat > /usr/data/rosetteos/.pending_whats_new <<'CL_EOF'
 __CHANGELOG_CONTENT__
 CL_EOF
 
-echo "OpenKE SWUpdate post-install: boot target successfully armed."
+echo "RosetteOS SWUpdate post-install: boot target successfully armed."
 exit 0
 EOF
 
@@ -290,7 +290,7 @@ cat > "$WORK_DIR/sw-description" <<EOF
 software =
 {
 	version = "${VERSION}";
-	description = "OpenKE System Firmware Update";
+	description = "RosetteOS System Firmware Update";
 	changelog = "${CHANGELOG_ESC}";
 
 	nebula-pad = {
@@ -357,7 +357,7 @@ software =
 }
 EOF
 
-SWU_NAME="openke-update-${VERSION}.swu"
+SWU_NAME="rosetteos-update-${VERSION}.swu"
 SWU_OUTPUT="$OUTPUT_DIR/$SWU_NAME"
 
 (

@@ -50,7 +50,7 @@ came from:
    forward over time.
 3. Cross-check every non-System `git_commit_*` field against what
    `manifests/dependencies.conf` pinned **at that commit** (`git show <git_commit_main>:manifests/dependencies.conf`),
-   not the current tip of the branch. The shared OpenKlipperEdition/System checkout uses the exact
+   not the current tip of the branch. The shared RosetteOS/System checkout uses the exact
    `SYSTEM_PIN` from that manifest.
 4. Re-running `./build.sh` at that exact commit, with that exact image digest, should get you
    something functionally identical — not byte-for-byte, since Buildroot's own version string,

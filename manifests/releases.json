@@ -4,11 +4,11 @@
     {
       "version": "1.0.0",
       "type": "stable",
-      "filename": "openke-update-1.0.0.swu",
-      "url": "https://github.com/OpenKlipperEdition/OpenKE/releases/download/v1.0.0/openke-update-1.0.0.swu",
+      "filename": "rosetteos-update-1.0.0.swu",
+      "url": "https://github.com/RosetteOS/RosetteOS/releases/download/v1.0.0/rosetteos-update-1.0.0.swu",
       "sha256": "49869bc94b451a2a2d67c8fc9f4d2f77fd5b49b2f054c6c686072b4369d36829",
       "size_bytes": 382755840,
-      "release_notes": "OpenKE 1.0.0 Baseline Release with Modular Configs, Calibration-Preserving Migration & Buildroot 2026.02 LTS",
+      "release_notes": "RosetteOS 1.0.0 Baseline Release with Modular Configs, Calibration-Preserving Migration & Buildroot 2026.02 LTS",
       "changelog": "• Native SWUpdate dual-slot A/B streaming upgrade system\n• Modular printer configs (hardware/, macros/) & immutable user.cfg\n• Non-destructive configuration migration preserving SAVE_CONFIG & PID tunes\n• Official Mainsail macro suite integration across all profiles\n• Kernel 6.6.157 PREEMPT with /sys/class/backlight device wrapper\n• Buildroot 2026.02 LTS modernization and Dropbear SFTP server\n• ustreamer webcam optimization with TCP_NODELAY and WiFi IRQ priority tuning\n• Power-Loss Recovery (PLR) dual-generation state machine"
     }
   ]

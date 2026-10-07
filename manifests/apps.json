@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "name": "OpenKE App Store Catalog",
+  "name": "RosetteOS App Store Catalog",
   "updated_at": "2026-10-04T13:37:18Z",
   "categories": [
     {
@@ -39,18 +39,18 @@
       "version": "0.5.0",
       "type": "plugin",
       "is_builtin": false,
-      "download_url": "https://github.com/OpenKlipperEdition/AppStore/releases/download/packages-v1.0/mobileraker-v0.5.0.zip",
+      "download_url": "https://github.com/RosetteOS/AppStore/releases/download/packages-v1.0/mobileraker-v0.5.0.zip",
       "sha256": "b9d6b3ad11c7eed4fbe577f887dc8fcd4c2d1058a27b3ef276bd6a8335c72d5d",
-      "install_path": "/usr/data/openke/apps/mobileraker",
-      "config_url": "https://raw.githubusercontent.com/OpenKlipperEdition/AppStore/main/configs/mobileraker.conf",
+      "install_path": "/usr/data/rosetteos/apps/mobileraker",
+      "config_url": "https://raw.githubusercontent.com/RosetteOS/AppStore/main/configs/mobileraker.conf",
       "config_target": "mobileraker.conf",
       "klipper_include": false,
       "service": {
-        "exec": "python3 /usr/data/openke/apps/mobileraker/mobileraker.py -c /opt/printer_data/config/mobileraker.conf -l /opt/printer_data/logs/mobileraker.log",
+        "exec": "python3 /usr/data/rosetteos/apps/mobileraker/mobileraker.py -c /opt/printer_data/config/mobileraker.conf -l /opt/printer_data/logs/mobileraker.log",
         "priority": 60,
         "oom_score_adj": -500
       },
-      "probe_path": "/usr/data/openke/apps/mobileraker/mobileraker.py",
+      "probe_path": "/usr/data/rosetteos/apps/mobileraker/mobileraker.py",
       "website": "https://github.com/Clon1998/mobileraker",
       "source_url": "https://github.com/Clon1998/mobileraker_companion"
     },
@@ -61,21 +61,21 @@
       "icon": "octoapp",
       "description": "Companion service for OctoApp mobile app (iOS & Android) with real-time push notifications, print progress, webcam streaming, and remote control for Moonraker/Klipper.",
       "author": "Christian W\u00fcrthner (crysxd)",
-      "version": "3.2.4-openke.2",
+      "version": "3.2.4-rosetteos.2",
       "type": "plugin",
       "is_builtin": false,
-      "download_url": "https://raw.githubusercontent.com/OpenKlipperEdition/AppStore/main/packages/octoapp-v3.2.4-openke.2.zip",
+      "download_url": "https://raw.githubusercontent.com/RosetteOS/AppStore/main/packages/octoapp-v3.2.4-rosetteos.2.zip",
       "sha256": "b65b367bd747eec40a05e9658435efff2ead9274df210f28a516e2660bab3266",
-      "install_path": "/usr/data/openke/apps/octoapp",
+      "install_path": "/usr/data/rosetteos/apps/octoapp",
       "output_dirs": [
         "octoapp"
       ],
       "service": {
-        "exec": "python3 /usr/data/openke/apps/octoapp/server.py",
+        "exec": "python3 /usr/data/rosetteos/apps/octoapp/server.py",
         "priority": 60,
         "oom_score_adj": -500
       },
-      "probe_path": "/usr/data/openke/apps/octoapp/server.py",
+      "probe_path": "/usr/data/rosetteos/apps/octoapp/server.py",
       "website": "https://octoapp.eu",
       "source_url": "https://github.com/crysxd/OctoApp-Plugin",
       "cleanup_config_files": [
@@ -94,19 +94,19 @@
       "version": "0.18.0",
       "type": "plugin",
       "is_builtin": false,
-      "download_url": "https://github.com/OpenKlipperEdition/AppStore/releases/download/packages-v1.0/spoolman-v0.18.0.zip",
+      "download_url": "https://github.com/RosetteOS/AppStore/releases/download/packages-v1.0/spoolman-v0.18.0.zip",
       "sha256": "58d1b5368aee6474ffa37d504b56d8a10ba2b0dd89cf0d711e92369fdc41c878",
-      "install_path": "/usr/data/openke/apps/spoolman",
+      "install_path": "/usr/data/rosetteos/apps/spoolman",
       "output_dirs": [
         "spoolman"
       ],
       "moonraker_config": "[spoolman]\nserver: http://127.0.0.1:7912\nsync_rate: 5",
       "service": {
-        "exec": "python3 /usr/data/openke/apps/spoolman/server.py",
+        "exec": "python3 /usr/data/rosetteos/apps/spoolman/server.py",
         "priority": 60,
         "oom_score_adj": -300
       },
-      "probe_path": "/usr/data/openke/apps/spoolman/server.py",
+      "probe_path": "/usr/data/rosetteos/apps/spoolman/server.py",
       "website": "https://github.com/Donkie/Spoolman",
       "source_url": "https://github.com/Donkie/Spoolman"
     },
@@ -120,18 +120,18 @@
       "version": "0.0.12",
       "type": "plugin",
       "is_builtin": false,
-      "download_url": "https://github.com/OpenKlipperEdition/AppStore/releases/download/packages-v1.0/timelapse-v0.0.12.zip",
+      "download_url": "https://github.com/RosetteOS/AppStore/releases/download/packages-v1.0/timelapse-v0.0.12.zip",
       "sha256": "7b65e5e6aa4f1aaff426633d86389871c5722ac5c80ec05587887cae4d3a9374",
-      "install_path": "/usr/data/openke/apps/timelapse",
+      "install_path": "/usr/data/rosetteos/apps/timelapse",
       "moonraker_component": "component/timelapse.py",
-      "config_url": "https://raw.githubusercontent.com/OpenKlipperEdition/AppStore/main/configs/timelapse.cfg",
+      "config_url": "https://raw.githubusercontent.com/RosetteOS/AppStore/main/configs/timelapse.cfg",
       "config_target": "macros/timelapse.cfg",
       "klipper_include": true,
       "output_dirs": [
         "timelapse"
       ],
       "moonraker_config": "[timelapse]\noutput_path: /opt/printer_data/timelapse/\nframe_path: /tmp/timelapse/printer_data\nffmpeg_binary_path: /usr/bin/ffmpeg",
-      "probe_path": "/usr/data/openke/apps/timelapse/component/timelapse.py",
+      "probe_path": "/usr/data/rosetteos/apps/timelapse/component/timelapse.py",
       "website": "https://github.com/mainsail-crew/moonraker-timelapse",
       "source_url": "https://github.com/mainsail-crew/moonraker-timelapse"
     },
@@ -140,23 +140,23 @@
       "name": "Remote VNC Display",
       "category": "tool",
       "icon": "vnc",
-      "description": "High-performance remote desktop VNC server and responsive HTML5 browser viewer for OpenKE. Connect remotely from PC, tablet, or smartphone to control the touchscreen, run updates, and manage prints.",
-      "author": "OpenKE Team",
+      "description": "High-performance remote desktop VNC server and responsive HTML5 browser viewer for RosetteOS. Connect remotely from PC, tablet, or smartphone to control the touchscreen, run updates, and manage prints.",
+      "author": "RosetteOS Team",
       "version": "1.0.0",
       "type": "tool",
       "is_builtin": false,
-      "download_url": "https://github.com/OpenKlipperEdition/AppStore/releases/download/packages-v1.0/vnc-v1.0.0.zip",
+      "download_url": "https://github.com/RosetteOS/AppStore/releases/download/packages-v1.0/vnc-v1.0.0.zip",
       "sha256": "61e8214ea56a12bff5313cb91781270d6afa4c0a2c1eb51a777c34398467ef77",
-      "executable": "openke-vnc",
-      "install_path": "/usr/data/openke/apps/vnc",
+      "executable": "rosetteos-vnc",
+      "install_path": "/usr/data/rosetteos/apps/vnc",
       "service": {
-        "exec": "/usr/data/openke/apps/vnc/openke-vnc -p 5900 -w 5800",
+        "exec": "/usr/data/rosetteos/apps/vnc/rosetteos-vnc -p 5900 -w 5800",
         "priority": 60,
         "oom_score_adj": -200
       },
-      "probe_path": "/usr/data/openke/apps/vnc/openke-vnc",
-      "website": "https://github.com/OpenKlipperEdition/AppStore",
-      "source_url": "https://github.com/OpenKlipperEdition/AppStore/tree/main/tools/openke-vnc"
+      "probe_path": "/usr/data/rosetteos/apps/vnc/rosetteos-vnc",
+      "website": "https://github.com/RosetteOS/AppStore",
+      "source_url": "https://github.com/RosetteOS/AppStore/tree/main/tools/rosetteos-vnc"
     },
     {
       "id": "guppyscreen",
@@ -164,13 +164,13 @@
       "category": "touch_ui",
       "icon": "guppyscreen",
       "description": "Default ultra-fast native LVGL-based touchscreen interface optimized for Ingenic X2000 MIPS.",
-      "author": "OpenKE & GuppyScreen Team",
+      "author": "RosetteOS & GuppyScreen Team",
       "version": "1.0.0",
       "type": "touch_ui",
       "is_builtin": true,
       "builtin_path": "/opt/guppyscreen/guppyscreen",
       "probe_path": "/opt/guppyscreen/guppyscreen",
-      "source_url": "https://github.com/OpenKlipperEdition/GuppyScreen"
+      "source_url": "https://github.com/RosetteOS/GuppyScreen"
     },
     {
       "id": "helixscreen",
@@ -182,11 +182,11 @@
       "version": "1.0.2",
       "type": "touch_ui",
       "is_builtin": false,
-      "download_url": "https://github.com/OpenKlipperEdition/AppStore/releases/download/packages-v1.0/helixscreen-k1-v1.0.2.tar.gz",
+      "download_url": "https://github.com/RosetteOS/AppStore/releases/download/packages-v1.0/helixscreen-k1-v1.0.2.tar.gz",
       "sha256": "d1b068f5218982ae6a7f6af839b54919683d9fe7f667c12a52bf34dd5c3e0564",
-      "install_path": "/usr/data/openke/apps/helixscreen",
+      "install_path": "/usr/data/rosetteos/apps/helixscreen",
       "executable": "bin/helix-screen",
-      "probe_path": "/usr/data/openke/apps/helixscreen/bin/helix-screen",
+      "probe_path": "/usr/data/rosetteos/apps/helixscreen/bin/helix-screen",
       "website": "https://helixscreen.org",
       "source_url": "https://github.com/prestonbrown/helixscreen"
     },
@@ -200,17 +200,17 @@
       "version": "1.37.6",
       "type": "web_ui",
       "is_builtin": false,
-      "download_url": "https://github.com/OpenKlipperEdition/AppStore/releases/download/packages-v1.0/fluidd-v1.37.6.zip",
+      "download_url": "https://github.com/RosetteOS/AppStore/releases/download/packages-v1.0/fluidd-v1.37.6.zip",
       "sha256": "9fe5bcd4a443f4cccd20cef222e70cc334a874070b21d116097a28405b0ed456",
-      "install_path": "/usr/data/openke/apps/fluidd",
-      "config_url": "https://raw.githubusercontent.com/OpenKlipperEdition/AppStore/main/configs/fluidd.cfg",
+      "install_path": "/usr/data/rosetteos/apps/fluidd",
+      "config_url": "https://raw.githubusercontent.com/RosetteOS/AppStore/main/configs/fluidd.cfg",
       "config_target": "macros/fluidd.cfg",
       "moonraker_update_manager": {
         "type": "web",
         "channel": "stable",
         "repo": "fluidd-core/fluidd"
       },
-      "probe_path": "/usr/data/openke/apps/fluidd/index.html",
+      "probe_path": "/usr/data/rosetteos/apps/fluidd/index.html",
       "website": "https://fluidd.xyz",
       "source_url": "https://github.com/fluidd-core/fluidd"
     },

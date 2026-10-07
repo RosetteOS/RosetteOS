@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Offline tests for OpenKE SWUpdate package generation and configuration.
+# Offline tests for RosetteOS SWUpdate package generation and configuration.
 # Validates sw-description structure, hardware compatibility tags, CPIO member
 # order, SHA256 hash correctness, and configuration files (/etc/hwrevision, /etc/swupdate.cfg).
 #
@@ -50,8 +50,8 @@ fi
 SW_VERSIONS_FILE="$REPO_ROOT/scripts/build/overlay/etc/sw-versions"
 if [ -f "$SW_VERSIONS_FILE" ]; then
     pass "/etc/sw-versions exists in overlay"
-    if grep -q "^openke[[:space:]]\+" "$SW_VERSIONS_FILE"; then
-        pass "/etc/sw-versions declares openke component version"
+    if grep -q "^rosetteos[[:space:]]\+" "$SW_VERSIONS_FILE"; then
+        pass "/etc/sw-versions declares rosetteos component version"
     else
         fail "/etc/sw-versions malformed"
     fi
@@ -59,20 +59,20 @@ else
     fail "/etc/sw-versions missing at $SW_VERSIONS_FILE"
 fi
 
-OPENKE_VERSION_FILE="$REPO_ROOT/scripts/build/overlay/etc/openke-version"
-if [ -f "$OPENKE_VERSION_FILE" ]; then
-    pass "/etc/openke-version exists in overlay"
+ROSETTEOS_VERSION_FILE="$REPO_ROOT/scripts/build/overlay/etc/rosetteos-version"
+if [ -f "$ROSETTEOS_VERSION_FILE" ]; then
+    pass "/etc/rosetteos-version exists in overlay"
 else
-    fail "/etc/openke-version missing at $OPENKE_VERSION_FILE"
+    fail "/etc/rosetteos-version missing at $ROSETTEOS_VERSION_FILE"
 fi
 
 OS_RELEASE_FILE="$REPO_ROOT/scripts/build/overlay/etc/os-release"
 if [ -f "$OS_RELEASE_FILE" ]; then
     pass "/etc/os-release exists in overlay"
-    if grep -q 'NAME="OpenKE"' "$OS_RELEASE_FILE"; then
-        pass "/etc/os-release specifies OpenKE system identity"
+    if grep -q 'NAME="RosetteOS"' "$OS_RELEASE_FILE"; then
+        pass "/etc/os-release specifies RosetteOS system identity"
     else
-        fail "/etc/os-release missing OpenKE name"
+        fail "/etc/os-release missing RosetteOS name"
     fi
 else
     fail "/etc/os-release missing at $OS_RELEASE_FILE"
@@ -90,7 +90,7 @@ echo "MOCK_ROOTFS_DATA_67890" > "$MOCK_ROOTFS"
 KERNEL_IMAGE="$MOCK_KERNEL" ROOTFS_IMAGE="$MOCK_ROOTFS" \
     sh "$PACKAGE_SWU_SCRIPT" "$OUT_DIR" "test-1.2.3" > "$WORK/build.log" 2>&1
 
-SWU_FILE="$OUT_DIR/openke-update-test-1.2.3.swu"
+SWU_FILE="$OUT_DIR/rosetteos-update-test-1.2.3.swu"
 
 if [ -f "$SWU_FILE" ]; then
     pass "package-swu.sh generated $SWU_FILE"
@@ -261,7 +261,7 @@ CUSTOM_CL_TEXT="• Feature A: High-speed input shaping\n• Feature B: Filament
 KERNEL_IMAGE="$MOCK_KERNEL" ROOTFS_IMAGE="$MOCK_ROOTFS" \
     sh "$PACKAGE_SWU_SCRIPT" "$OUT_DIR" "test-cl-7.8.9" "$CUSTOM_CL_TEXT" > "$WORK/build_cl.log" 2>&1
 
-CUSTOM_SWU="$OUT_DIR/openke-update-test-cl-7.8.9.swu"
+CUSTOM_SWU="$OUT_DIR/rosetteos-update-test-cl-7.8.9.swu"
 if [ -f "$CUSTOM_SWU" ]; then
     pass "package-swu.sh generated custom changelog SWU"
     CL_EXTRACT_DIR="$WORK/cl_extracted"

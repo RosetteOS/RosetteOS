@@ -9,7 +9,7 @@ index 74ba38d..04c087e 100644
 +def connect_sqlite_nolock(
 +    db_path: pathlib.Path, timeout: float = 5.
 +) -> sqlite3.Connection:
-+    # OpenKE (Ender 3 V3 KE / Nebula Pad, Ingenic X2000, Linux 6.6.18-rt23):
++    # RosetteOS (Ender 3 V3 KE / Nebula Pad, Ingenic X2000, Linux 6.6.18-rt23):
 +    # plain sqlite3.connect() against this database path hits
 +    # "sqlite3.OperationalError: database is locked" (or hangs outright) on
 +    # every single boot, even with a single connection and zero real

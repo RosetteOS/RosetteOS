@@ -416,9 +416,9 @@ section already confirmed - no physical calibration was run to test this.
 architecture was already correct in the tracked source, matching the live
 device exactly): `S55klipper`'s `CONFIG` and `S56moonraker`'s
 `DATAPATH`/`CONFIG` literal values, `S01persistent-datastore`'s bind-mount
-line and persistent backing root, no obsolete `/usr/data/openke` or
-`/opt/openke` path reference in either service's init script (a bare
-mention of the historical "OpenKE" project name in a comment is fine and
+line and persistent backing root, no obsolete `/usr/data/rosetteos` or
+`/opt/rosetteos` path reference in either service's init script (a bare
+mention of the historical "RosetteOS" project name in a comment is fine and
 does not fail this check), and no `[file_manager]` override in
 `moonraker.conf` that could let the config root diverge from `-d`'s
 default. Re-run against the already-built Phase 11 artifacts (no rebuild

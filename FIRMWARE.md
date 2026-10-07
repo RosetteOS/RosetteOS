@@ -46,7 +46,7 @@ tool the vendor already used, not introducing a new one.
   mmcblk0p8  500 MiB  (candidate: paired/backup rootfs slot - real A/B redundancy)
   mmcblk0p9  300 MiB  ext4, mounted at /overlay - the writable overlay layer (see below)
   mmcblk0p10 ~6 GiB   ext4, mounted at /usr/data - the actual persistent user-data partition
-                       (printer_data, Klipper config, our own OpenKE install all live here)
+                       (printer_data, Klipper config, our own RosetteOS install all live here)
   ```
   Exact p1-p8 role assignment is inferred from size/position matching the Halley5 reference
   `partitions.tab` layout (§3), not yet confirmed byte-for-byte - a real next step, not a risk in
@@ -263,7 +263,7 @@ the exact WiFi/BT combo chip integration, camera driver specifics) - real work, 
    using the `x2000_module_base_linux_mmc2_defconfig` as a base with
    `CONFIG_USB_NET_AX88179_178A=m` enabled, matching the exact vermagic already extracted
    (`NETWORKING.md` §2 - `4.4.94 SMP preempt mod_unload MIPS32_R2 32BIT`). Needs a matching MIPS
-   cross-compiler (OpenKE already has MIPS cross-compilation experience/tooling from other work -
+   cross-compiler (RosetteOS already has MIPS cross-compilation experience/tooling from other work -
    reuse rather than rebuild). Test via `insmod` on the real, idle printer - session-only, worst
    case is a hang + power cycle, no image changes (see `NETWORKING.md` §2 for why this specific
    test is low-risk). Real, concrete proof our source/toolchain match is correct before attempting
@@ -271,7 +271,7 @@ the exact WiFi/BT combo chip integration, camera driver specifics) - real work, 
 
    **Build + vermagic verification DONE (2026-07-19). `insmod` test NOT done yet - resume here.**
 
-   Toolchain: reused the same Docker image already proven for OpenKE's own MIPS builds
+   Toolchain: reused the same Docker image already proven for RosetteOS's own MIPS builds
    (`pellcorp/k1-bash-build@sha256:0b96d1d65175c5a2e3a83a64c3212d08dd774fef0900f991e0ebc570ba896c85`,
    see `~/Documents/guppyscreen/scripts/build-nginx-mipsel.sh`). It bundles Ingenic's own
    `mips-gcc720-glibc229` toolchain at `/opt/toolchains/mips-gcc720-glibc229/bin/` - confirmed via
@@ -1009,10 +1009,10 @@ optional.
 
 ### Display - a real, working (if best-effort) panel driver, not just an enabled Kconfig option
 
-Wrote a genuinely new panel driver, `displays/panel-openke-general-480x272.c`, registered via a new
-`CONFIG_STAGE_OPENKE_GENERAL_480X272` Kconfig entry (modeled on this SDK's own
+Wrote a genuinely new panel driver, `displays/panel-rosetteos-general-480x272.c`, registered via a new
+`CONFIG_STAGE_ROSETTEOS_GENERAL_480X272` Kconfig entry (modeled on this SDK's own
 `STAGE_ST7701S_RGB666` entry) and wired into the board DTS (`&dpu { status = "okay"; }` plus a
-standalone `openke_panel` platform-device node using `compatible = "openke,general-480x272"`).
+standalone `rosetteos_panel` platform-device node using `compatible = "rosetteos,general-480x272"`).
 
 **Modeled on this SDK's own `panel-st7701s-rgb666.c`** (a real, complete `LCD_TYPE_TFT` example),
 simplified down to just the three required `lcd_panel_ops` callbacks (`init`/`enable`/`disable`) -
@@ -1124,7 +1124,7 @@ not started.
 - `buildroot-halley5-v30-image/` - updated `uImage`/`rootfs.ext2` with all of the above baked in,
   plus `kernel.config`, `buildroot.config`, `halley5-nebulaos-fragment.config`, `halley5_v30.dts`
   (the real board DTS with all our additions, for reference/reproducibility).
-- `panel-driver/` - `panel-openke-general-480x272.c` + the built `.ko`.
+- `panel-driver/` - `panel-rosetteos-general-480x272.c` + the built `.ko`.
 - `ustreamer/` - the cross-compiled binary + its shared library dependencies.
 - `ns2009-driver/` - unchanged from the earlier session, still valid (this session didn't touch
   the touch *driver* itself, only its device-tree wiring).
@@ -1172,7 +1172,7 @@ found, closely matching (within 1mm) this driver's already-guessed 54x95mm - rea
 unchanged. GPIO polarity and color depth/mode remain genuinely unconfirmed - the disassembly didn't
 shed light on those, and both stay cosmetic-risk-only if wrong.
 
-**`panel-openke-general-480x272.c` updated** with these real values (both the vendor-tree copy and
+**`panel-rosetteos-general-480x272.c` updated** with these real values (both the vendor-tree copy and
 `artifacts/panel-driver/`), rebuilt clean via `make linux-reconfigure`, and the full image chain
 regenerated (`uImage` + `rootfs.ext2`) to actually bake the corrected module in - confirmed via
 `debugfs`-extracting the module from the fresh `rootfs.ext2` and `sha256sum`-matching it against
@@ -1225,7 +1225,7 @@ GPIO is a documented safe no-op, so the code works fine even without a confirmed
 enable/reset pin, which this session did not find - only the shared WiFi-side regulator/reset GPIO
 in `wlan_pwrseq` is confirmed live). New Kconfig symbol `CONFIG_BT_HCIUART_BCM_H5` (selects
 `BT_HCIUART_3WIRE` + `BT_BCM`, same pattern as `BT_HCIUART_RTL`), new `of_match_table` entry
-(`compatible = "openke,bcm4343x-bt"`), and a matching `bluetooth` child node added under `&uart3` in
+(`compatible = "rosetteos,bcm4343x-bt"`), and a matching `bluetooth` child node added under `&uart3` in
 `halley5_v30.dts` (no `enable-gpios` property - genuinely unconfirmed, left absent rather than
 guessed).
 
@@ -1320,7 +1320,7 @@ own webcam panel just needs a stream URL - since `ustreamer` (§12) already serv
 over HTTP via `S50webcam`, pointing Mainsail's webcam config at that stream gives a real, visual,
 end-to-end check of the whole pipeline (kernel, `uvcvideo`, `ustreamer`, networking, UI) without
 needing GuppyScreen's binary, config, or service-integration work at all. Mainsail is also already
-proven in the main OpenKE project (real-world use, no new integration risk), unlike introducing an
+proven in the main RosetteOS project (real-world use, no new integration risk), unlike introducing an
 unfamiliar UI.
 
 **Checked before writing this plan** (not assumed): current Buildroot `.config` has **no Python3 and
@@ -1336,9 +1336,9 @@ binary in `output/target`. Both are real, need-to-add pieces, not something alre
    `printer.cfg` with this hardware's actual MCU serial path/pin mapping.
 3. **Moonraker**: official `arksine/moonraker`, reusing the already-built, already-ABI-verified MIPS
    wheels for its two tricky compiled dependencies (`Pillow`, `streaming-form-data`) from the main
-   OpenKE project (`project_moonraker_pillow_wheel.md`) - real prior work, not starting from
+   RosetteOS project (`project_moonraker_pillow_wheel.md`) - real prior work, not starting from
    scratch.
-4. **nginx**: reuse the OpenKE project's own proven `scripts/build-nginx-mipsel.sh` build (real,
+4. **nginx**: reuse the RosetteOS project's own proven `scripts/build-nginx-mipsel.sh` build (real,
    reproducible, already institutionalized - `project_nginx_selfbuild_proof.md`) rather than
    re-deriving a fresh Buildroot package config. Configured to serve Mainsail's static build and
    reverse-proxy `/websocket`+`/server` (the API) to Moonraker.
@@ -1361,7 +1361,7 @@ binary in `output/target`. Both are real, need-to-add pieces, not something alre
    framebuffer/touch device paths and Moonraker's socket, launched by hand over SSH the same way
    `ustreamer` was smoke-tested) - not the full merge. The real "merge the GuppyScreen project into
    ke-mainline-klipper's environment" effort (adapting its install/deploy assumptions, described in
-   the README's "GuppyScreen/OpenKE also needs adapting" section) stays a distinct, later, bigger
+   the README's "GuppyScreen/RosetteOS also needs adapting" section) stays a distinct, later, bigger
    piece of work, not bundled into proving the rest of the stack.
 
 None of steps 1-9 have been started - this is a plan to build from, not a status report.
@@ -1430,7 +1430,7 @@ configs, pointed at the same socket path `S55klipper` uses) and `S56moonraker` i
 
 ### Step 4: nginx
 
-Checked Buildroot's own `nginx` package first rather than adapting the main OpenKE project's
+Checked Buildroot's own `nginx` package first rather than adapting the main RosetteOS project's
 external `scripts/build-nginx-mipsel.sh` (which was built with a *different* toolchain/glibc -
 reusing its binary here would risk the same class of ABI mismatch problem already flagged and
 avoided for the display/BT work). Enabled `BR2_PACKAGE_NGINX` plus the HTTP/rewrite/gzip/proxy/
@@ -1487,7 +1487,7 @@ overlay file: init scripts, `nginx.conf`, `printer.cfg`, `moonraker.conf`) had n
 this repo at all, and would have been lost if `vendor/` were ever wiped. Fixed properly rather than
 just re-documented in prose:
 
-- **`patches/x2000_kernel_6.6-openke.patch`** - a single real `git diff` (using `git add -N` on the
+- **`patches/x2000_kernel_6.6-rosetteos.patch`** - a single real `git diff` (using `git add -N` on the
   two new files so they're captured as part of the same patch, then reset before saving) covering
   every kernel-source change from §8-11: touch DT wiring, the new display panel driver, the new
   Bluetooth H5 Broadcom vendor extension, the WiFi/BT/display Kconfig additions, the ported NS2009
@@ -1533,7 +1533,7 @@ across that version gap, same reasoning as everywhere else in this project). But
 the Phase 1 build itself was never really "for" this custom-OS track in the first place - it exists
 to test wired ethernet on the printer *as it runs today*, independent of whether/when this custom
 OS project ever ships. **Moved its real home accordingly**: the build recipe
-(`build-ax88179-mipsel.sh`) and built `.ko` files now live in the main OpenKE project
+(`build-ax88179-mipsel.sh`) and built `.ko` files now live in the main RosetteOS project
 (`~/Documents/guppyscreen/scripts/build-ax88179-mipsel.sh` +
 `~/Documents/guppyscreen/scripts/vendor/modules/`), matching that repo's own established
 `build-<thing>-mipsel.sh` + `scripts/vendor/` convention (already used for nginx/Pillow/
@@ -1589,9 +1589,9 @@ Real reasoning for doing this now rather than as the originally-planned later sm
 directly to the framebuffer/touch device, giving real local visual feedback **independent of
 network state entirely** - the actual gap in the "what if WiFi doesn't come up" risk picture.
 
-Used the main OpenKE project's own already-established, already-proven cross-compile toolchain
+Used the main RosetteOS project's own already-established, already-proven cross-compile toolchain
 (`ghcr.io/coreflake1/guppydev:latest`, a from-source-reproducible musl/static toolchain image,
-already used for real production releases including `v1.5.0-OpenKE`) via its documented
+already used for real production releases including `v1.5.0-RosetteOS`) via its documented
 `scripts/build-mips.sh` - no new build infrastructure needed, this is real, mature tooling.
 Real output confirmed: `guppyscreen` and `guppybeep`, both genuine statically-linked MIPS32
 executables (`file` confirms, no shared-library runtime dependencies to worry about at all, unlike
@@ -1702,7 +1702,7 @@ problems:
    replicate an unverified real secret - set a fresh, known, documented test password instead via
    Buildroot's own `BR2_TARGET_GENERIC_ROOT_PASSWD` mechanism (not a hand-edited `/etc/shadow` -
    this Kconfig option handles proper hash generation during the build). **Root password for this
-   test image: `openke`.**
+   test image: `rosetteos`.**
 3. **Serial console getty was on the wrong tty** - `BR2_TARGET_GENERIC_GETTY_PORT` was `ttyS3`, but
    the real device's own `/proc/cmdline` (checked fresh) confirms `console=ttyS4,115200n8` - meaning
    even if U-Boot passes through the same console argument to our kernel, there would have been
@@ -2812,7 +2812,7 @@ still enabled - a *second*, wrong MIPI-DSI panel driver (Fitipower ZC50289HSHD02
 panel). Confirmed real and live, not inert: `halley5_v30.dts` conditionally includes a full DT node
 for it (`#ifdef CONFIG_STAGE_ZC50289HSHD02` / `#include ".../HALLEY5_MIPI_LCD_ZC50289HSHD02.dtsi"`),
 so with this symbol set the mipi-dsi driver has a real, matching node to probe against alongside our
-actual plain-RGB panel (`openke_panel`, unconditional, our own addition) - directly explaining a log
+actual plain-RGB panel (`rosetteos_panel`, unconditional, our own addition) - directly explaining a log
 line (`registered panel driver(fitipower_zc50289hshd02-lcd) to mipi-dsi driver`) earlier mistaken for
 serial-capture splice contamination in an older, genuinely-contaminated log. Same bug class as
 BCMDHD/GT9XX/camera above, just missed in the first pass. Checked two other suspicious symbols
@@ -2900,7 +2900,7 @@ got *smaller*, 5.96MB vs 5.96MB - the panel removal in §35 offset the printk ad
 the spare slot (both writes md5-verified), marker flipped via the device's own real
 `local_set_next_boot_device()`, clean single serial capture, reboot.
 
-**Result: no panic, anywhere, for the first time ever on this track.** The `openke-diag` instrumentation
+**Result: no panic, anywhere, for the first time ever on this track.** The `rosetteos-diag` instrumentation
 confirms the exact mechanism understood in §36 is now fixed - every `search_binary_handler` call for
 every binary now shows `handler=load_elf_binary retval=0` instead of `retval=-8`. Full init sequence
 ran to completion: `S00revert-safety`, `seedrng`, `syslogd`, `klogd`, `sysctl`, `S39wifi` (wpa_supplicant
@@ -2914,7 +2914,7 @@ endpoint for 150s (30 retries x 5s, real code read from the script itself:
 `ota:kernel` (stock)** rather than confirming forward - meaning the *next* reboot self-heals to stock
 automatically, exactly as designed. Reached a real `buildroot login:` prompt.
 
-**Logged in over serial for the first time this track** (root / `openke` - hash-verified offline
+**Logged in over serial for the first time this track** (root / `rosetteos` - hash-verified offline
 against `/etc/shadow` before ever trying it live) and used a genuine live shell to check two things
 network alone couldn't answer:
 
@@ -2939,10 +2939,10 @@ resolved and confirmed via a real, complete, successful boot to a working login 
 
 The `§35-36` `printk` instrumentation in `search_binary_handler()`/`__request_module()` was
 diagnostic scaffolding for one specific bug hunt, not a real fix - it added ~500 lines of noisy
-`openke-diag:` output to every boot, which would confuse anyone else building this project fresh.
+`rosetteos-diag:` output to every boot, which would confuse anyone else building this project fresh.
 Removed from `vendor/x2000_kernel_6.6` (both `fs/exec.c` and `kernel/module/kmod.c` are now
 byte-identical to their pre-instrumentation state - confirmed via `git diff --stat` no longer listing
-either file at all), and `patches/x2000_kernel_6.6-openke.patch` regenerated from the cleaned tree
+either file at all), and `patches/x2000_kernel_6.6-rosetteos.patch` regenerated from the cleaned tree
 (903 lines, matching the pre-instrumentation patch size exactly).
 
 `CONFIG_CMDLINE` trimmed from `"initcall_debug loglevel=8 ieee754=relaxed"` down to just
@@ -2955,7 +2955,7 @@ code). Both fragment config copies (`artifacts/buildroot-halley5-v30-image/` and
 `vendor/buildroot-x2000/board/`) kept byte-identical, same as every other change this track has made.
 
 **Rebuilt clean and verified**: `xImage` still 5.96MB (comfortably under the 8MB partition budget),
-`ieee754=relaxed` confirmed present in the built `vmlinux`'s string table, zero `openke-diag` strings
+`ieee754=relaxed` confirmed present in the built `vmlinux`'s string table, zero `rosetteos-diag` strings
 anywhere in it, and all four real Kconfig fixes from §35 (`BCMDHD`, `TOUCHSCREEN_GT9XX`,
 `HALLEY5_CAMERA_BOARD`, `STAGE_ZC50289HSHD02` all correctly `is not set`) still present. This is now
 the actual reproducible state of the fix - a fresh `00-fetch-vendor-sources.sh` through
@@ -2981,28 +2981,28 @@ With the actual boot-blocking bug found and fixed (§36/§37), asked the broader
 this project's kernel/userspace/board-fixes/GUI split across repos, the way larger projects do it.
 Landed on Buildroot's own idiomatic answer to this exact question - a small `BR2_EXTERNAL`-style tree
 (this repo already plays that role) referencing upstream/forked dependencies, rather than a bigger
-multi-repo split. The one real gap: the kernel's OpenKE changes lived as a patch file
-(`patches/x2000_kernel_6.6-openke.patch`) applied at build time on top of a third-party clone, not as
+multi-repo split. The one real gap: the kernel's RosetteOS changes lived as a patch file
+(`patches/x2000_kernel_6.6-rosetteos.patch`) applied at build time on top of a third-party clone, not as
 real, reviewable git history.
 
 **Fixed**: forked the real upstream kernel repo (`Llixuma/ingenic-linux-kernel6.6-x2000-v1.0-20250221`)
 to [`coreflake1/NebulaOS`](https://github.com/coreflake1/NebulaOS) via `gh repo fork`. `main` on the
-fork tracks upstream unmodified (still exactly `a98c2e1`, "initial release"); a new `openke` branch
-carries every OpenKE kernel change (NS2009 touch, the display panel driver, BT H5 vendor extension,
+fork tracks upstream unmodified (still exactly `a98c2e1`, "initial release"); a new `rosetteos` branch
+carries every RosetteOS kernel change (NS2009 touch, the display panel driver, BT H5 vendor extension,
 watchdog fix, DTS wiring, `arch/mips/Kconfig` compression selects, the `binder.h` build fix) as one
 real, documented commit on top of that pinned upstream commit - the exact same diff the old patch
 file carried, just as committed history instead of a blob.
 
 **Build scripts updated to match**: `00-fetch-vendor-sources.sh` now clones `coreflake1/NebulaOS`
-directly and checks out `openke` (was: clone the third-party repo, pin a commit, apply a patch
+directly and checks out `rosetteos` (was: clone the third-party repo, pin a commit, apply a patch
 separately). `01-apply-kernel-patches.sh` no longer applies anything - there's nothing left to apply
 - it's now a pure verification step confirming the fork's content landed correctly, kept at its same
 pipeline position so the numbered `00`→`06` sequence and any existing muscle memory/docs referencing
 it still work. The old patch file removed from this repo (`git rm`) since it's now fully superseded
-by the fork's real history - anyone wanting the diff can `git diff a98c2e1 openke` on the fork itself,
+by the fork's real history - anyone wanting the diff can `git diff a98c2e1 rosetteos` on the fork itself,
 or use GitHub's own compare view, both strictly more useful than a static file.
 
-**Verified for real, not just written**: fresh-cloned the fork's `openke` branch into a scratch
+**Verified for real, not just written**: fresh-cloned the fork's `rosetteos` branch into a scratch
 directory (same sparse-checkout the build script uses) and diffed it against the local working tree
 that's been built and boot-tested twice tonight (§37/§38) - zero source differences, only local build
 artifacts (`.config`, `.o`, generated files from the in-place `LINUX_OVERRIDE_SRCDIR` build). The fork
@@ -3010,14 +3010,14 @@ really does carry the exact source this whole track has been proving works on re
 
 **Net effect**: this project is now two repos, not four - this repo (Buildroot config, board fixes,
 orchestration scripts, referencing the kernel fork + Buildroot + Klipper/Moonraker/ustreamer as pinned
-external sources) and GuppyScreen (already separate, unrelated to the original openke). No new repos
+external sources) and GuppyScreen (already separate, unrelated to the original rosetteos). No new repos
 for "userspace" or "Creality fixes" specifically - premature splitting for a project this size right
 now; revisit if/when someone else starts contributing to just one layer independently.
 
 ## 40. Unattended session: a full hardware sweep, both userspace bugs root-caused, one real fixed+verified, one documented pending review
 
 Run solo while the user stepped away, on the still-running custom kernel from §37/38 (never rebooted
-back to stock - real live shell access the whole session via serial, root/`openke`, same as before).
+back to stock - real live shell access the whole session via serial, root/`rosetteos`, same as before).
 Goal: fix the two open userspace bugs (GuppyScreen crash, USB dongle), and sweep for any other
 hardware that isn't being detected correctly.
 
@@ -3062,7 +3062,7 @@ confirmed explanation for the SDIO init failure, completely independent of wpa_s
 never appears - but the SDIO card itself failing is a different, deeper problem that would have
 blocked WiFi even with perfect wpa_supplicant config). Fixed by adding the missing 3rd cell
 (`INGENIC_GPIO_NOBIAS`, matching the sibling reference two lines up). Committed to the kernel fork
-(`coreflake1/NebulaOS`, `openke` branch, `e67eefc40`) and pushed - not yet re-verified on hardware as
+(`coreflake1/NebulaOS`, `rosetteos` branch, `e67eefc40`) and pushed - not yet re-verified on hardware as
 of writing this section (rebuild was still running); see the end of this section for the real result.
 
 **USB dongle never enumerating - real root cause found via a real stock-vs-ours DTB comparison, not
@@ -3161,7 +3161,7 @@ for the next session with the user present**, rather than trying a third unverif
 known-safe resting state) - this was a deliberate choice once GuppyScreen's fix was confirmed working,
 rather than leaving the device sitting on the test kernel with no network access. All three real fixes
 this session (wlan gpio-cells, wlan post-power-on-delay, GuppyScreen ifstream) are committed and
-pushed to the kernel fork (`coreflake1/NebulaOS`, `openke` branch, commits `e67eefc40`/`5dca5971f`) and
+pushed to the kernel fork (`coreflake1/NebulaOS`, `rosetteos` branch, commits `e67eefc40`/`5dca5971f`) and
 committed locally to the guppyscreen repo (`3496b94` on `ke-next`, not yet pushed - the user's own repo,
 left for their own review/push decision). The ke-mainline-klipper repo itself (this repo) still has no
 remote and several open questions from the repo-restructuring work (§38-39) that were paused mid-way
@@ -3183,7 +3183,7 @@ was never a wrong-driver-path problem - both trees use the identical compatible 
 (`ingenic,x2000-dwc2-hsotg` / `ingenic,usbphy-x2000`), confirmed via stock's own live `dmesg` showing
 `13500000.otg_new` as the bound device name (our tree only ever carries this one driver generation,
 simply not suffixed `_new` since there's no legacy variant to disambiguate from in this source tree).
-Fixed, committed, and pushed to the kernel fork (`coreflake1/NebulaOS`, `openke`, commit `c902097d1`).
+Fixed, committed, and pushed to the kernel fork (`coreflake1/NebulaOS`, `rosetteos`, commit `c902097d1`).
 Also traced `ingenic,vbus-dete-gpio` (a property our board file sets that stock's real config doesn't)
 through `phy-ingenic.c`'s actual source and confirmed it only affects *peripheral/gadget*-mode
 connection detection, not host-mode VBUS driving at all - real, valid cleanup to match stock exactly,
@@ -3276,7 +3276,7 @@ confirmed by the user - the debug console this whole project has relied on all n
 be present at the same time as the connection this fix is for). This closes what's confirmed possible
 from source alone; the real MCU handshake test is the next real milestone once WiFi is working.
 
-Both commits pushed to the kernel fork (`coreflake1/NebulaOS`, `openke`: `4905cb23e` for the uart1
+Both commits pushed to the kernel fork (`coreflake1/NebulaOS`, `rosetteos`: `4905cb23e` for the uart1
 pinctrl addition, `c60cf4d67` for the `as_dmic` disable).
 
 ## 44. The real WiFi root cause: two sessions of devicetree-property tuning were toggling a GPIO pin the chip isn't even wired to
@@ -3510,7 +3510,7 @@ sequencing - this exact function is already compiled into *our* kernel too (same
 `ingenic_sdio.c`, built via `CONFIG_MMC_SDHCI_INGENIC=y`). Added a `late_initcall` in `ingenic_sdio.c`
 that calls it once, reusing our already-electrically-verified `wlan_pwrseq`/`wifi_bt_power` gpio
 sequencing (§45) instead of re-implementing gpio control from scratch. **Confirmed running correctly**
-(dmesg: `openke_wifi_manual_insert: triggering manual SDIO insert on mmc1` / `wlan power on:2`) -
+(dmesg: `rosetteos_wifi_manual_insert: triggering manual SDIO insert on mmc1` / `wlan power on:2`) -
 **identical timeout regardless.**
 
 Traced why: `drivers/mmc/core/core.c`'s `mmc_start_host()` (called from every `mmc_add_host()`,
@@ -3626,7 +3626,7 @@ implementation via `ingenic_sdio.c`'s existing header-conditional include).
 Rebuilt, reflashed, rebooted. **`"mmc1: Failed to initialize a non-removable card"` no longer
 appears at all** - direct, real confirmation the `.get_cd`-gated premature auto-scan is genuinely
 eliminated, exactly as the mechanism above predicts. The existing manual-insert `late_initcall` (§46)
-fired correctly (`openke_wifi_manual_insert` / `wlan power on:2`) and this time triggered a REAL
+fired correctly (`rosetteos_wifi_manual_insert` / `wlan power on:2`) and this time triggered a REAL
 `ingenic_mmc.c`-level transaction attempt - which produced a new, much more specific, driver-level
 timeout with a full register dump:
 
@@ -3793,7 +3793,7 @@ firmware work itself, but it cost significant real time before the actual rebuil
 
 Rebuilt, reflashed, rebooted. The driver binds correctly (`mmc1: SDHCI controller on ingenic-sdhci
 [13460000.msc] using ADMA`), the manual-insert `late_initcall` fires exactly as designed
-(`openke_wifi_manual_insert` → `wlan power on:2` → `ingenic,sdhci 13460000.msc: card insert
+(`rosetteos_wifi_manual_insert` → `wlan power on:2` → `ingenic,sdhci 13460000.msc: card insert
 manually`) - but:
 
 ```
@@ -3847,7 +3847,7 @@ as its literal first action, launches the sampler in the background so it never 
 `rcS`) that ran for exactly one real cold boot, then never again. Confirmed self-deleted and the
 trace log pulled off afterward; no lasting change to stock survived past that one boot.
 
-**Custom side**: real kernel-side instrumentation (`openke_msc1_trace()`, temporary, `sdhci-
+**Custom side**: real kernel-side instrumentation (`rosetteos_msc1_trace()`, temporary, `sdhci-
 ingenic.c`), polling the *same* register set at the *same* physical addresses via the host's own
 already-mapped `host->ioaddr` plus a small `ioremap()` of the same CPM register, called synchronously
 right after `mmc_detect_change()` inside `ingenic_mmc_manual_detect()` for a bounded 2-second window.
@@ -3859,7 +3859,7 @@ Both captures are real, live, timestamped, and kept (trimmed excerpts below; ful
 ### What the first pass found: a real, provable race condition
 
 The very first custom capture showed `mmc1: Failed to initialize a non-removable card` firing at
-kernel time 2.258s - **before** `openke_msc1_trace`'s own command activity (which only starts at
+kernel time 2.258s - **before** `rosetteos_msc1_trace`'s own command activity (which only starts at
 2.513s) ever got underway. Cross-referencing timestamps: `mmc1` registers at 1.333s,
 `mmc_start_host()`'s own automatic power-up+rescan (real, unconditional, generic mainline
 `drivers/mmc/core/core.c` behavior - already known from §46) doesn't report its own failure until
@@ -3942,7 +3942,7 @@ multi-step, vendor-specific choreography - actually gives it.
 
 - **Real, kept fix**: the `mmc_start_host()`-vs-manual-insert race on custom, closed via
   `cancel_delayed_work_sync()`. Independent of the WiFi symptom, this was a genuine correctness bug.
-- **Real, kept instrumentation**: `openke_msc1_trace()` in `sdhci-ingenic.c`, still present in the
+- **Real, kept instrumentation**: `rosetteos_msc1_trace()` in `sdhci-ingenic.c`, still present in the
   tree - cheap (one bounded, read-only 2-second window, only on manual insert) and has already once
   earned its keep. Worth a decision next session on whether to strip it now that the race is fixed, or
   keep it for the next real hardware cycle.
@@ -4002,7 +4002,7 @@ kernel boot
     mmc_of_parse(host->mmc) -> mmc_pwrseq_alloc() [host->pwrseq attached - confirmed live, see below]
     sdhci_add_host() -> mmc_add_host() -> mmc_start_host()
       automatic mmc_power_up() + mmc_rescan (delayed work) - fails ~1s later
-late_initcall: openke_wifi_manual_insert()
+late_initcall: rosetteos_wifi_manual_insert()
   ingenic_bcmdhd_wlan_power_onoff(MANUALLY_INSERT):
     rtc32k_enable() -> pinctrl_select_state("enable")
     ingenic_mmc_clk_ctrl(1) -> clk_prepare_enable(clk_cgu/clk_gate)
@@ -4041,7 +4041,7 @@ registered with the corrected polarity flag.
 
 **Result: WiFi still did not come up.** Rebuilt, flashed, tested on real hardware
 (`local_set_next_boot_device`, serial capture, `S00revert-safety` confirmed the marker already
-reverted to stock before I ever touched it). `openke_msc1_trace` still reported
+reverted to stock before I ever touched it). `rosetteos_msc1_trace` still reported
 `"no SDHCI_RESPONSE_0 change across the whole window - chip never answered"`.
 
 ### 5. Following the divergence one level deeper: the GPIO never actually reaches raw HIGH
@@ -4050,7 +4050,7 @@ Rather than guess at a second theory, added direct instrumentation to observe th
 during the real power-up call, since the disassembly proved raw-HIGH is what the chip needs and the
 DT fix was confirmed applied. Added:
 
-- `openke_msc1_trace()`: also polls `gpio_get_value(100)` (WL_REG_ON's real global gpio number,
+- `rosetteos_msc1_trace()`: also polls `gpio_get_value(100)` (WL_REG_ON's real global gpio number,
   confirmed via debugfs above) every ~200-300us alongside the SDHCI registers it already tracked.
 - A diagnostic right after `mmc_of_parse()` in probe: `host->mmc->pwrseq` printed directly. Confirmed
   non-NULL for msc1 (NULL for msc0/msc2, which have no `mmc-pwrseq` property) - `host->pwrseq` *is*
@@ -4123,7 +4123,7 @@ session's own live evidence shows isn't reaching the pin on this exact platform.
   every single cycle.
 - No `insmod`/`rmmod` of `cywdhd.ko`/`soc_msc.ko` at any point - all stock-side evidence this session
   came from static disassembly of files pulled read-only off the live device.
-- Six real, isolated commits landed on the fork's `openke` branch this session (a catch-up commit for
+- Six real, isolated commits landed on the fork's `rosetteos` branch this session (a catch-up commit for
   previously-uncommitted sec 44-48 work, the sec 49 race fix, gated tracing, the sec 50 polarity fix,
   WIFI_SEQ markers, and the live-GPIO/pwrseq diagnostics) - each independently reviewable, none mixing
   unrelated changes.
@@ -4155,17 +4155,17 @@ directly from `sdhci-ingenic.c` instead, and reproduce stock's exact raw sequenc
 ### Real hardware result: the physical pin finally reaches the correct state
 
 ```
-[1.271852] openke: WLAN_REG_ON GPIO acquired, direction_output_raw(0) ret=0
+[1.271852] rosetteos: WLAN_REG_ON GPIO acquired, direction_output_raw(0) ret=0
 ...
-[1.828400] openke: WIFI_SEQ: WL_REG_ON requested_raw=0 descriptor_raw=0
-[1.835329] openke: WIFI_SEQ: sleeping 100 ms
-[1.980629] openke: WIFI_SEQ: WL_REG_ON requested_raw=1 descriptor_raw=1
-[1.987551] openke: WIFI_SEQ: triggering manual detection
-[1.993176] openke_msc1_trace:      0 ms WL_REG_ON (gpio 100) = 1
+[1.828400] rosetteos: WIFI_SEQ: WL_REG_ON requested_raw=0 descriptor_raw=0
+[1.835329] rosetteos: WIFI_SEQ: sleeping 100 ms
+[1.980629] rosetteos: WIFI_SEQ: WL_REG_ON requested_raw=1 descriptor_raw=1
+[1.987551] rosetteos: WIFI_SEQ: triggering manual detection
+[1.993176] rosetteos_msc1_trace:      0 ms WL_REG_ON (gpio 100) = 1
 ```
 
 Confirmed **two independent ways**: the `gpiod_get_raw_value_cansleep()` readback taken immediately
-after the write, and `openke_msc1_trace`'s own separate live GPIO poll (added in sec 50, unchanged) -
+after the write, and `rosetteos_msc1_trace`'s own separate live GPIO poll (added in sec 50, unchanged) -
 both agree the pin is physically HIGH. This closes the `mmc_pwrseq_simple` hypothesis completely and
 with certainty: WL_REG_ON now reaches exactly the raw state stock's own driver requires, at
 essentially the same ~100ms real timing stock uses.
@@ -4174,7 +4174,7 @@ essentially the same ~100ms real timing stock uses.
 
 ```
 [2.144759] mmc1: Failed to initialize a non-removable card
-[3.993190] openke_msc1_trace: no SDHCI_RESPONSE_0 change across the whole window - chip never answered
+[3.993190] rosetteos_msc1_trace: no SDHCI_RESPONSE_0 change across the whole window - chip never answered
 ```
 
 `SDHCI_RESPONSE_0` never changed once, across the entire post-detect window, exactly as before the fix
@@ -4211,7 +4211,7 @@ Not resolved this session, but a real prerequisite is now proven satisfied rathe
   stock afterward.
 - No `insmod`/`rmmod` of `cywdhd.ko`/`soc_msc.ko` at any point.
 - One real, isolated commit this section (`mmc: sdhci-ingenic: drive WLAN_REG_ON directly during
-  manual insertion`), on top of the six from sec 49-50 - seven total on the fork's `openke` branch
+  manual insertion`), on top of the six from sec 49-50 - seven total on the fork's `rosetteos` branch
   from this whole investigation, each independently reviewable.
 
 ## 52. The real root cause: PA01 (the shared Wi-Fi/BT power rail) had the same class of unverified
@@ -4274,8 +4274,8 @@ the `gpio` cell's own active-flag. Removed along with the fix.
 ### Real hardware result: the first real SDIO response and enumeration this investigation has ever seen
 
 ```
-[1.993188] openke_msc1_trace:      0 ms WL_REG_ON (gpio 100) = 1
-[2.007950] openke_msc1_trace:     14 ms first SDHCI_RESPONSE_0 change: 0x00000000 -> 0x20ffff00
+[1.993188] rosetteos_msc1_trace:      0 ms WL_REG_ON (gpio 100) = 1
+[2.007950] rosetteos_msc1_trace:     14 ms first SDHCI_RESPONSE_0 change: 0x00000000 -> 0x20ffff00
 [2.418750] mmc1: new high speed SDIO card at address 0001
 [2.441304] brcmfmac: brcmf_fw_alloc_request: using brcm/brcmfmac43430-sdio for chip BCM43430/1
 [2.450426] brcmfmac mmc1:0001:1: Direct firmware load for brcm/brcmfmac43430-sdio.ingenic,halley5.bin failed with error -2
@@ -4334,7 +4334,7 @@ conversion - a genuinely new, concretely scoped, much narrower next task.
   stock afterward.
 - No `insmod`/`rmmod` of `cywdhd.ko`/`soc_msc.ko` at any point.
 - One real, isolated commit this section (`mmc: msc1 dts: fix wifi_bt_power (PA01) shared-rail
-  polarity - this was the real root cause`) - eight total on the fork's `openke` branch from this
+  polarity - this was the real root cause`) - eight total on the fork's `rosetteos` branch from this
   whole investigation, each independently reviewable.
 
 ## 53. Wi-Fi actually works: real firmware, real association, real DHCP lease, on the custom Linux 6.6
@@ -4381,7 +4381,7 @@ brcmfmac mmc1:0001:1: Direct firmware load for brcm/brcmfmac43430-sdio.bin faile
 
 Real cause, not a packaging bug: `CONFIG_BRCMFMAC=y` (built directly into the kernel) means its
 firmware request runs synchronously inside the same early-boot `late_initcall` window
-`openke_wifi_manual_insert()` uses to force the manual SDIO insert (sec 46) - real hardware timestamps
+`rosetteos_wifi_manual_insert()` uses to force the manual SDIO insert (sec 46) - real hardware timestamps
 show this at ~2.4s, a full 1.5s before `"VFS: Mounted root (squashfs filesystem)"` (~4.0s). The file
 being correctly packaged doesn't help if `request_firmware()` runs before that filesystem exists.
 
@@ -4459,7 +4459,7 @@ device, for the first time in this project's history.
 - **Hardware, firmware, and network stack: all proven working, end to end.** SDHCI command path,
   WL_REG_ON, RTC32K, MSC1 pinmux, PA01, firmware loading, `wlan0`, association, DHCP - every milestone
   this multi-session investigation set out to reach.
-- Nine real, isolated commits total across this whole investigation (seven on the fork's `openke`
+- Nine real, isolated commits total across this whole investigation (seven on the fork's `rosetteos`
   branch, sec 49-52; two in this main repo this section) - each independently reviewable, none mixing
   unrelated changes.
 - **Real, deliberately-left-open follow-up**: `/usr/data` as ephemeral tmpfs (a real, previously-made
@@ -4467,7 +4467,7 @@ device, for the first time in this project's history.
   reboot on this test image as it stands - a real product decision, not a bug, and out of scope to
   resolve unilaterally here.
 - **Cleanup opportunities, not done here** (real, but secondary to landing the actual fix while
-  hardware access was available): `openke_msc1_trace()`'s gated full-detail path already defaults to
+  hardware access was available): `rosetteos_msc1_trace()`'s gated full-detail path already defaults to
   off; the small number of always-on point-in-time `pr_info()` diagnostics added in sec 50-51 (WL_REG_ON
   state, `mmc_of_parse`/`pwrseq` attachment) are cheap (a handful of lines per boot, not a loop) and
   still genuinely useful for the next real hardware cycle - worth trimming in a dedicated pass once this

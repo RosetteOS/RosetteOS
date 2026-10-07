@@ -9,9 +9,9 @@
 #   1. scripts/build/lib/make-seed-archive.sh's make_seed_archive() -
 #      build-time packaging, sourced directly (shared verbatim with
 #      scripts/build/04-cross-compile-app-stack.sh - no parallel copy).
-#   2. scripts/build/overlay/etc/init.d/S04openke-factory-seed's
+#   2. scripts/build/overlay/etc/init.d/S04rosetteos-factory-seed's
 #      seed_git_app() - on-device first-boot consumption, sourced with
-#      S04OPENKE_FACTORY_SEED_NO_AUTORUN=1 (same seam convention as
+#      S04ROSETTEOS_FACTORY_SEED_NO_AUTORUN=1 (same seam convention as
 #      scripts/flash-spare-slot.sh's FLASH_SPARE_SLOT_NO_AUTORUN) and
 #      SEEDS/APPS pointed at fixture directories.
 #
@@ -24,14 +24,14 @@ set -u
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
-# Points S04openke-factory-seed's own GATE_LIB override at the real,
-# tracked shared gate (not the real device path /etc/openke-
+# Points S04rosetteos-factory-seed's own GATE_LIB override at the real,
+# tracked shared gate (not the real device path /etc/rosetteos-
 # maintenance-gate.sh, which does not exist on a dev machine) - the
 # script sources it unconditionally at load time even though this test
 # file only calls seed_git_app() directly, not the gate itself.
-export GATE_LIB="$REPO_ROOT/scripts/build/overlay/etc/openke-maintenance-gate.sh"
+export GATE_LIB="$REPO_ROOT/scripts/build/overlay/etc/rosetteos-maintenance-gate.sh"
 MAKE_ARCHIVE_LIB="$REPO_ROOT/scripts/build/lib/make-seed-archive.sh"
-S04_SCRIPT="$REPO_ROOT/scripts/build/overlay/etc/init.d/S04openke-factory-seed"
+S04_SCRIPT="$REPO_ROOT/scripts/build/overlay/etc/init.d/S04rosetteos-factory-seed"
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/factory-seed-git-tests.XXXXXX")
 trap 'rm -rf "$WORK"' EXIT INT TERM
 
@@ -253,7 +253,7 @@ run_seed_git_app() {
 	# no reimplementation of seed_git_app's own rules.
 	name="$1"; branch="$2"; origin="$3"; dirty_exclude="${4:-}"
 	SEEDS="$S/seeds" APPS="$S/apps" SYSTEM="$S/system" LOCKDIR="$S/locks" \
-		S04OPENKE_FACTORY_SEED_NO_AUTORUN=1 \
+		S04ROSETTEOS_FACTORY_SEED_NO_AUTORUN=1 \
 		sh -c '. "$1"; seed_git_app "$2" "$3" "$4" "$5"' -- "$S04_SCRIPT" "$name" "$branch" "$origin" "$dirty_exclude" 2>&1
 }
 

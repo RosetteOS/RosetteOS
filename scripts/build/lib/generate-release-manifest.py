@@ -40,12 +40,12 @@ def get_git_info(repo_root: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate OpenKE release manifest")
+    parser = argparse.ArgumentParser(description="Generate RosetteOS release manifest")
     parser.add_argument("--swu", required=True, help="Path to SWU package")
     parser.add_argument("--output", required=True, help="Output path for releases.json")
     parser.add_argument("--channel", default="nightly", help="Release channel (nightly/stable)")
     parser.add_argument("--tag", default="nightly", help="Release tag name (e.g. nightly or v1.0.0)")
-    parser.add_argument("--repo", default="OpenKlipperEdition/OpenKE", help="GitHub repo (owner/repo)")
+    parser.add_argument("--repo", default="RosetteOS/RosetteOS", help="GitHub repo (owner/repo)")
     parser.add_argument("--changelog", help="Path to changelog.txt")
     parser.add_argument("--version", help="Explicit version string")
 
@@ -86,7 +86,7 @@ def main():
                 "url": download_url,
                 "sha256": swu_sha,
                 "size_bytes": swu_size,
-                "release_notes": f"OpenKE {args.channel.capitalize()} Build ({short_sha}) {commit_date}".strip(),
+                "release_notes": f"RosetteOS {args.channel.capitalize()} Build ({short_sha}) {commit_date}".strip(),
                 "changelog": changelog_text
             }
         ]

@@ -23,11 +23,11 @@ DEPS_MANIFEST="$REPO_ROOT/manifests/dependencies.conf"
 . "$DEPS_MANIFEST"
 
 # 2026-07-23: see 02-configure-buildroot.sh for why this lock exists.
-exec 9>"$REPO_ROOT/.openke-build.lock"
-flock -n 9 || { echo "another build stage already owns $REPO_ROOT/.openke-build.lock" >&2; exit 1; }
+exec 9>"$REPO_ROOT/.rosetteos-build.lock"
+flock -n 9 || { echo "another build stage already owns $REPO_ROOT/.rosetteos-build.lock" >&2; exit 1; }
 
 # Phase 11 (2026-08-15): the orphaned-container-cleanup loop and per-call
-# `--label openke-build-pid=$$` that used to live here are gone - see
+# `--label rosetteos-build-pid=$$` that used to live here are gone - see
 # 02-configure-buildroot.sh's own Phase 11 note.
 BUILDROOT_DIR="$REPO_ROOT/vendor/system/buildroot"
 KERNEL_MOUNT="$REPO_ROOT/vendor/system/kernel/kernel-6.6"
@@ -82,11 +82,11 @@ fi
 # script also produces every intermediate experimental/A-B variant build,
 # which this project routinely does against a dirty, in-progress tree - a
 # blanket rejection here would break that normal workflow. Opt-in via
-# OPENKE_REQUIRE_CLEAN_TREE=1 (set only for the final Phase 13 production
+# ROSETTEOS_REQUIRE_CLEAN_TREE=1 (set only for the final Phase 13 production
 # build), default off so today's iterative builds are unaffected.
-if [ "${OPENKE_REQUIRE_CLEAN_TREE:-0}" = "1" ]; then
+if [ "${ROSETTEOS_REQUIRE_CLEAN_TREE:-0}" = "1" ]; then
 	if [ -n "$(cd "$REPO_ROOT" && git status --porcelain)" ]; then
-		echo "FATAL: OPENKE_REQUIRE_CLEAN_TREE=1 but the main repository has uncommitted changes - a release build must come from a clean, committed tree" >&2
+		echo "FATAL: ROSETTEOS_REQUIRE_CLEAN_TREE=1 but the main repository has uncommitted changes - a release build must come from a clean, committed tree" >&2
 		exit 1
 	fi
 fi
@@ -151,8 +151,8 @@ artifact_sha256() {
 	artifact_sha256 kernel_config_sha256 "$ARTIFACT_DIR/kernel.config"
 	artifact_sha256 buildroot_config_sha256 "$ARTIFACT_DIR/buildroot.config"
 	artifact_sha256 device_tree_sha256 "$ARTIFACT_DIR/halley5_v30.dts"
-	artifact_sha256 mcu_klipper_creality_bin_sha256 "$BUILDROOT_DIR/board/halley5-openke-overlay/opt/openke/mcu/klipper-creality.bin"
-	artifact_sha256 mcu_klipper_raw_bin_sha256 "$BUILDROOT_DIR/board/halley5-openke-overlay/opt/openke/mcu/klipper.bin"
+	artifact_sha256 mcu_klipper_creality_bin_sha256 "$BUILDROOT_DIR/board/halley5-rosetteos-overlay/opt/rosetteos/mcu/klipper-creality.bin"
+	artifact_sha256 mcu_klipper_raw_bin_sha256 "$BUILDROOT_DIR/board/halley5-rosetteos-overlay/opt/rosetteos/mcu/klipper.bin"
 	artifact_sha256 mcu_v3_se_klipper_bin_sha256 "$ARTIFACT_DIR/Ender3V3SE_klipper.bin"
 	artifact_sha256 mcu_v2_neo_klipper_bin_sha256 "$ARTIFACT_DIR/Ender3V2Neo_klipper.bin"
 	artifact_sha256 xImage_sha256 "$ARTIFACT_DIR/xImage"

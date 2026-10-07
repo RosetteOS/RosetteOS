@@ -9,7 +9,7 @@ real, idle printer (2026-07-18) - zero writes made.
 
 **"How hard to build our own full firmware/OS" has its own, more thorough answer now: see
 `FIRMWARE.md`** - it supersedes §6 below after reviewing the official Ingenic vendor documentation
-already sitting in the OpenKE workspace's `docs hw/` directory (not reviewed when §6 was first
+already sitting in the RosetteOS workspace's `docs hw/` directory (not reviewed when §6 was first
 written) and confirming the real OS (Buildroot, not Ubuntu) directly on the device. §6 is kept
 below for the session-by-session record but `FIRMWARE.md` is the current, complete answer with an
 actual phased gameplan.
@@ -106,7 +106,7 @@ mmcblk0: p1 p2 p3 p4 p5 p6 p7 p8 p9 p10  - GPT-partitioned main storage
 
 Root filesystem is a read-only squashfs (`dmesg`: "VFS: Mounted root (squashfs filesystem)
 readonly on device 179:7") - classic embedded pattern: read-only base image + a separate writable
-partition (where `/usr/data` - printer_data, Moonraker config, our own OpenKE install - actually
+partition (where `/usr/data` - printer_data, Moonraker config, our own RosetteOS install - actually
 lives). Which of the 10 GPT partitions holds what (kernel, squashfs rootfs, writable data, possibly
 an A/B redundant pair for safe updates) has **not** been mapped in detail - worth doing before any
 real flashing work, not yet done.
@@ -136,7 +136,7 @@ rootfs" and "real risk of an unrecoverable brick" for anything beyond simple `in
    persistence across reboots.
 
 **Cheaper alternative worth checking first, since the actual goal is "reliable networking" not
-specifically "this exact USB adapter"**: OpenKE memory already has two *confirmed-working* WiFi
+specifically "this exact USB adapter"**: RosetteOS memory already has two *confirmed-working* WiFi
 reliability fixes from earlier sessions - disabling Bluetooth/WiFi radio-coexistence interference,
 and disabling WiFi power-save (`project_wifi_instability.md`, `project_wifi_powersave.md`). Live
 check this session found Bluetooth processes (`btudpwork`/`btfwwork`) currently running and no fix
@@ -151,9 +151,9 @@ difficulty/risk rather than as one lump "hard" or "easy" - see the chat transcri
 reasoning; summarized here for durability:
 
 **Already effectively solved / low risk**: replacing userspace on top of the existing kernel and
-bootloader. OpenKE has *already* proven this repeatedly - a working MIPS cross-compilation
+bootloader. RosetteOS has *already* proven this repeatedly - a working MIPS cross-compilation
 toolchain, and multiple real vendored/rebuilt packages (Pillow, streaming-form-data, nginx,
-Moonraker itself - see the OpenKE memory's `project_remaining_vendored_binaries.md` and
+Moonraker itself - see the RosetteOS memory's `project_remaining_vendored_binaries.md` and
 `project_nginx_selfbuild_proof.md`). SimpleAF is real-world proof the *whole* userspace stack
 (Klipper fork, Moonraker, UI) can be swapped out this way, on this exact device, without touching
 kernel or bootloader.

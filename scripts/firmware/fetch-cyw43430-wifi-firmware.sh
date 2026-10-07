@@ -3,7 +3,7 @@
 # scripts/build/overlay/lib/firmware/brcm/{brcmfmac43430-sdio.bin,
 # brcmfmac43430-sdio.clm_blob} so 02-configure-buildroot.sh's
 # CONFIG_EXTRA_FIRMWARE embed (see artifacts/buildroot-halley5-v30-image/
-# halley5-openke-fragment.config) can bake both into the kernel image
+# halley5-rosetteos-fragment.config) can bake both into the kernel image
 # before the rootfs mounts - the exact point brcmfmac's own early SDIO probe
 # requests them (confirmed from source:
 # drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c's

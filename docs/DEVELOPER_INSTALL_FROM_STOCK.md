@@ -1,8 +1,8 @@
 # Installing a developer build from stock
 
-OpenKE uses the KE's existing stock/custom A/B layout, which is genuinely convenient here: we
-don't need to touch or overwrite the stock system to get an OpenKE build onto the printer.
-OpenKE just goes into the second, custom slot that's normally sitting empty.
+RosetteOS uses the KE's existing stock/custom A/B layout, which is genuinely convenient here: we
+don't need to touch or overwrite the stock system to install RosetteOS.
+It goes into the second, custom slot that's normally sitting empty.
 
 Read `docs/A_B_SLOT_MODEL.md` first if you haven't already — this doc assumes you already know how
 the two slots and the OTA marker work.
@@ -30,7 +30,7 @@ stock printer, root/SSH already available
 5. sh flash-spare-slot.sh xImage rootfs.squashfs build-manifest.txt
         |
 6. flip the marker to custom (see docs/A_B_SLOT_MODEL.md for why this
-   is stock's own tool, not OpenKE's):
+   is stock's own tool, not RosetteOS's):
    . /etc/ota_bin/ota_local_method.sh; local_set_next_boot_device
         |
 7. reboot
@@ -94,6 +94,6 @@ that for the first time.
 ## Related docs
 
 - `docs/A_B_SLOT_MODEL.md` — the partition layout and marker mechanics behind all of this
-- `docs/DEVELOPER_UPDATE.md` — updating a printer that's already running OpenKE
+- `docs/DEVELOPER_UPDATE.md` — updating a printer that's already running RosetteOS
 - `docs/DEVELOPER_RECOVERY.md` — what to do if this doesn't boot right
 - `docs/HOW_TO_SWITCH_STOCK_AND_CUSTOM.md` — the day-to-day switching guide once both slots have something on them

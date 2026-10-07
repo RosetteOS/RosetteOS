@@ -1,9 +1,9 @@
-# Updating an existing OpenKE install
+# Updating an existing RosetteOS install
 
-This assumes OpenKE (or legacy NebulaOS) is already installed and booted. If it isn't yet, start with
+This assumes RosetteOS (or legacy NebulaOS) is already installed and booted. If it isn't yet, start with
 `docs/DEVELOPER_INSTALL_FROM_STOCK.md`.
 
-Updates in OpenKE operate on two main levels: system image updates (via SWUpdate, USB, or manual slot flashing) and mutable application component updates (via Moonraker).
+RosetteOS updates operate on two main levels: system image updates (via SWUpdate, USB, or manual slot flashing) and mutable application component updates (via Moonraker).
 
 ## Klipper and Moonraker updates — this works today
 
@@ -37,7 +37,7 @@ resetting the source code with `git reset --hard` won't undo that. Still an open
 ## Updating the whole OS image
 
 ### Option A: SWUpdate (.swu) via GuppyScreen or LAN OTA (Recommended)
-OpenKE includes native SWUpdate integration. Updates are packaged as dual-slot `.swu` CPIO archives and can be installed:
+RosetteOS includes native SWUpdate integration. Updates are packaged as dual-slot `.swu` CPIO archives and can be installed:
 - **Directly on the touchscreen**: Via GuppyScreen's Update Panel from a connected USB flash drive or network OTA feed.
 - **Over local LAN**: Using `scripts/dev/serve-update.sh` to serve updates directly to printers on your local network.
 - **Safety**: Includes automated pre-flight checks blocking updates if a print is running or heaters are energized.
@@ -61,7 +61,7 @@ flip the marker, reboot
 same boot sequence as install (S00/S04/S5x/S99 - see A_B_SLOT_MODEL.md)
 ```
 
-The automated OTA flow originally designed under NebulaOS (`docs/NEBULAOS_OTA_FLOW.md`) is now realized through OpenKE's SWUpdate and GuppyScreen architecture.
+The automated OTA flow originally designed under NebulaOS (`docs/NEBULAOS_OTA_FLOW.md`) is now realized through RosetteOS's SWUpdate and GuppyScreen architecture.
 
 ## Related docs
 

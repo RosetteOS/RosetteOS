@@ -6,7 +6,7 @@ set -u
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 BUILD_SCRIPT="$REPO_ROOT/scripts/build/build-mcu-firmware.sh"
-UPGRADE_SCRIPT="$REPO_ROOT/scripts/build/overlay/etc/init.d/S57openke-mcu-upgrade"
+UPGRADE_SCRIPT="$REPO_ROOT/scripts/build/overlay/etc/init.d/S57rosetteos-mcu-upgrade"
 INITD_DIR="$REPO_ROOT/scripts/build/overlay/etc/init.d"
 
 PASS=0
@@ -45,7 +45,7 @@ sorted=$(cd "$INITD_DIR" && ls -1 | sort)
 index_of() { printf '%s\n' "$sorted" | grep -n "^$1\$" | cut -d: -f1; }
 i_klipper=$(index_of S55klipper)
 i_moonraker=$(index_of S56moonraker)
-i_mcu=$(index_of S57openke-mcu-upgrade)
+i_mcu=$(index_of S57rosetteos-mcu-upgrade)
 i_guppy=$(index_of S58guppyscreen)
 if [ -n "$i_klipper" ] && [ -n "$i_moonraker" ] && [ -n "$i_mcu" ] && [ -n "$i_guppy" ] \
 	&& [ "$i_klipper" -lt "$i_moonraker" ] \

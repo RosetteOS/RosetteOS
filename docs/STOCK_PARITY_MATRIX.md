@@ -70,8 +70,8 @@ exists" and weaker than "consumer binary found and inspected". Default action ho
 ("leave disabled unless a real required consumer is proven") is the correct call given what's
 confirmed versus what remains open.
 | `ns2009_touch` | NS2009 resistive touch | `CONFIG_TOUCHSCREEN_NS2009=y` | PARITY_CONFIRMED | |
-| `lcd_general_480x272` | Display panel | `CONFIG_STAGE_OPENKE_GENERAL_480X272=y`, `CONFIG_FB_INGENIC=y` | PARITY_CONFIRMED | |
-| `hci_uart_h5_kernel_4_4_94` | Bluetooth H5 transport | custom's own `openke,bcm4343x-bt` H5 driver (`drivers/bluetooth/hci_h5.c`, this project's addition) | EXPECTED_DIFFERENCE | Different driver, same real transport/chip. BT itself is a documented, real, unfixed hardware pin-conflict with touch (`i2c4` vs. `uart3` share the same two physical pins) - see the kernel fork's `uart3` DTS comment, commit `095970ba2`. |
+| `lcd_general_480x272` | Display panel | `CONFIG_STAGE_ROSETTEOS_GENERAL_480X272=y`, `CONFIG_FB_INGENIC=y` | PARITY_CONFIRMED | |
+| `hci_uart_h5_kernel_4_4_94` | Bluetooth H5 transport | custom's own `rosetteos,bcm4343x-bt` H5 driver (`drivers/bluetooth/hci_h5.c`, this project's addition) | EXPECTED_DIFFERENCE | Different driver, same real transport/chip. BT itself is a documented, real, unfixed hardware pin-conflict with touch (`i2c4` vs. `uart3` share the same two physical pins) - see the kernel fork's `uart3` DTS comment, commit `095970ba2`. |
 | `cywdhd` | Broadcom WiFi/BT combo driver | mainline `brcmfmac` (built-in) | EXPECTED_DIFFERENCE | Deliberate architecture choice, extensively documented across `FIRMWARE.md` - this is the whole WiFi bring-up story. WiFi itself is PARITY_CONFIRMED (real DHCP lease, verified this session). |
 | `soc_dtrng` | Hardware TRNG | `CONFIG_INGENIC_HW_RANDOM=y` | PARITY_CONFIRMED | |
 | `soc_msc` | eMMC/SD/SDIO controller | `CONFIG_MMC_SDHCI_INGENIC=y` | PARITY_CONFIRMED | |

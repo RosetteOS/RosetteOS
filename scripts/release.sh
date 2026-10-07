@@ -83,7 +83,7 @@ done
 # shellcheck disable=SC2086
 gh release create "$TAG" $assets \
 	--title "$TAG" \
-	--notes "OpenKE deployment package for $TAG, built from commit $LOCAL_TAG_COMMIT. Verify downloaded assets with: sha256sum -c SHA256SUMS. See DEPLOYMENT_INSTRUCTIONS.md for the full flash procedure - never write the stock slot."
+	--notes "RosetteOS deployment package for $TAG, built from commit $LOCAL_TAG_COMMIT. Verify downloaded assets with: sha256sum -c SHA256SUMS. See DEPLOYMENT_INSTRUCTIONS.md for the full flash procedure - never write the stock slot."
 
 echo "== release $TAG published =="
 gh release view "$TAG"

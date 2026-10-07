@@ -28,7 +28,7 @@ this edit itself because it exceeded this session's read-only-inspection authori
 it yourself, or ask for it explicitly next session:
 
 ```
-ssh root@<device-ip>   # password: openke
+ssh root@<device-ip>   # password: rosetteos
 sed -i '/z_offset_down_min_z: 1  # TEMP no-trigger free-air test, revert after/d' /opt/printer_data/config/printer.cfg
 grep -A3 '^\[z_compensate\]' /opt/printer_data/config/printer.cfg   # confirm only one z_offset_down_min_z line remains, or none (default 10 applies)
 ```

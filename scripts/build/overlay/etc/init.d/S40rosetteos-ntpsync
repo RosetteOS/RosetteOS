@@ -1,0 +1,47 @@
+#!/bin/sh
+#
+# NebulaOS mutable-runtime mission, Phase 7 live-HTTPS qualification: real
+# gap found live - this image never ran any NTP client at all, so the
+# clock stayed permanently stuck at its post-reset default (confirmed:
+# `date -u` read "Sun Mar 1 2020" on a device that had been running for
+# hours) rather than just briefly wrong during early boot. Every TLS
+# handshake to GitHub failed outright with "certificate is not yet valid"
+# as a direct, permanent consequence - not the transient pre-NTP window
+# this project's other RTC-drift handling (docs/NEBULAOS_RETENTION_POLICY.md
+# sec 2.6) already accounts for.
+#
+# Runs after S01wifi (needs network up, renumbered from S39 - see that
+# script's own header) - backgrounded, one-shot
+# (`ntpd -n -q`, query-and-exit, never a persistent daemon), so it never
+# blocks the rest of boot. Best-effort: no network, DNS failure, or NTP
+# server unreachable all fail silently rather than affecting boot.
+
+NTP_SERVERS="pool.ntp.org time.google.com time.cloudflare.com"
+
+log() {
+	echo "S40rosetteos-ntpsync: $1"
+}
+
+sync_clock() {
+	for server in $NTP_SERVERS; do
+		if ntpd -n -q -p "$server" >/tmp/ntpsync.log 2>&1; then
+			log "clock synced via $server: $(date -u)"
+			return 0
+		fi
+	done
+	log "WARNING: could not sync clock against any of: $NTP_SERVERS (network/DNS may not be ready yet - TLS to real HTTPS endpoints will fail with 'certificate is not yet valid' until this succeeds, e.g. on a later boot or a manual retry)"
+	return 1
+}
+
+start() {
+	sync_clock &
+}
+
+case "$1" in
+	start)
+		start
+		;;
+	*)
+		;;
+esac
+exit 0

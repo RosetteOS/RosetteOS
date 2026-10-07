@@ -1,0 +1,72 @@
+#!/bin/sh
+#
+# /etc/init.d/S60rosetteos-services
+#
+# Dynamic service dispatcher for installed RosetteOS AppStore apps.
+# Executes persistent service scripts located in /usr/data/rosetteos/services.d/
+#
+
+SERVICES_DIR="/usr/data/rosetteos/services.d"
+
+start() {
+	if [ -x /usr/bin/rosetteos-app ]; then
+		/usr/bin/rosetteos-app sync 2>/dev/null || true
+	fi
+	[ -d "$SERVICES_DIR" ] || return 0
+	for svc in "$SERVICES_DIR"/S[0-9][0-9]* "$SERVICES_DIR"/S*; do
+		[ -f "$svc" ] && [ -x "$svc" ] || continue
+		case "$svc" in
+			*.disabled|*.bak) continue ;;
+		esac
+		svc_name=$(basename "$svc")
+		echo "Starting RosetteOS app service: $svc_name"
+		"$svc" start
+	done
+}
+
+stop() {
+	[ -d "$SERVICES_DIR" ] || return 0
+	# Reverse order for clean shutdown
+	for svc in $(ls -r "$SERVICES_DIR"/S* "$SERVICES_DIR"/K* 2>/dev/null); do
+		[ -f "$svc" ] && [ -x "$svc" ] || continue
+		svc_name=$(basename "$svc")
+		echo "Stopping RosetteOS app service: $svc_name"
+		"$svc" stop
+	done
+}
+
+status() {
+	[ -d "$SERVICES_DIR" ] || { echo "No dynamic services directory found."; return 0; }
+	found=0
+	for svc in "$SERVICES_DIR"/S* "$SERVICES_DIR"/K*; do
+		[ -f "$svc" ] || continue
+		found=1
+		svc_name=$(basename "$svc")
+		echo -n "Service $svc_name: "
+		"$svc" status || true
+	done
+	[ "$found" -eq 0 ] && echo "No dynamic services configured."
+}
+
+case "$1" in
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	restart|reload)
+		stop
+		sleep 1
+		start
+		;;
+	status)
+		status
+		;;
+	*)
+		echo "Usage: $0 {start|stop|restart|status}"
+		exit 1
+		;;
+esac
+
+exit 0

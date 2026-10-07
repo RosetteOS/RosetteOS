@@ -1,0 +1,284 @@
+#!/bin/sh
+#
+# NebulaOS mutable-runtime mission, Phase 5: the one authoritative
+# activation manager. Decides, for each mutable app (Klipper, Moonraker,
+# Mainsail) and for printer_data/shared-gcode, whether the persistent
+# /usr/data/rosetteos copy is valid enough to bind-mount over the immutable
+# /opt/*|/usr/share/mainsail path - or whether to leave the immutable
+# squashfs content in place untouched.
+#
+# SAFETY DEFAULT: doing nothing at all is always safe. Every service in
+# this image was built to run directly against its immutable /opt/*
+# path - that is this system's real default state, not a fallback bolted
+# on afterward. Activation only ever ADDS a bind mount on top when a
+# persistent copy has positively proven itself; it never removes or
+# breaks the immutable content underneath, and any check that fails just
+# means "skip this one app, leave it on immutable" rather than aborting
+# the whole boot.
+#
+# Must run after S02rosetteos-namespace, S03rosetteos-diskswap, and
+# S04rosetteos-factory-seed (needs the layout, swap resilience, and a
+# seeded copy to all exist), and BEFORE S50webcam/S55klipper/
+# S56moonraker/S58guppyscreen - no service may start against a path that
+# might still change under it. S01wifi (renumbered from S39, see that
+# script's own header) is a deliberate exception - it has no dependency
+# on this activation step at all, only on S01persistent-datastore's real
+# storage mount, so it now correctly runs before this script rather than
+# after it.
+
+ROSETTEOS_ROOT="${ROSETTEOS_ROOT:-/usr/data/rosetteos}"
+STATE_FILE="$ROSETTEOS_ROOT/system/activation-state.json"
+LOCKDIR="$ROSETTEOS_ROOT/updates/locks"
+EXTENSIONS_MANIFEST=/opt/klipper-extensions/nebulaos-extensions.json
+
+log() {
+	echo "S05rosetteos-activate: $1"
+}
+
+# Records one app's activation decision. Appended as simple key=value lines
+# to a working file, assembled into JSON at the end of start() - avoids
+# needing a JSON-aware tool in a BusyBox ash environment.
+record() {
+	echo "$1=$2" >> "$ROSETTEOS_ROOT/system/.activation-decisions"
+}
+
+# Resolve a path and confirm the result still lives under $ROSETTEOS_ROOT -
+# rejects '..' traversal and symlinks that escape the namespace. Empty
+# output means "reject."
+safe_realpath_under_namespace() {
+	target="$1"
+	resolved=$(readlink -f "$target" 2>/dev/null) || return 1
+	case "$resolved" in
+		"$ROSETTEOS_ROOT"/*|"$ROSETTEOS_ROOT")
+			echo "$resolved"
+			return 0
+			;;
+		*)
+			return 1
+			;;
+	esac
+}
+
+# $1=app name, $2=persistent source dir, $3=required marker file (relative
+# to $2, proves the copy is real/complete), $4=immutable-fallback reason
+# label used only in logs/state.
+validate_app() {
+	name="$1"; src="$2"; marker="$3"
+
+	if [ ! -d "$src" ]; then
+		log "$name: no persistent copy at $src - staying on immutable"
+		record "$name" "immutable:not_present"
+		return 1
+	fi
+
+	resolved=$(safe_realpath_under_namespace "$src")
+	if [ -z "$resolved" ]; then
+		log "$name: $src resolves outside $ROSETTEOS_ROOT (traversal/escaping symlink) - REJECTING, staying on immutable"
+		record "$name" "immutable:path_escape_rejected"
+		return 1
+	fi
+
+	# $marker may be a space-separated list of required relative paths -
+	# real bug found live (auto-updates-camera-complete mission addendum,
+	# 2026-07-28): printer_data's own marker was just the literal string
+	# "config", which S02rosetteos-namespace's own create_layout() always
+	# recreates as an empty directory on every boot regardless of whether
+	# the real required files inside it (printer.cfg, moonraker.conf) are
+	# present - so this check always passed even when a wiped persistent
+	# copy had neither file, activating an empty config over the real
+	# immutable defaults and leaving Klipper/Moonraker in a permanent
+	# FileNotFoundError crash loop. Checking the actual required files
+	# individually is what catches this.
+	for m in $marker; do
+		if [ ! -e "$src/$m" ]; then
+			log "$name: missing expected marker ($m) - incomplete/invalid copy, staying on immutable"
+			record "$name" "immutable:incomplete_or_invalid"
+			return 1
+		fi
+	done
+
+	# BusyBox's build here has no `stat` applet at all (confirmed live,
+	# "stat: not found") - `ls -ldn` (numeric UID/GID, a BusyBox ls
+	# extension) is the portable alternative.
+	owner=$(ls -ldn "$src" 2>/dev/null | awk '{print $3":"$4}')
+	if [ "$owner" != "0:0" ]; then
+		log "$name: unexpected ownership ($owner, expected 0:0) - staying on immutable"
+		record "$name" "immutable:unexpected_ownership"
+		return 1
+	fi
+
+	if [ -e "$LOCKDIR/$name.lock" ]; then
+		log "$name: an update transaction lock is present - an update is mid-flight, staying on immutable until it resolves"
+		record "$name" "immutable:update_in_progress"
+		return 1
+	fi
+
+	if [ "$name" = klipper ] && [ -e "$EXTENSIONS_MANIFEST" ]; then
+		expected_commit=$(sed -n 's/.*"qualified_commit": "\([0-9a-f][0-9a-f]*\)".*/\1/p' "$EXTENSIONS_MANIFEST" 2>/dev/null | head -1)
+		installed_commit=$(git -C "$src" rev-parse HEAD 2>/dev/null || echo invalid)
+		if [ -n "$expected_commit" ] && [ "$installed_commit" != "$expected_commit" ]; then
+			log "$name: incompatible Klipper commit ($installed_commit, expected $expected_commit) - staying on immutable"
+			record "$name" "immutable:incompatible_commit"
+			return 1
+		fi
+	fi
+
+	log "$name: persistent copy at $src validated OK"
+	record "$name" "persistent"
+	return 0
+}
+
+# $1=already-mounted target check, $2=source, $3=target
+bind_if_not_already() {
+	src="$1"; dst="$2"
+	# awk match on the exact target field (2nd column of /proc/mounts) -
+	# avoids a duplicate/stacked bind mount if this script is somehow
+	# invoked twice in one boot (it shouldn't be, but mount stacking from a
+	# double-invocation would be genuinely hard to reason about later).
+	if awk -v t="$dst" '$2==t {found=1} END{exit !found}' /proc/mounts; then
+		log "already mounted at $dst - not re-mounting"
+		return 0
+	fi
+	mount --bind "$src" "$dst"
+	log "bind-mounted $src -> $dst"
+}
+
+start() {
+	# /usr/data must be a real, writable mount before anything else here
+	# is meaningful - S01persistent-datastore already mounted it, but
+	# re-confirm rather than assume, since this script's own correctness
+	# depends on it.
+	if ! awk '$2=="/usr/data" {found=1} END{exit !found}' /proc/mounts; then
+		log "/usr/data is not mounted - cannot activate anything, staying fully immutable"
+		return 0
+	fi
+	testfile="/usr/data/.nebulaos-rw-test-$$"
+	if ! ( : > "$testfile" ) 2>/dev/null; then
+		log "/usr/data is not writable - cannot activate anything, staying fully immutable"
+		return 0
+	fi
+	rm -f "$testfile"
+
+	if [ ! -e "$ROSETTEOS_ROOT/system/layout-manifest.json" ]; then
+		log "no layout manifest - namespace not ready, staying fully immutable"
+		return 0
+	fi
+
+	rm -f "$ROSETTEOS_ROOT/system/.activation-decisions"
+	mkdir -p "$LOCKDIR"
+
+	# Self-heal missing platform markers and c_helper.so in persistent Klipper checkout before validation
+	if [ -d "$ROSETTEOS_ROOT/apps/klipper/.git" ]; then
+		if [ ! -f "$ROSETTEOS_ROOT/apps/klipper/.nebulaos-chelper-verdict.json" ]; then
+			if [ -f /opt/rosetteos-seeds/klipper-chelper-verdict.json ]; then
+				cp /opt/rosetteos-seeds/klipper-chelper-verdict.json "$ROSETTEOS_ROOT/apps/klipper/.nebulaos-chelper-verdict.json" 2>/dev/null || true
+			elif [ -f /opt/klipper/.nebulaos-chelper-verdict.json ]; then
+				cp /opt/klipper/.nebulaos-chelper-verdict.json "$ROSETTEOS_ROOT/apps/klipper/.nebulaos-chelper-verdict.json" 2>/dev/null || true
+			fi
+			if [ -d "$ROSETTEOS_ROOT/apps/klipper/.git/info" ]; then
+				printf '/.nebulaos-chelper-verdict.json\n' >> "$ROSETTEOS_ROOT/apps/klipper/.git/info/exclude" 2>/dev/null || true
+			fi
+		fi
+		if [ ! -f "$ROSETTEOS_ROOT/apps/klipper/scripts/install-octopi.sh" ] && [ -f /opt/klipper/scripts/install-octopi.sh ]; then
+			mkdir -p "$ROSETTEOS_ROOT/apps/klipper/scripts"
+			cp /opt/klipper/scripts/install-octopi.sh "$ROSETTEOS_ROOT/apps/klipper/scripts/install-octopi.sh" 2>/dev/null || true
+		fi
+		if [ ! -f "$ROSETTEOS_ROOT/apps/klipper/klippy/chelper/c_helper.so" ] || [ ! -s "$ROSETTEOS_ROOT/apps/klipper/klippy/chelper/c_helper.so" ]; then
+			mkdir -p "$ROSETTEOS_ROOT/apps/klipper/klippy/chelper"
+			if [ -f /opt/rosetteos-seeds/c_helper.so ]; then
+				cp /opt/rosetteos-seeds/c_helper.so "$ROSETTEOS_ROOT/apps/klipper/klippy/chelper/c_helper.so" 2>/dev/null || true
+			elif [ -f /opt/klipper/klippy/chelper/c_helper.so ]; then
+				cp /opt/klipper/klippy/chelper/c_helper.so "$ROSETTEOS_ROOT/apps/klipper/klippy/chelper/c_helper.so" 2>/dev/null || true
+			fi
+		fi
+		if [ -f "$ROSETTEOS_ROOT/apps/klipper/klippy/chelper/c_helper.so" ]; then
+			chelper_dir="$ROSETTEOS_ROOT/apps/klipper/klippy/chelper"
+			newest=$(ls -t "$chelper_dir"/*.c "$chelper_dir"/*.h "$chelper_dir"/__init__.py 2>/dev/null | head -1)
+			[ -n "$newest" ] && touch -r "$newest" "$ROSETTEOS_ROOT/apps/klipper/klippy/chelper/c_helper.so" 2>/dev/null || true
+			touch -d "@2000000000" "$ROSETTEOS_ROOT/apps/klipper/klippy/chelper/c_helper.so" 2>/dev/null || true
+		fi
+	fi
+
+	if validate_app klipper "$ROSETTEOS_ROOT/apps/klipper" \
+		"klippy/klippy.py .git .nebulaos-chelper-verdict.json scripts/install-octopi.sh"; then
+		bind_if_not_already "$ROSETTEOS_ROOT/apps/klipper" /opt/klipper
+	fi
+
+	if validate_app moonraker "$ROSETTEOS_ROOT/apps/moonraker" "moonraker/server.py"; then
+		bind_if_not_already "$ROSETTEOS_ROOT/apps/moonraker" /opt/moonraker
+	fi
+
+	# Closure mission (2026-07-27): bind the real Klipper venv onto the
+	# exact path ("~/klippy-env", i.e. /root/klippy-env since moonraker
+	# runs as root) Moonraker's update_manager hardcodes as its bootstrap
+	# default for the klipper slot - not a mutable "app" with its own
+	# rollback lifecycle like klipper/moonraker/mainsail above, so no
+	# validate_app dance (ownership/marker/lock checks) needed, just a
+	# plain existence check + bind. Real bug this fixes, confirmed live:
+	# without this, update_manager crashes on every Moonraker startup that
+	# hasn't already had a lucky prior boot persist Klipper's real
+	# executable path into Moonraker's own database - i.e. always, on a
+	# genuinely fresh device.
+	if [ -x "$ROSETTEOS_ROOT/envs/klipper/bin/python3" ]; then
+		bind_if_not_already "$ROSETTEOS_ROOT/envs/klipper" /root/klippy-env
+	else
+		log "klipper venv not present at $ROSETTEOS_ROOT/envs/klipper - leaving /root/klippy-env unmounted (update_manager's klipper slot will fail to load until S04 provisions it)"
+	fi
+
+	if validate_app mainsail "$ROSETTEOS_ROOT/apps/mainsail" "index.html"; then
+		bind_if_not_already "$ROSETTEOS_ROOT/apps/mainsail" /usr/share/mainsail
+	fi
+
+	# printer_data: private RosetteOS state first, then the shared stock
+	# gcode tree bind-mounted INSIDE it - order matters (mission
+	# requirement), each step independently guarded.
+	if validate_app printer_data "$ROSETTEOS_ROOT/printer_data" "config/printer.cfg config/moonraker.conf"; then
+		bind_if_not_already "$ROSETTEOS_ROOT/printer_data" /opt/printer_data
+
+		# The shared stock gcode tree is outside the RosetteOS namespace by
+		# design (docs/NEBULAOS_MUTABLE_RUNTIME_ARCHITECTURE.md sec 3.1) -
+		# validated separately, not through validate_app's namespace check.
+		shared_gcodes=/usr/data/printer_data/gcodes
+		if [ -d "$shared_gcodes" ]; then
+			# Phase 3.4 finding: RosetteOS's own USB mount target must exist
+			# INSIDE the shared tree once it's what's actually visible at
+			# /opt/printer_data/gcodes - idempotent, harmless if already there.
+			mkdir -p "$shared_gcodes/USB"
+			bind_if_not_already "$shared_gcodes" /opt/printer_data/gcodes
+			record "shared_gcode" "persistent"
+		else
+			log "shared gcode path $shared_gcodes missing - leaving /opt/printer_data/gcodes as whatever printer_data's own mount already provided"
+			record "shared_gcode" "immutable:not_present"
+		fi
+	fi
+
+	# Assemble the human/machine-readable activation state record.
+	now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+	{
+		echo "{"
+		echo "  \"activated_at\": \"$now\","
+		echo "  \"decisions\": {"
+		first=1
+		if [ -e "$ROSETTEOS_ROOT/system/.activation-decisions" ]; then
+			while IFS='=' read -r k v; do
+				[ -z "$k" ] && continue
+				[ "$first" = 1 ] || echo ","
+				first=0
+				printf '    "%s": "%s"' "$k" "$v"
+			done < "$ROSETTEOS_ROOT/system/.activation-decisions"
+		fi
+		echo ""
+		echo "  }"
+		echo "}"
+	} > "$STATE_FILE"
+	log "activation complete - state recorded at $STATE_FILE"
+}
+
+case "$1" in
+	start)
+		start
+		;;
+	*)
+		;;
+esac
+exit 0

@@ -220,7 +220,7 @@ check_artifact_sha256 scripts/build/overlay/lib/firmware/regulatory.db.p7s \
 	bcd81aed039ea6b9b6f3726fbf26911a0caf4a5d894210e0fa2effb384d6b326
 
 # ns2009, the display panel, brcmfmac and the RNG are all built statically
-# into vmlinux (=y, not =m) - see halley5-openke-fragment.config's own
+# into vmlinux (=y, not =m) - see halley5-rosetteos-fragment.config's own
 # comments for why each one was switched. A built-in driver produces no
 # separate .ko file under /lib/modules at all, so these are checked against
 # the actual built kernel .config instead of unsquashfs'd out of rootfs.squashfs -
@@ -237,7 +237,7 @@ if [ -f "$KERNEL_CONFIG" ]; then
 		fi
 	}
 	check_builtin CONFIG_TOUCHSCREEN_NS2009
-	check_builtin CONFIG_STAGE_OPENKE_GENERAL_480X272
+	check_builtin CONFIG_STAGE_ROSETTEOS_GENERAL_480X272
 	check_builtin CONFIG_BRCMFMAC
 	check_builtin CONFIG_INGENIC_HW_RANDOM
 	# NebulaOS Memory Resilience Gate: real bug this catches if regressed -
@@ -275,7 +275,7 @@ if [ -f "$KERNEL_CONFIG" ]; then
 	# Phase 1.9A/1.9B: ADXL345's bit-banged SPI bus and the physical
 	# BL24C16F EEPROM's real production driver (at24/nvmem, NOT
 	# [bl24c16f]/i2c-chardev - see accelerometer-eeprom-bus-enable-
-	# variant.sh and OpenKE_Settings.cfg's own Phase 1.9B history).
+	# variant.sh and RosetteOS_Settings.cfg's own Phase 1.9B history).
 	check_builtin CONFIG_SPI_GPIO
 	check_builtin CONFIG_EEPROM_AT24
 	if grep -q "^CONFIG_I2C_CHARDEV=y$" "$KERNEL_CONFIG"; then
@@ -458,8 +458,8 @@ echo "=== camera ==="
 check /usr/bin/ustreamer
 check /usr/bin/v4l2-ctl
 check /etc/init.d/S50webcam
-check /etc/openke-camera-idle-controller.sh
-check /etc/init.d/S51openke-camera-idle-controller
+check /etc/rosetteos-camera-idle-controller.sh
+check /etc/init.d/S51rosetteos-camera-idle-controller
 
 echo "=== app stack ==="
 # FIRMWARE.md sec 23 (2026-07-23): real, previously-silent bug - the
@@ -498,7 +498,7 @@ check /opt/klipper/klippy/chelper/c_helper.so
 check /opt/klipper/scripts/klippy-requirements.txt
 check /opt/klipper/scripts/install-octopi.sh
 check /opt/klipper/.nebulaos-chelper-verdict.json
-check /opt/openke-seeds/klipper-chelper-verdict.json
+check /opt/rosetteos-seeds/klipper-chelper-verdict.json
 check /opt/klipper-extensions/nebulaos-extensions.json
 echo "=== NebulaOS Klipper extras ==="
 for extra in \
@@ -523,24 +523,24 @@ for extra in \
 	check "/opt/klipper/klippy/extras/$extra"
 done
 echo "=== printer MCU firmware bundle ==="
-check /opt/openke/mcu/klipper-creality.bin
-check /opt/openke/mcu/klipper.bin
-check /opt/openke/mcu/klipper.elf
-check /opt/openke/mcu/klipper.config
-check /opt/openke/mcu/manifest.env
-check /opt/openke/mcu/tools/creality_flash.py
-check /opt/openke/mcu/tools/creality_validator.py
-check /opt/openke/mcu/tools/creality_packer.py
-check /opt/openke/mcu/tools/stage4_first_flash.py
-check /etc/init.d/S57openke-mcu-upgrade
-MCU_MANIFEST_CONTENT=$(sq_cat /opt/openke/mcu/manifest.env)
+check /opt/rosetteos/mcu/klipper-creality.bin
+check /opt/rosetteos/mcu/klipper.bin
+check /opt/rosetteos/mcu/klipper.elf
+check /opt/rosetteos/mcu/klipper.config
+check /opt/rosetteos/mcu/manifest.env
+check /opt/rosetteos/mcu/tools/creality_flash.py
+check /opt/rosetteos/mcu/tools/creality_validator.py
+check /opt/rosetteos/mcu/tools/creality_packer.py
+check /opt/rosetteos/mcu/tools/stage4_first_flash.py
+check /etc/init.d/S57rosetteos-mcu-upgrade
+MCU_MANIFEST_CONTENT=$(sq_cat /opt/rosetteos/mcu/manifest.env)
 MCU_IMAGE_SHA=$(printf "%s\n" "$MCU_MANIFEST_CONTENT" | sed -n 's/^image_sha256=//p')
 if [ -n "$MCU_IMAGE_SHA" ] && printf "%s\n" "$MCU_IMAGE_SHA" | grep -qE "^[0-9a-f]{64}$"; then
 	echo "OK   packaged printer MCU manifest contains a SHA256 image identity"
 else
 	echo "MISS packaged printer MCU manifest is missing a valid image SHA256"
 fi
-MCU_BUILT_IMAGE="$REPO_ROOT/vendor/system/buildroot/board/halley5-openke-overlay/opt/openke/mcu/klipper-creality.bin"
+MCU_BUILT_IMAGE="$REPO_ROOT/vendor/system/buildroot/board/halley5-rosetteos-overlay/opt/rosetteos/mcu/klipper-creality.bin"
 MCU_RECORDED_SHA=$(grep "^mcu_klipper_creality_bin_sha256=" "$MANIFEST_FILE" 2>/dev/null | cut -d= -f2)
 MCU_ACTUAL_SHA=$(sha256sum "$MCU_BUILT_IMAGE" 2>/dev/null | awk "{print \$1}")
 if [ -n "$MCU_RECORDED_SHA" ] && [ "$MCU_ACTUAL_SHA" = "$MCU_RECORDED_SHA" ]; then
@@ -548,7 +548,7 @@ if [ -n "$MCU_RECORDED_SHA" ] && [ "$MCU_ACTUAL_SHA" = "$MCU_RECORDED_SHA" ]; th
 else
 	echo "MISS staged printer MCU image does not match the final build manifest"
 fi
-MCU_UPGRADE_CONTENT=$(sq_cat /etc/init.d/S57openke-mcu-upgrade)
+MCU_UPGRADE_CONTENT=$(sq_cat /etc/init.d/S57rosetteos-mcu-upgrade)
 if echo "$MCU_UPGRADE_CONTENT" | grep -q "stage4_first_flash.py" && echo "$MCU_UPGRADE_CONTENT" | grep -q "creality_flash.py" && echo "$MCU_UPGRADE_CONTENT" | grep -q "creality_validator.py"; then
 	echo "OK   MCU boot service contains first-flash, update-flash, and validation paths"
 else
@@ -558,18 +558,18 @@ echo "=== Ender-3 V3 SE & V2 Neo MCU firmware artifacts ==="
 if [ -f "$REPO_ROOT/artifacts/buildroot-halley5-v30-image/Ender3V3SE_klipper.bin" ]; then
 	echo "OK   Ender-3 V3 SE MCU firmware present in artifacts/buildroot-halley5-v30-image/Ender3V3SE_klipper.bin"
 fi
-if ! echo "$SQUASHFS_FILES" | grep -q "^squashfs-root/opt/openke/mcu/Ender3V3SE_klipper.bin$"; then
+if ! echo "$SQUASHFS_FILES" | grep -q "^squashfs-root/opt/rosetteos/mcu/Ender3V3SE_klipper.bin$"; then
 	echo "OK   Ender-3 V3 SE MCU firmware correctly excluded from rootfs"
 fi
 if [ -f "$REPO_ROOT/artifacts/buildroot-halley5-v30-image/Ender3V2Neo_klipper.bin" ]; then
 	echo "OK   Ender-3 V2 Neo MCU firmware present in artifacts/buildroot-halley5-v30-image/Ender3V2Neo_klipper.bin"
 fi
-if ! echo "$SQUASHFS_FILES" | grep -q "^squashfs-root/opt/openke/mcu/Ender3V2Neo_klipper.bin$"; then
+if ! echo "$SQUASHFS_FILES" | grep -q "^squashfs-root/opt/rosetteos/mcu/Ender3V2Neo_klipper.bin$"; then
 	echo "OK   Ender-3 V2 Neo MCU firmware correctly excluded from rootfs"
 fi
 # Pure upstream Klipper does not ship the version object;
-# build identity remains available in /opt/openke-version.json.
-check /opt/openke-version.json
+# build identity remains available in /opt/rosetteos-version.json.
+check /opt/rosetteos-version.json
 check /opt/moonraker/moonraker/server.py
 check /usr/lib/${TARGET_PY_DIR}/site-packages/streaming_form_data
 if sq_cat "/usr/lib/${TARGET_PY_DIR}/site-packages/streaming_form_data/targets.py" | grep -q "smart_open = None"; then
@@ -594,16 +594,16 @@ echo "=== Phase 1.9A: host MCU (klipper_mcu) / ADXL345 / BL24C16F ==="
 # interaction with the separate GD32F303 stepper-driver MCU S50nebulaos-
 # mcu-guard manages.
 check /usr/bin/klipper_mcu
-check /etc/init.d/S54openke-host-mcu
+check /etc/init.d/S54rosetteos-host-mcu
 # bl24c16f.py stays composed for provenance (Phase 1.9A) but is retired from
-# production use as of Phase 1.9B - see the OpenKE_Settings.cfg [bl24c16f]-absence
+# production use as of Phase 1.9B - see the RosetteOS_Settings.cfg [bl24c16f]-absence
 # check and the [nebulaos_power_loss_recovery] presence check below.
 check /opt/klipper/klippy/extras/bl24c16f.py
 check /opt/klipper/klippy/extras/nebulaos_plr_journal.py
 check /opt/klipper/klippy/extras/nebulaos_power_loss_recovery.py
 
-NEBULA_CFG_CONTENT=$(sq_cat /opt/openke-seeds/printer_data-config/hardware/nebula_pad.cfg)
-S54_CONTENT=$(sq_cat /etc/init.d/S54openke-host-mcu)
+NEBULA_CFG_CONTENT=$(sq_cat /opt/rosetteos-seeds/printer_data-config/hardware/nebula_pad.cfg)
+S54_CONTENT=$(sq_cat /etc/init.d/S54rosetteos-host-mcu)
 if echo "$NEBULA_CFG_CONTENT" | grep -qE "^\[mcu rpi\]$"; then
 	echo "OK   nebula_pad.cfg declares [mcu rpi]"
 else
@@ -635,15 +635,15 @@ else
 	echo "MISS [nebulaos_power_loss_recovery]'s eeprom_path does not match the expected at24 sysfs path"
 fi
 if echo "$S54_CONTENT" | grep -qF -- '--exec "$KLIPPER_HOST_MCU" -- -r -I "$SOCKET"'; then
-	echo "OK   S54openke-host-mcu starts /usr/bin/klipper_mcu with -r -I \$SOCKET (explicit socket path)"
+	echo "OK   S54rosetteos-host-mcu starts /usr/bin/klipper_mcu with -r -I \$SOCKET (explicit socket path)"
 else
-	echo "MISS S54openke-host-mcu does not start klipper_mcu with an explicit -I socket path"
+	echo "MISS S54rosetteos-host-mcu does not start klipper_mcu with an explicit -I socket path"
 fi
 S54_SOCKET=$(echo "$S54_CONTENT" | grep -oE "^SOCKET=.*" | cut -d= -f2)
 if [ -n "$S54_SOCKET" ] && echo "$NEBULA_CFG_CONTENT" | grep -A1 "^\[mcu rpi\]$" | grep -qF "serial: $S54_SOCKET"; then
-	echo "OK   S54openke-host-mcu's \$SOCKET ($S54_SOCKET) exactly matches [mcu rpi]'s serial: in nebula_pad.cfg"
+	echo "OK   S54rosetteos-host-mcu's \$SOCKET ($S54_SOCKET) exactly matches [mcu rpi]'s serial: in nebula_pad.cfg"
 else
-	echo "MISS S54openke-host-mcu's \$SOCKET does not match [mcu rpi]'s serial: in nebula_pad.cfg"
+	echo "MISS S54rosetteos-host-mcu's \$SOCKET does not match [mcu rpi]'s serial: in nebula_pad.cfg"
 fi
 
 echo "=== process launch arguments and config-path consistency (mainline print-controls mission addendum, 2026-07-29) ==="
@@ -685,15 +685,15 @@ if echo "$S01_CONTENT" | grep -qE "mount --bind ..PDATA. /opt/printer_data"; the
 else
 	echo "MISS S01persistent-datastore does not bind-mount printer_data onto /opt/printer_data as expected"
 fi
-if echo "$S01_CONTENT" | grep -qE "^DATA_ROOT=/usr/data/openke$"; then
-	echo "OK   S01persistent-datastore uses the canonical persistent backing root /usr/data/openke"
+if echo "$S01_CONTENT" | grep -qE "^DATA_ROOT=/usr/data/rosetteos$"; then
+	echo "OK   S01persistent-datastore uses the canonical persistent backing root /usr/data/rosetteos"
 else
-	echo "MISS S01persistent-datastore does not use /usr/data/openke as the persistent backing root"
+	echo "MISS S01persistent-datastore does not use /usr/data/rosetteos as the persistent backing root"
 fi
 
 echo "=== Moonraker update_manager / camera defaults (final implementation mission, 2026-07-27) ==="
-check /usr/libexec/openke-seed-camera
-check /etc/init.d/S57openke-camera-seed
+check /usr/libexec/rosetteos-seed-camera
+check /etc/init.d/S57rosetteos-camera-seed
 
 # Content checks against the actual shipped moonraker.conf, not just its
 # presence - the whole point of this mission was that a real, previously
@@ -838,8 +838,8 @@ check_seed_archive() {
 	fi
 	rm -rf /tmp/seed-check /tmp/seed-check.tar
 }
-check_seed_archive /opt/openke-seeds/klipper.tar.gz "$KLIPPER_BRANCH" "$KLIPPER_REPO" "klipper"
-check_seed_archive /opt/openke-seeds/moonraker.tar.gz master "https://github.com/Arksine/moonraker.git" "moonraker"
+check_seed_archive /opt/rosetteos-seeds/klipper.tar.gz "$KLIPPER_BRANCH" "$KLIPPER_REPO" "klipper"
+check_seed_archive /opt/rosetteos-seeds/moonraker.tar.gz master "https://github.com/Arksine/moonraker.git" "moonraker"
 
 # Real bug this catches if regressed: the c_helper.so committed inside
 # vendor/klippers own git history (an upstream binary) is incompatible
@@ -851,7 +851,7 @@ check_seed_archive /opt/openke-seeds/moonraker.tar.gz master "https://github.com
 # immutable one, not silently reverted to the incompatible upstream blob.
 rm -rf /tmp/chelper-check
 mkdir -p /tmp/chelper-check
-sq_dump /opt/openke-seeds/klipper.tar.gz /tmp/chelper-check.tar.gz
+sq_dump /opt/rosetteos-seeds/klipper.tar.gz /tmp/chelper-check.tar.gz
 if tar -xzf /tmp/chelper-check.tar.gz -C /tmp/chelper-check ./klippy/chelper/c_helper.so 2>/dev/null; then
 	SEED_CHELPER_SHA=$(sha256sum /tmp/chelper-check/klippy/chelper/c_helper.so 2>/dev/null | cut -d" " -f1)
 	BASELINE_CHELPER_SHA=$(sq_cat /opt/klipper/klippy/chelper/c_helper.so | sha256sum | cut -d" " -f1)
@@ -864,7 +864,7 @@ else
 	echo "MISS could not extract klippy/chelper/c_helper.so from the klipper seed archive for comparison"
 fi
 rm -rf /tmp/chelper-check /tmp/chelper-check.tar.gz
-SEED_MANIFEST_CONTENT=$(sq_cat /opt/openke-seeds/seed-manifest.json)
+SEED_MANIFEST_CONTENT=$(sq_cat /opt/rosetteos-seeds/seed-manifest.json)
 if echo "$SEED_MANIFEST_CONTENT" | grep -q "git_bundle_flattened"; then
 	echo "MISS seed-manifest.json still references the removed git_bundle_flattened format"
 else
@@ -882,66 +882,66 @@ echo "=== printer_data config factory seed (Ender-3 V3 KE, auto-updates-camera-c
 # ever shipped a seed for these files at a path immune to
 # S01persistent-datastores own early, unconditional bind mount of the
 # persistent copy over /opt/printer_data. Confirms the dedicated immutable
-# seed at /opt/openke-seeds/printer_data-config/ actually landed in the
+# seed at /opt/rosetteos-seeds/printer_data-config/ actually landed in the
 # packaged image, not just the tracked overlay source.
-if echo "$SQUASHFS_FILES" | grep -q "^squashfs-root/opt/openke-seeds/printer_data-config/printer.cfg$"; then
-	echo "OK   /opt/openke-seeds/printer_data-config/printer.cfg is present"
+if echo "$SQUASHFS_FILES" | grep -q "^squashfs-root/opt/rosetteos-seeds/printer_data-config/printer.cfg$"; then
+	echo "OK   /opt/rosetteos-seeds/printer_data-config/printer.cfg is present"
 else
-	echo "MISS /opt/openke-seeds/printer_data-config/printer.cfg is missing from the packaged seed"
+	echo "MISS /opt/rosetteos-seeds/printer_data-config/printer.cfg is missing from the packaged seed"
 fi
-if echo "$SQUASHFS_FILES" | grep -q "^squashfs-root/opt/openke-seeds/printer_data-config/moonraker.conf$"; then
-	echo "OK   /opt/openke-seeds/printer_data-config/moonraker.conf is present"
+if echo "$SQUASHFS_FILES" | grep -q "^squashfs-root/opt/rosetteos-seeds/printer_data-config/moonraker.conf$"; then
+	echo "OK   /opt/rosetteos-seeds/printer_data-config/moonraker.conf is present"
 else
-	echo "MISS /opt/openke-seeds/printer_data-config/moonraker.conf is missing from the packaged seed"
+	echo "MISS /opt/rosetteos-seeds/printer_data-config/moonraker.conf is missing from the packaged seed"
 fi
-if echo "$SQUASHFS_FILES" | grep -q "^squashfs-root/opt/openke-seeds/printer_data-config/macros/mainsail.cfg$"; then
-	echo "OK   /opt/openke-seeds/printer_data-config/macros/mainsail.cfg is present"
+if echo "$SQUASHFS_FILES" | grep -q "^squashfs-root/opt/rosetteos-seeds/printer_data-config/macros/mainsail.cfg$"; then
+	echo "OK   /opt/rosetteos-seeds/printer_data-config/macros/mainsail.cfg is present"
 else
-	echo "MISS /opt/openke-seeds/printer_data-config/macros/mainsail.cfg is missing from the packaged seed"
+	echo "MISS /opt/rosetteos-seeds/printer_data-config/macros/mainsail.cfg is missing from the packaged seed"
 fi
-if echo "$SQUASHFS_FILES" | grep -q "^squashfs-root/opt/openke-seeds/printer_data-config/hardware/nebula_pad.cfg$"; then
-	echo "OK   /opt/openke-seeds/printer_data-config/hardware/nebula_pad.cfg is present"
+if echo "$SQUASHFS_FILES" | grep -q "^squashfs-root/opt/rosetteos-seeds/printer_data-config/hardware/nebula_pad.cfg$"; then
+	echo "OK   /opt/rosetteos-seeds/printer_data-config/hardware/nebula_pad.cfg is present"
 else
-	echo "MISS /opt/openke-seeds/printer_data-config/hardware/nebula_pad.cfg is missing from the packaged seed"
+	echo "MISS /opt/rosetteos-seeds/printer_data-config/hardware/nebula_pad.cfg is missing from the packaged seed"
 fi
 # Camera quality presets mission (2026-08-04): same class of check as
 # mainsail.cfg above - confirms the two new files a fresh factory
 # seed depends on (the macro/shell-command config, and the script the shell
 # command actually invokes) really landed in the packaged image, not just
 # the tracked overlay source.
-if echo "$SQUASHFS_FILES" | grep -q "^squashfs-root/opt/openke-seeds/printer_data-config/macros/camera.cfg$"; then
-	echo "OK   /opt/openke-seeds/printer_data-config/macros/camera.cfg is present"
+if echo "$SQUASHFS_FILES" | grep -q "^squashfs-root/opt/rosetteos-seeds/printer_data-config/macros/camera.cfg$"; then
+	echo "OK   /opt/rosetteos-seeds/printer_data-config/macros/camera.cfg is present"
 else
-	echo "MISS /opt/openke-seeds/printer_data-config/macros/camera.cfg is missing from the packaged seed"
+	echo "MISS /opt/rosetteos-seeds/printer_data-config/macros/camera.cfg is missing from the packaged seed"
 fi
-if echo "$SQUASHFS_FILES" | grep -q "^squashfs-root/opt/openke-seeds/printer_data-config/macros/print_start.cfg$"; then
-	echo "OK   /opt/openke-seeds/printer_data-config/macros/print_start.cfg is present"
+if echo "$SQUASHFS_FILES" | grep -q "^squashfs-root/opt/rosetteos-seeds/printer_data-config/macros/print_start.cfg$"; then
+	echo "OK   /opt/rosetteos-seeds/printer_data-config/macros/print_start.cfg is present"
 else
-	echo "MISS /opt/openke-seeds/printer_data-config/macros/print_start.cfg is missing from the packaged seed"
+	echo "MISS /opt/rosetteos-seeds/printer_data-config/macros/print_start.cfg is missing from the packaged seed"
 fi
-if echo "$SQUASHFS_FILES" | grep -q "^squashfs-root/opt/openke-seeds/printer_data-config/GuppyScreen/scripts/set_camera_quality.py$"; then
-	echo "OK   /opt/openke-seeds/printer_data-config/GuppyScreen/scripts/set_camera_quality.py is present"
+if echo "$SQUASHFS_FILES" | grep -q "^squashfs-root/opt/rosetteos-seeds/printer_data-config/GuppyScreen/scripts/set_camera_quality.py$"; then
+	echo "OK   /opt/rosetteos-seeds/printer_data-config/GuppyScreen/scripts/set_camera_quality.py is present"
 else
-	echo "MISS /opt/openke-seeds/printer_data-config/GuppyScreen/scripts/set_camera_quality.py is missing from the packaged seed"
+	echo "MISS /opt/rosetteos-seeds/printer_data-config/GuppyScreen/scripts/set_camera_quality.py is missing from the packaged seed"
 fi
 rm -rf /tmp/printerdata-check
 mkdir -p /tmp/printerdata-check/hardware /tmp/printerdata-check/macros /tmp/printerdata-check/GuppyScreen
-	sq_dump /opt/openke-seeds/printer_data-config/printer.cfg /tmp/printerdata-check/printer.cfg
-	sq_dump /opt/openke-seeds/printer_data-config/moonraker.conf /tmp/printerdata-check/moonraker.conf
-	sq_dump /opt/openke-seeds/printer_data-config/macros/print_settings.cfg /tmp/printerdata-check/macros/print_settings.cfg
-	sq_dump /opt/openke-seeds/printer_data-config/macros/print_start.cfg /tmp/printerdata-check/macros/print_start.cfg
-	sq_dump /opt/openke-seeds/printer_data-config/hardware/nebula_pad.cfg /tmp/printerdata-check/hardware/nebula_pad.cfg
-	sq_dump /opt/openke-seeds/printer_data-config/hardware/v3_features.cfg /tmp/printerdata-check/hardware/v3_features.cfg
-	sq_dump /opt/openke-seeds/printer_data-config/macros/mainsail.cfg /tmp/printerdata-check/macros/mainsail.cfg
-	sq_dump /opt/openke-seeds/printer_data-config/macros/adaptive_meshing.cfg /tmp/printerdata-check/macros/adaptive_meshing.cfg
-	sq_dump /opt/openke-seeds/printer_data-config/macros/line_purge.cfg /tmp/printerdata-check/macros/line_purge.cfg
-	sq_dump /opt/openke-seeds/printer_data-config/macros/smart_park.cfg /tmp/printerdata-check/macros/smart_park.cfg
-	sq_dump /opt/openke-seeds/printer_data-config/macros/camera.cfg /tmp/printerdata-check/macros/camera.cfg
-	sq_dump /opt/openke-seeds/printer_data-config/macros/profiles.cfg /tmp/printerdata-check/macros/profiles.cfg
-	sq_dump /opt/openke-seeds/printer_data-config/macros/apps.cfg /tmp/printerdata-check/macros/apps.cfg
-	sq_dump /opt/openke-seeds/printer_data-config/macros/timelapse.cfg /tmp/printerdata-check/macros/timelapse.cfg
-	sq_dump /opt/openke-seeds/printer_data-config/user.cfg /tmp/printerdata-check/user.cfg
-	sq_dump /opt/openke-seeds/printer_data-config/GuppyScreen/guppy_cmd.cfg /tmp/printerdata-check/GuppyScreen/guppy_cmd.cfg
+	sq_dump /opt/rosetteos-seeds/printer_data-config/printer.cfg /tmp/printerdata-check/printer.cfg
+	sq_dump /opt/rosetteos-seeds/printer_data-config/moonraker.conf /tmp/printerdata-check/moonraker.conf
+	sq_dump /opt/rosetteos-seeds/printer_data-config/macros/print_settings.cfg /tmp/printerdata-check/macros/print_settings.cfg
+	sq_dump /opt/rosetteos-seeds/printer_data-config/macros/print_start.cfg /tmp/printerdata-check/macros/print_start.cfg
+	sq_dump /opt/rosetteos-seeds/printer_data-config/hardware/nebula_pad.cfg /tmp/printerdata-check/hardware/nebula_pad.cfg
+	sq_dump /opt/rosetteos-seeds/printer_data-config/hardware/v3_features.cfg /tmp/printerdata-check/hardware/v3_features.cfg
+	sq_dump /opt/rosetteos-seeds/printer_data-config/macros/mainsail.cfg /tmp/printerdata-check/macros/mainsail.cfg
+	sq_dump /opt/rosetteos-seeds/printer_data-config/macros/adaptive_meshing.cfg /tmp/printerdata-check/macros/adaptive_meshing.cfg
+	sq_dump /opt/rosetteos-seeds/printer_data-config/macros/line_purge.cfg /tmp/printerdata-check/macros/line_purge.cfg
+	sq_dump /opt/rosetteos-seeds/printer_data-config/macros/smart_park.cfg /tmp/printerdata-check/macros/smart_park.cfg
+	sq_dump /opt/rosetteos-seeds/printer_data-config/macros/camera.cfg /tmp/printerdata-check/macros/camera.cfg
+	sq_dump /opt/rosetteos-seeds/printer_data-config/macros/profiles.cfg /tmp/printerdata-check/macros/profiles.cfg
+	sq_dump /opt/rosetteos-seeds/printer_data-config/macros/apps.cfg /tmp/printerdata-check/macros/apps.cfg
+	sq_dump /opt/rosetteos-seeds/printer_data-config/macros/timelapse.cfg /tmp/printerdata-check/macros/timelapse.cfg
+	sq_dump /opt/rosetteos-seeds/printer_data-config/user.cfg /tmp/printerdata-check/user.cfg
+	sq_dump /opt/rosetteos-seeds/printer_data-config/GuppyScreen/guppy_cmd.cfg /tmp/printerdata-check/GuppyScreen/guppy_cmd.cfg
 	if [ -s /tmp/printerdata-check/printer.cfg ] && grep -q "^#\*# <---------------------- SAVE_CONFIG" /tmp/printerdata-check/printer.cfg 2>/dev/null; then
 		echo "MISS packaged printer.cfg seed contains a real SAVE_CONFIG calibration block"
 	else
@@ -1059,17 +1059,17 @@ fi
 rm -rf /tmp/printerdata-check
 # Confirms the actual fix logic landed in the packaged init scripts, not
 # just the seed content sitting there unused.
-S02_CONTENT=$(sq_cat /etc/init.d/S02openke-namespace)
+S02_CONTENT=$(sq_cat /etc/init.d/S02rosetteos-namespace)
 if echo "$S02_CONTENT" | grep -q "seed_printer_data_config"; then
-	echo "OK   S02openke-namespace contains the printer_data config seeding logic"
+	echo "OK   S02rosetteos-namespace contains the printer_data config seeding logic"
 else
-	echo "MISS S02openke-namespace is missing the printer_data config seeding logic"
+	echo "MISS S02rosetteos-namespace is missing the printer_data config seeding logic"
 fi
-S05_CONTENT=$(sq_cat /etc/init.d/S05openke-activate)
+S05_CONTENT=$(sq_cat /etc/init.d/S05rosetteos-activate)
 if echo "$S05_CONTENT" | grep -q "config/printer.cfg"; then
-	echo "OK   S05openke-activate validates printer_data against the real required files, not just the config directory"
+	echo "OK   S05rosetteos-activate validates printer_data against the real required files, not just the config directory"
 else
-	echo "MISS S05openke-activate still validates printer_data against only the config directory - a wiped copy would pass validation empty"
+	echo "MISS S05rosetteos-activate still validates printer_data against only the config directory - a wiped copy would pass validation empty"
 fi
 
 echo "=== obsolete overlay files (must be absent - Buildroots output/target copy is additive-only, see 02-configure-buildroot.sh) ==="
@@ -1091,7 +1091,7 @@ check_absent /opt/nebulaos
 check_absent /opt/nebulaos-seeds
 check_absent /opt/printer_data/config/Macros
 check_absent /opt/printer_data/config/Nebula.cfg
-check_absent /opt/printer_data/config/OpenKE_Settings.cfg
+check_absent /opt/printer_data/config/RosetteOS_Settings.cfg
 check_absent /opt/printer_data/config/V3_Settings.cfg
 check_absent /opt/printer_data/config/camera-quality.cfg
 check_absent /opt/printer_data/config/frontend-controls.cfg
@@ -1103,46 +1103,46 @@ check /usr/sbin/wpa_cli
 check /etc/init.d/S00revert-safety
 check /etc/init.d/S01persistent-datastore
 check /etc/init.d/S01wifi
-check /etc/openke-stable-mac.sh
-check /etc/openke-wifi-power-save.sh
-check /usr/libexec/openke-wifi-power-save
-check /etc/openke-wifi-boot-wait.sh
+check /etc/rosetteos-stable-mac.sh
+check /etc/rosetteos-wifi-power-save.sh
+check /usr/libexec/rosetteos-wifi-power-save
+check /etc/rosetteos-wifi-boot-wait.sh
 check /etc/init.d/S99confirm-good
 check /etc/ota_marker.sh
 check /etc/hwrevision
 check /etc/swupdate.cfg
 check /opt/printer_data/config/GuppyScreen/scripts/static_ip.py
 
-echo "=== OpenKE memory resilience (docs/NEBULAOS_MEMORY_RESILIENCE.md) ==="
+echo "=== RosetteOS memory resilience (docs/NEBULAOS_MEMORY_RESILIENCE.md) ==="
 check /sbin/mkswap
 check /sbin/swapon
 check /sbin/swapoff
 check /usr/bin/free
 check /etc/init.d/S00zram-swap
-check /etc/init.d/S03openke-diskswap
-check /etc/init.d/S02openke-namespace
-check /etc/init.d/S02openke-boot-timing
-check /etc/init.d/S04openke-factory-seed
-check /etc/init.d/S05openke-activate
-check /etc/init.d/S45openke-cleanup
-check /etc/openke-retention.sh
-check /etc/openke-healthcheck.sh
-check /opt/openke-seeds/klipper.tar.gz
-check /opt/openke-seeds/moonraker.tar.gz
-check /opt/openke-seeds/seed-manifest.json
-check /opt/openke-seeds/printer_profiles/creality-ender3-v3-ke/profile.json
-check /opt/openke-seeds/printer_profiles/creality-ender3-v3-ke/printer.cfg
-check /opt/openke-seeds/printer_profiles/creality-ender3-v3-se/profile.json
-check /opt/openke-seeds/printer_profiles/creality-ender3-v2-neo/profile.json
-check /opt/openke-seeds/apps.json
-check /usr/bin/openke-app
+check /etc/init.d/S03rosetteos-diskswap
+check /etc/init.d/S02rosetteos-namespace
+check /etc/init.d/S02rosetteos-boot-timing
+check /etc/init.d/S04rosetteos-factory-seed
+check /etc/init.d/S05rosetteos-activate
+check /etc/init.d/S45rosetteos-cleanup
+check /etc/rosetteos-retention.sh
+check /etc/rosetteos-healthcheck.sh
+check /opt/rosetteos-seeds/klipper.tar.gz
+check /opt/rosetteos-seeds/moonraker.tar.gz
+check /opt/rosetteos-seeds/seed-manifest.json
+check /opt/rosetteos-seeds/printer_profiles/creality-ender3-v3-ke/profile.json
+check /opt/rosetteos-seeds/printer_profiles/creality-ender3-v3-ke/printer.cfg
+check /opt/rosetteos-seeds/printer_profiles/creality-ender3-v3-se/profile.json
+check /opt/rosetteos-seeds/printer_profiles/creality-ender3-v2-neo/profile.json
+check /opt/rosetteos-seeds/apps.json
+check /usr/bin/rosetteos-app
 check /usr/sbin/ntpd
-check /etc/init.d/S40openke-ntpsync
-check /etc/openke-update-supervisor.sh
-echo "=== OpenKE Package Manager (opkg / Entware) ==="
+check /etc/init.d/S40rosetteos-ntpsync
+check /etc/rosetteos-update-supervisor.sh
+echo "=== RosetteOS Package Manager (opkg / Entware) ==="
 check /usr/bin/opkg
 check /etc/opkg.conf
-check /etc/profile.d/10-openke-opkg.sh
+check /etc/profile.d/10-rosetteos-opkg.sh
 check /opt/bin
 check /opt/sbin
 check /opt/lib

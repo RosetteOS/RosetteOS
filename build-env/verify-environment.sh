@@ -1,5 +1,5 @@
 #!/bin/sh
-# Run this INSIDE a built/pulled openke-build image to confirm its tooling
+# Run this INSIDE a built/pulled rosetteos-build image to confirm its tooling
 # matches what scripts/build/00-06 actually needs. Fails loudly (non-zero
 # exit) on the first missing/wrong tool rather than limping on with a
 # confusing failure deep into a real build.

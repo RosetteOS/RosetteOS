@@ -220,7 +220,7 @@ WIFI_DMESG_ERRORS=$(dmesg 2>/dev/null | grep -iE 'brcmf.*(error|bus.?down|reset|
 # camera-quality.cfg's SET_CAMERA_QUALITY_LOW/MED/HIGH macros). Mirrors
 # that script's exact resolution/fps mapping so this benchmark reports
 # what's actually configured rather than always assuming the old default.
-CAMERA_QUALITY_MARKER=/usr/data/openke/maintenance/camera-quality-mode
+CAMERA_QUALITY_MARKER=/usr/data/rosetteos/maintenance/camera-quality-mode
 case "$(cat "$CAMERA_QUALITY_MARKER" 2>/dev/null)" in
 	LOW)
 		CAMERA_RESOLUTION="640x480"
@@ -236,7 +236,7 @@ case "$(cat "$CAMERA_QUALITY_MARKER" 2>/dev/null)" in
 		CAMERA_CONFIGURED_FPS=30
 		;;
 esac
-CAMERA_IDLE_STATE_FILE=/var/run/openke-camera-idle-state
+CAMERA_IDLE_STATE_FILE=/var/run/rosetteos-camera-idle-state
 if [ -f "$CAMERA_IDLE_STATE_FILE" ]; then
 	CAMERA_STATE=$(cat "$CAMERA_IDLE_STATE_FILE" 2>/dev/null)
 else
@@ -253,13 +253,13 @@ else
 fi
 CAMERA_REOPEN_FAILURES=$(dmesg 2>/dev/null | grep -ic "uvcvideo.*fail\|ustreamer.*fail")
 
-# --- boot timing (from /etc/init.d/S02openke-boot-timing) ----
+# --- boot timing (from /etc/init.d/S02rosetteos-boot-timing) ----
 
-BOOT_TIMING_LOG=/var/run/openke-boot-timing.log
+BOOT_TIMING_LOG=/var/run/rosetteos-boot-timing.log
 if [ -f "$BOOT_TIMING_LOG" ]; then
 	BOOT_TIMING_CONTENTS=$(cat "$BOOT_TIMING_LOG")
 else
-	BOOT_TIMING_CONTENTS="(not present - S02openke-boot-timing has not run yet this boot, or this image predates it)"
+	BOOT_TIMING_CONTENTS="(not present - S02rosetteos-boot-timing has not run yet this boot, or this image predates it)"
 fi
 
 # --- write TSV row (one line, easy to diff/append across runs) ---------
@@ -282,7 +282,7 @@ printf '%s\n' "$ROW" > "$TSV"
 
 SUMMARY="$BASENAME.txt"
 {
-	echo "OpenKE production benchmark - $LABEL ($TS)"
+	echo "RosetteOS production benchmark - $LABEL ($TS)"
 	echo "sample interval: ${ELAPSED}s"
 	echo
 	echo "uptime: ${UPTIME_S}s   load: $LOAD1 $LOAD5 $LOAD15   threads: $THREAD_COUNT"
@@ -316,7 +316,7 @@ SUMMARY="$BASENAME.txt"
 	echo "snapshot latency: ${CAMERA_SNAPSHOT_LATENCY_MS} ms"
 	echo "reopen-looking dmesg lines (uvcvideo/ustreamer failures, count): $CAMERA_REOPEN_FAILURES"
 	echo
-	echo "=== Boot timing (this boot only - see /var/run/openke-boot-timing.log) ==="
+	echo "=== Boot timing (this boot only - see /var/run/rosetteos-boot-timing.log) ==="
 	echo "$BOOT_TIMING_CONTENTS"
 	echo
 	echo "USB topology:"

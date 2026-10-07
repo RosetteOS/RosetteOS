@@ -1,0 +1,98 @@
+#!/bin/sh
+#
+# NebulaOS production optimization mission, Phase 5 (2026-07-30): persist
+# Dropbear's SSH host keys across ordinary reboots. Buildroot's stock
+# S50dropbear always passes -R (create hostkeys as required) and, with no
+# -r override, dropbear falls back to its compiled-in defaults under
+# /etc/dropbear - which lives on this project's read-only squashfs, so a
+# fresh host key was silently generated on every single boot until now
+# (the exact "REMOTE HOST IDENTIFICATION HAS CHANGED" warning seen after
+# every reboot in this project's own live-testing sessions - see
+# reference_device_access notes). Fixed here by pointing dropbear's -r
+# host-key paths at $ROSETTEOS_ROOT/system/dropbear (persistent ext4,
+# bind-mounted well before this script runs) via /etc/default/dropbear,
+# which S50dropbear already sources if present - no change to S50dropbear
+# itself needed.
+#
+# Must run after S02rosetteos-namespace (needs $ROSETTEOS_ROOT/system to
+# exist) and before S50dropbear. /etc/default/dropbear is baked into the
+# overlay as a symlink to /var/run/dropbear.conf (tmpfs, writable, fresh
+# every boot) - this script is what actually populates that file; if it
+# never runs (or fails before writing), /etc/default/dropbear's target
+# simply won't exist yet, `test -r` in S50dropbear fails silently, and
+# dropbear falls back to exactly its original ephemeral-per-boot behavior -
+# a safe, already-proven fallback, not a new failure mode.
+
+ROSETTEOS_ROOT="${ROSETTEOS_ROOT:-/usr/data/rosetteos}"
+PERSISTENT_KEY_DIR="$ROSETTEOS_ROOT/system/dropbear"
+FALLBACK_KEY_DIR="/var/run/rosetteos-dropbear-fallback"
+DROPBEAR_ENV_FILE="/var/run/dropbear.conf"
+
+log() {
+	echo "S46rosetteos-dropbear-keys: $1"
+}
+
+# Never exposed through nginx or Moonraker either way: nginx only reverse-
+# proxies specific Moonraker/webcam paths, and Moonraker's file_manager only
+# ever registers config/logs/gcodes/config_examples/docs - $ROSETTEOS_ROOT/
+# system was never reachable through either.
+persistent_storage_writable() {
+	[ -d "$ROSETTEOS_ROOT/system" ] || return 1
+	probe="$ROSETTEOS_ROOT/system/.dropbear-write-probe"
+	( : > "$probe" ) 2>/dev/null || return 1
+	rm -f "$probe" 2>/dev/null
+	return 0
+}
+
+# dropbear's own "-R" (create hostkeys as required) does NOT persist a key
+# to a custom -r path on this BR2_PACKAGE_DROPBEAR_SMALL build - confirmed
+# live: pointing a second dropbear instance at -r <nonexistent file> -R
+# completed a real SSH handshake but never wrote anything to that path,
+# with or without an actual client connection. dropbearkey itself does
+# write real, persistent key files - generate explicitly here instead of
+# relying on -R for anything beyond its own compiled-in default paths
+# (still harmless/unused, since we always pass an explicit -r for both
+# types we manage).
+ensure_key() {
+	type="$1"
+	path="$2"
+	[ -s "$path" ] && return 0
+	dropbearkey -t "$type" -f "$path" >/dev/null 2>&1
+}
+
+start() {
+	if persistent_storage_writable; then
+		key_dir="$PERSISTENT_KEY_DIR"
+		log "using persistent host keys at $key_dir"
+	else
+		key_dir="$FALLBACK_KEY_DIR"
+		log "persistent storage unavailable - falling back to boot-local host keys at $key_dir (new keys will be generated this boot)"
+	fi
+
+	if ! mkdir -p "$key_dir" 2>/dev/null; then
+		log "ERROR: could not create $key_dir - leaving /etc/default/dropbear unpopulated, dropbear will use its own compiled-in ephemeral defaults"
+		return 0
+	fi
+	chmod 700 "$key_dir" 2>/dev/null
+
+	ensure_key rsa "$key_dir/dropbear_rsa_host_key" || log "WARNING: rsa host key generation failed at $key_dir"
+	ensure_key ed25519 "$key_dir/dropbear_ed25519_host_key" || log "WARNING: ed25519 host key generation failed at $key_dir"
+
+	if [ ! -s "$key_dir/dropbear_rsa_host_key" ] && [ ! -s "$key_dir/dropbear_ed25519_host_key" ]; then
+		log "ERROR: no host key could be generated at $key_dir - leaving /etc/default/dropbear unpopulated, dropbear will use its own compiled-in ephemeral defaults"
+		return 0
+	fi
+
+	cat > "$DROPBEAR_ENV_FILE" <<EOF
+DROPBEAR_ARGS="-r $key_dir/dropbear_rsa_host_key -r $key_dir/dropbear_ed25519_host_key"
+EOF
+}
+
+case "$1" in
+	start)
+		start
+		;;
+	*)
+		;;
+esac
+exit 0

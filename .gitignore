@@ -9,7 +9,7 @@ __pycache__/
 # exactly (see scripts/build/README.md). rootfs.ext2 alone is ~400MB, over
 # GitHub's 100MB per-file push limit, and re-committing it every build cycle
 # bloated .git substantially. The small config files alongside them
-# (buildroot.config, kernel.config, halley5-openke-fragment.config,
+# (buildroot.config, kernel.config, halley5-rosetteos-fragment.config,
 # halley5_v30.dts) stay tracked - human-readable, worth keeping in history.
 artifacts/buildroot-halley5-v30-image/rootfs.ext2
 artifacts/buildroot-halley5-v30-image/rootfs.squashfs
@@ -49,7 +49,7 @@ scripts/build/overlay/lib/firmware/regulatory.db.p7s
 scripts/build/overlay/lib/firmware/regulatory.db.LICENSE
 
 # build-stage exclusive lock (scripts/build/0[2-5]-*.sh) - local, per-checkout
-.openke-build.lock
+.rosetteos-build.lock
 .nebulaos-build.lock
 
 # 04-cross-compile-app-stack.sh's own scratch dir - downloaded pywheels and

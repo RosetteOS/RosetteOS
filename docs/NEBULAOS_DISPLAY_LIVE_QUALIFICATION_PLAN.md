@@ -59,7 +59,7 @@ detail: `NEBULAOS_DISPLAY_LIVE_READ_ONLY_REPORT.md`).
     is plausible (see above), so this remains gated per its own original condition.
 
 **New, additional finding not in the original HT list**: the kernel boot log line
-`openke_panel: invalid gpio vdd_en: -2` independently corroborates (from an entirely different
+`rosetteos_panel: invalid gpio vdd_en: -2` independently corroborates (from an entirely different
 angle - the boot log, not static DTS inspection) that no `vdd_en`/backlight-adjacent GPIO
 resolves in this DT, reinforcing HT-01's relevance.
 

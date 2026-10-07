@@ -1,0 +1,13 @@
+#!/bin/sh
+#
+# NebulaOS mutable-runtime mission, Phase 9: boots the namespace-restricted
+# retention manager (/etc/rosetteos-retention.sh) in the background, same
+# following the same non-blocking background convention as the reference cleanup service -
+# backgrounded so it never blocks/delays the rest of boot.
+
+if [ "$1" = "start" ]; then
+	if [ -x /etc/rosetteos-retention.sh ]; then
+		/etc/rosetteos-retention.sh &
+	fi
+fi
+exit 0

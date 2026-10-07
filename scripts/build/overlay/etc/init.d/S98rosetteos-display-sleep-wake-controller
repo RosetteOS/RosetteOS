@@ -1,0 +1,76 @@
+#!/bin/sh
+#
+# NebulaOS display sleep/wake touch watcher - persistent background daemon.
+# See /etc/nebulaos-display-sleep-wake-controller.sh's own header for the
+# full design rationale, including the documented assumption about the
+# backlight driver's asleep-state status string.
+#
+# Numbered S98 - right after S97nebulaos-display-qualified-apply (whose own
+# ndq_apply_deferred_fields() may ALSO invoke this script's start() early,
+# once sleep_enabled=1/touch_wake_mode=polling are confirmed applied - see
+# that file) and still before S99confirm-good, the final OTA-marker gate.
+# Running twice (once via S97's own explicit start request, once again
+# here in the normal S* boot sequence) is always safe: start-stop-daemon's
+# own pidfile check makes a second start() call here a genuine no-op
+# whenever the daemon is already running, never a duplicate process.
+#
+# Deliberately a completely separate process/supervisor from anything
+# else in this codebase - a bug in this watcher can never affect touch or
+# backlight's own independently-safe kernel boot defaults (it only ever
+# reads debugfs status files and, at most, writes the single "wake"
+# command - see the library for exactly what it touches).
+#
+# Its own start() is a true no-op whenever touch_wake_mode is not
+# "polling" in the persisted config (the default, pre-qualification
+# state) - matching S51nebulaos-camera-idle-controller's own "no-op unless
+# requested" pattern precisely, never delaying or blocking anything after
+# it either way.
+
+PIDFILE=/var/run/rosetteos-display-sleep-wake-controller.pid
+
+: "${NDQ_SLEEP_WAKE_LIB:=/etc/rosetteos-display-sleep-wake-controller.sh}"
+[ -f "$NDQ_SLEEP_WAKE_LIB" ] && . "$NDQ_SLEEP_WAKE_LIB"
+
+start() {
+	if ! command -v ndq_swc_requested_mode >/dev/null 2>&1; then
+		echo "S98rosetteos-display-sleep-wake-controller: $NDQ_SLEEP_WAKE_LIB not available, skipping"
+		return 0
+	fi
+	mode=$(ndq_swc_requested_mode)
+	if [ "$mode" != "polling" ]; then
+		echo "S98rosetteos-display-sleep-wake-controller: touch_wake_mode != polling, not starting (display stays without a touch-wake watcher)"
+		return 0
+	fi
+	echo "Starting S98rosetteos-display-sleep-wake-controller (touch-wake watcher)"
+	start-stop-daemon -S -b -m -p "$PIDFILE" -x /bin/sh -- "$0" __run
+}
+
+stop() {
+	echo "Stopping S98rosetteos-display-sleep-wake-controller"
+	start-stop-daemon -K -p "$PIDFILE" 2>/dev/null
+	rm -f "$PIDFILE"
+}
+
+case "$1" in
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	restart)
+		stop
+		start
+		;;
+	__run)
+		# Internal re-exec target for start-stop-daemon above - not a
+		# public command.
+		ndq_swc_run_loop
+		;;
+	*)
+		echo "Usage: $0 {start|stop|restart}"
+		exit 1
+		;;
+esac
+
+exit 0

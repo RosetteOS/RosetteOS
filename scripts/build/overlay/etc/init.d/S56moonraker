@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# OpenKE addition (FIRMWARE.md sec 13): starts Moonraker. Must come after
+# RosetteOS addition (FIRMWARE.md sec 13): starts Moonraker. Must come after
 # S55klipper - connects to klippy's API-server Unix socket as a client via
 # moonraker.conf's [server] klippy_uds_address, which already correctly
 # points at klippy.sock.
@@ -28,14 +28,14 @@ UNIXSOCKET=/opt/printer_data/comms/moonraker.sock
 PIDFILE=/var/run/moonraker.pid
 
 # NebulaOS mutable-runtime mission, Phase 7: prefer the writable venv
-# S04nebulaos-factory-seed creates at /usr/data/openke/envs/moonraker
+# S04nebulaos-factory-seed creates at /usr/data/rosetteos/envs/moonraker
 # (matches this same path in moonraker.conf's own
 # [update_manager moonraker] virtualenv: setting) - falls back to the
 # system interpreter if the venv doesn't exist yet (e.g. a freshly wiped
 # namespace on its very first boot, before S04 has run) so this script
 # never fails to start Moonraker over a missing venv.
 PYTHON3=/usr/bin/python3
-[ -x /usr/data/openke/envs/moonraker/bin/python3 ] && PYTHON3=/usr/data/openke/envs/moonraker/bin/python3
+[ -x /usr/data/rosetteos/envs/moonraker/bin/python3 ] && PYTHON3=/usr/data/rosetteos/envs/moonraker/bin/python3
 
 # Embedded memory optimizations: strip docstrings/asserts and restrict glibc heap arenas
 export PYTHONOPTIMIZE=2
@@ -95,8 +95,8 @@ log() {
 }
 
 start_daemon() {
-	mkdir -p /usr/data/openke/components
-	[ -x /usr/bin/openke-app ] && /usr/bin/openke-app sync >/dev/null 2>&1 || true
+	mkdir -p /usr/data/rosetteos/components
+	[ -x /usr/bin/rosetteos-app ] && /usr/bin/rosetteos-app sync >/dev/null 2>&1 || true
 	echo "Starting moonraker (using $PYTHON3)"
 	start-stop-daemon -S -b -m -p "$PIDFILE" \
 		-x "$PYTHON3" -- \

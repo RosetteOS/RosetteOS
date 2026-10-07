@@ -1,0 +1,242 @@
+#!/bin/sh
+#
+# NebulaOS mutable-runtime mission, Phase 3: idempotent creation of the
+# /usr/data/rosetteos namespace (mutable apps, envs, printer state, updates,
+# backups, maintenance) - the single authoritative RosetteOS data root.
+#
+# IMPORTANT - this script does NOT cut any running service over to the new
+# namespace by itself. S01persistent-datastore's own bind mount of
+# $ROSETTEOS_ROOT/printer_data -> /opt/printer_data (a genuine fallback, not
+# just an early seed) means printer_data is already live and writable before
+# this script even runs; activating the OTHER apps (klipper/moonraker/
+# mainsail) is Phase 5's activation manager - this script only ever creates
+# the structure, so it is safe to run on every boot without affecting
+# anything currently in production.
+#
+# NebulaOS mutable-runtime closure mission (2026-07-27): this script
+# previously also migrated data out of a separate legacy path,
+# /usr/data/rosetteos/printer_data, left over from before this namespace
+# existed. That path has been fully retired (no deployed RosetteOS user base
+# to migrate from), and the one-time migration this script's own
+# migrate_rosetteos_data() performed has already completed and been verified
+# on every device that needed it - the function has been removed rather
+# than kept as permanent, unused migration-compatibility code for devices
+# that will never need it.
+#
+# Must run after S01persistent-datastore (needs /usr/data already mounted,
+# and DATA_ROOT/printer_data already seeded) and before anything that might
+# depend on the namespace existing later (nothing does yet - reserved
+# numbering for that future dependency).
+
+ROSETTEOS_ROOT="${ROSETTEOS_ROOT:-/usr/data/rosetteos}"
+SCHEMA_VERSION=1
+PRINTER_DATA_CONFIG_SEED="${PRINTER_DATA_CONFIG_SEED:-/opt/rosetteos-seeds/printer_data-config}"
+PRINTER_DATA_CONFIG_MARKER="$ROSETTEOS_ROOT/system/printer-data-config-seeded.json"
+PRINTER_PROFILES_SEED="${PRINTER_PROFILES_SEED:-/opt/rosetteos-seeds/printer_profiles}"
+PRINTER_PROFILES_MARKER="$ROSETTEOS_ROOT/system/printer-profiles-seeded.json"
+
+log() {
+	echo "S02rosetteos-namespace: $1"
+}
+
+create_layout() {
+	mkdir -p \
+		"$ROSETTEOS_ROOT/apps/klipper" \
+		"$ROSETTEOS_ROOT/apps/moonraker" \
+		"$ROSETTEOS_ROOT/apps/mainsail" \
+		"$ROSETTEOS_ROOT/apps/guppyscreen" \
+		"$ROSETTEOS_ROOT/envs/moonraker" \
+		"$ROSETTEOS_ROOT/envs/klipper" \
+		"$ROSETTEOS_ROOT/printer_data/config/GuppyScreen/scripts" \
+		"$ROSETTEOS_ROOT/printer_data/logs" \
+		"$ROSETTEOS_ROOT/printer_data/database" \
+		"$ROSETTEOS_ROOT/printer_data/certs" \
+		"$ROSETTEOS_ROOT/printer_data/comms" \
+		"$ROSETTEOS_ROOT/printer_data/timelapse" \
+		"$ROSETTEOS_ROOT/printer_data/misc" \
+		"$ROSETTEOS_ROOT/system" \
+		"$ROSETTEOS_ROOT/updates/staging" \
+		"$ROSETTEOS_ROOT/updates/locks" \
+		"$ROSETTEOS_ROOT/updates/klipper" \
+		"$ROSETTEOS_ROOT/updates/moonraker" \
+		"$ROSETTEOS_ROOT/updates/mainsail" \
+		"$ROSETTEOS_ROOT/backups/klipper" \
+		"$ROSETTEOS_ROOT/backups/moonraker" \
+		"$ROSETTEOS_ROOT/backups/mainsail" \
+		"$ROSETTEOS_ROOT/backups/printer_config" \
+		"$ROSETTEOS_ROOT/printer_profiles" \
+		"$ROSETTEOS_ROOT/maintenance/logs"
+
+	# apps/guppyscreen is reserved-only per this mission's own scope - a
+	# marker file documents why it's intentionally empty, so a future
+	# reader (or this project's own retention manager) doesn't mistake it
+	# for an abandoned/incomplete directory.
+	if [ ! -e "$ROSETTEOS_ROOT/apps/guppyscreen/.reserved-not-implemented" ]; then
+		cat > "$ROSETTEOS_ROOT/apps/guppyscreen/.reserved-not-implemented" <<'EOF'
+GuppyScreen stays served from the immutable /opt/guppyscreen copy for this
+mission. This directory is reserved layout only - GuppyScreen's own update
+mechanism is explicitly a separate, future mission per the governing brief.
+EOF
+	fi
+}
+
+# Real bug found live (auto-updates-camera-complete mission addendum,
+# 2026-07-28): a genuinely wiped /usr/data/rosetteos/printer_data/config
+# left Klipper and Moonraker crash-looping forever with no printer.cfg or
+# moonraker.conf at all - the only code that had ever populated these
+# files was a migration from a legacy /usr/data/rosetteos path, removed in an
+# earlier closure mission believing no fresh device would ever need it
+# again. Every earlier "fresh boot" pass was a false positive: the
+# development device always still had these files carried over from that
+# original migration, and nobody had ever actually wiped them before.
+#
+# Marker-guarded exactly like S57nebulaos-camera-seed's already-qualified
+# pattern: seed once, from the immutable /opt/nebulaos-seeds/
+# printer_data-config/ copy (a build-time duplicate of the same tracked
+# defaults that ship at /opt/printer_data/config/ - duplicated because
+# S01persistent-datastore's own bind mount shadows that path with the
+# persistent copy before this script even runs, the identical problem
+# klipper.tar.gz/moonraker.tar.gz already solve for the app checkouts).
+# Once the marker exists, this never touches printer_data/config again,
+# regardless of what the user later edits, renames, or deletes - matching
+# every other seed in this project (respects deliberate user deletion,
+# does not turn into a continuous reconciliation loop).
+seed_printer_data_config() {
+	dest="$ROSETTEOS_ROOT/printer_data/config"
+	[ -e "$PRINTER_DATA_CONFIG_MARKER" ] && return 0
+
+	if [ -e "$dest/printer.cfg" ] && [ -e "$dest/moonraker.conf" ]; then
+		# Already has real content (e.g. carried over from before this
+		# marker existed, or a prior migration) - just record the marker,
+		# do not touch a single byte of it.
+		write_printer_data_config_marker "already_present"
+		log "printer_data/config already has printer.cfg and moonraker.conf - marker recorded, nothing copied"
+		return 0
+	fi
+
+	if [ ! -f "$PRINTER_DATA_CONFIG_SEED/printer.cfg" ] || [ ! -f "$PRINTER_DATA_CONFIG_SEED/moonraker.conf" ]; then
+		log "ERROR: immutable seed $PRINTER_DATA_CONFIG_SEED missing printer.cfg/moonraker.conf - cannot seed, Klipper/Moonraker will fail to start until this is corrected"
+		return 1
+	fi
+
+	cp -a "$PRINTER_DATA_CONFIG_SEED/." "$dest/"
+
+	if [ ! -e "$dest/printer.cfg" ] || [ ! -e "$dest/moonraker.conf" ]; then
+		log "ERROR: printer_data/config seed copy incomplete - not writing marker, will retry next boot"
+		return 1
+	fi
+
+	write_printer_data_config_marker "seeded_from_immutable_defaults"
+	log "printer_data/config seeded from immutable factory defaults"
+
+	# Check for USB/boot initial profile override
+	selected_profile="creality-ender3-v3-ke"
+	for override_file in /media/sda1/rosetteos-profile.txt /media/sda/rosetteos-profile.txt /boot/rosetteos-profile.txt /usr/data/rosetteos-profile.txt; do
+		if [ -f "$override_file" ]; then
+			cand=$(cat "$override_file" 2>/dev/null | tr -d '\r\n[:space:]')
+			if [ -d "$PRINTER_PROFILES_SEED/$cand" ] || [ -d "$ROSETTEOS_ROOT/printer_profiles/$cand" ]; then
+				selected_profile="$cand"
+				log "detected initial profile override ($selected_profile) from $override_file"
+				break
+			fi
+		fi
+	done
+
+	if [ "$selected_profile" != "creality-ender3-v3-ke" ] && [ -x /usr/bin/rosetteos-profile ]; then
+		/usr/bin/rosetteos-profile set "$selected_profile" --no-backup --quiet 2>/dev/null || true
+	else
+		if [ ! -f "$ROSETTEOS_ROOT/system/active-profile.json" ]; then
+			now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+			cat > "$ROSETTEOS_ROOT/system/active-profile.json" <<EOF
+{
+  "id": "creality-ender3-v3-ke",
+  "name": "Ender-3 V3 KE",
+  "applied_at": "$now",
+  "bed_size": [220, 220, 240],
+  "probe": "cr_touch",
+  "mcu": "GD32F303"
+}
+EOF
+		fi
+	fi
+
+	# Expose printer_profiles directly in Moonraker/Mainsail config file root
+	[ -e "$dest/printer_profiles" ] || ln -sfn "$ROSETTEOS_ROOT/printer_profiles" "$dest/printer_profiles"
+}
+
+write_printer_data_config_marker() {
+	now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+	cat > "$PRINTER_DATA_CONFIG_MARKER" <<EOF
+{
+  "seeded_at": "$now",
+  "result": "$1"
+}
+EOF
+}
+
+write_manifest() {
+	manifest="$ROSETTEOS_ROOT/system/layout-manifest.json"
+	[ -e "$manifest" ] && return 0
+	now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+	cat > "$manifest" <<EOF
+{
+  "schema_version": $SCHEMA_VERSION,
+  "compatibility_version": 1,
+  "created_at": "$now",
+  "created_at_caveat": "may read as an early-epoch date if this boot occurred before NTP sync - see docs/NEBULAOS_RETENTION_POLICY.md sec 2.6",
+  "layout": {
+    "apps": ["klipper", "moonraker", "mainsail", "guppyscreen"],
+    "guppyscreen_status": "reserved_not_implemented",
+    "envs": ["moonraker", "klipper"],
+    "printer_data": "private",
+    "shared_gcode_path": "/usr/data/printer_data/gcodes"
+  }
+}
+EOF
+	log "wrote layout manifest ($manifest)"
+}
+
+start() {
+	mkdir -p "$ROSETTEOS_ROOT"
+	create_layout
+	seed_printer_data_config
+	seed_printer_profiles
+	write_manifest
+}
+
+seed_printer_profiles() {
+	[ -d "$PRINTER_PROFILES_SEED" ] || return 0
+	[ -e "$PRINTER_PROFILES_MARKER" ] && return 0
+	mkdir -p "$ROSETTEOS_ROOT/printer_profiles"
+	for pdir in "$PRINTER_PROFILES_SEED"/*; do
+		[ -d "$pdir" ] || continue
+		pname=$(basename "$pdir")
+		if [ ! -d "$ROSETTEOS_ROOT/printer_profiles/$pname" ]; then
+			cp -a "$pdir" "$ROSETTEOS_ROOT/printer_profiles/$pname"
+		fi
+	done
+	now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+	cat > "$PRINTER_PROFILES_MARKER" <<EOF
+{
+  "seeded_at": "$now",
+  "result": "seeded_from_immutable_profiles"
+}
+EOF
+	log "printer_profiles seeded into $ROSETTEOS_ROOT/printer_profiles"
+}
+
+# S02ROSETTEOS_NAMESPACE_NO_AUTORUN=1 (or S02NEBULAOS_NAMESPACE_NO_AUTORUN=1)
+# lets tests/rosetteos-printerdata-seed-tests.sh source this script (same convention
+# as S04rosetteos-factory-seed's S04ROSETTEOS_FACTORY_SEED_NO_AUTORUN) to call
+# seed_printer_data_config() directly against fixture directories, without
+# also running the init-script dispatch below.
+if [ -z "${S02ROSETTEOS_NAMESPACE_NO_AUTORUN:-}" ]; then
+	case "$1" in
+		start)
+			start
+			;;
+		*)
+			;;
+	esac
+	exit 0
+fi

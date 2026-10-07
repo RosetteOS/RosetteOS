@@ -1,0 +1,25 @@
+#!/bin/sh
+#
+# RosetteOS Config Migration CLI
+#
+# Migrates printer_data/config to match the current rootfs image version
+# while preserving all user calibrations, SAVE_CONFIG parameters, and custom macros.
+
+set -eu
+
+ROSETTEOS_ROOT="${ROSETTEOS_ROOT:-/usr/data/rosetteos}"
+SEEDS="${SEEDS:-/opt/rosetteos-seeds}"
+LIB="/etc/rosetteos-config-migrate.sh"
+
+if [ ! -f "$LIB" ]; then
+	LIB="/usr/libexec/rosetteos-config-migrate.sh"
+fi
+
+if [ -f "$LIB" ]; then
+	. "$LIB"
+else
+	echo "ERROR: migration library not found ($LIB)" >&2
+	exit 1
+fi
+
+rosetteos_migrate_config_tree "$ROSETTEOS_ROOT" "$SEEDS"

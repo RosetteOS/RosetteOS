@@ -32,7 +32,7 @@ never wires up MIPI DSI). PROVEN_FROM_SOURCE
 (`vendor/x2000_kernel_6.6/kernel/kernel-6.6/module_drivers/dts/x2000/x2000.dtsi:926-936`).
 
 **PANEL_INTERFACE**: parallel RGB (not MIPI DSI) - `LCD_TYPE_TFT` in
-`panel-openke-general-480x272.c:170-171`. Driven by a from-scratch GPLv2 driver modeled on the
+`panel-rosetteos-general-480x272.c:170-171`. Driven by a from-scratch GPLv2 driver modeled on the
 vendor 4.4.94 SDK's `panel-st7701s-rgb666.c`, replacing Creality's closed
 `lcd_general_480x272.ko`/`soc_fb.ko`. PROVEN_FROM_SOURCE.
 
@@ -368,7 +368,7 @@ detail: `docs/NEBULAOS_DISPLAY_LIVE_READ_ONLY_REPORT.md`,
 **Live confirmation of every key §6/§7/§8 finding**: identity confirmed on the real printer
 (`192.168.0.243`, CID-derived MAC exact match, custom `rootfs2` slot). No backlight DT node or
 class device exists live (`/sys/class/backlight/` empty), independently corroborated by a boot-
-log line neither prior pass had quoted: `openke_panel: invalid gpio vdd_en: -2`. Touch has zero
+log line neither prior pass had quoted: `rosetteos_panel: invalid gpio vdd_en: -2`. Touch has zero
 IRQ lines anywhere in the live `/proc/interrupts` table (poll-only, confirmed system-wide, not
 just via the pendown GPIO). The DPU/vsync IRQ measured ~60.3Hz over a live 10-second sample,
 matching the ~59.98Hz offline baseline. `/sys/kernel/realtime=1` confirms PREEMPT_RT is genuinely

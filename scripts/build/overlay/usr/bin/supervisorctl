@@ -5,7 +5,7 @@
 # and to start and stop them by name, finding and calling the matching init scripts.
 # installing: put this in in /usr/bin/supervisorctl and then in moonraker.conf in [machine] section, set  "provider: supervisord_cli"
 #
-# OpenKE addition (FIRMWARE.md sec 13): pulled byte-for-byte from the real,
+# RosetteOS addition (FIRMWARE.md sec 13): pulled byte-for-byte from the real,
 # working install on this exact physical device's stock firmware
 # (/usr/data/helper-script/files/fixes/supervisorctl, part of the
 # open-source Guilouz/Creality-Helper-Script project - GPLv3). Stock uses

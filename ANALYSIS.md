@@ -5,7 +5,7 @@ Source: `reference/prtouch_v2_wrapper.py` (host, 2202 lines, **read completely, 
 GPLv3 source from
 [`CrealityOfficial/K1_Series_Klipper@e09f36e6`](https://github.com/CrealityOfficial/K1_Series_Klipper/commit/e09f36e6ada60e5467b0bef731a96263b5d8095b).
 Command signatures confirmed byte-for-byte matching our own KE's compiled `prtouch_v2_wrapper.so`
-via `strings` (see `project_mainline_klipper_ke_separate.md` in the OpenKE memory for that
+via `strings` (see `project_mainline_klipper_ke_separate.md` in the RosetteOS memory for that
 device-side forensics). Analysis done 2026-07-18, printer mid-print throughout, zero device writes.
 
 This revision supersedes an earlier draft that drew conclusions from strategic excerpts rather than
@@ -175,7 +175,7 @@ capability - i.e., without the SWD reflash this entire investigation exists to a
 scope for `klippy_extras/` is: **a clean, from-scratch host-side Klipper extra that speaks the exact
 protocol documented in §1, replicates the calibration math in §4, and can be reasoned about/tested
 independently of Creality's specific code shape** - not a mainline-safety redesign (that's a different
-project, gated on the reflash path already documented in the OpenKE memory), and not a verbatim port
+project, gated on the reflash path already documented in the RosetteOS memory), and not a verbatim port
 of Creality's Python either (their code has real quirks - global mutable state, `time.sleep`-driven
 polling loops via `reactor.pause`, debug-print scaffolding, a UDP waveform-streaming feature - worth
 leaving out of a clean rewrite even while keeping the same wire protocol and math).

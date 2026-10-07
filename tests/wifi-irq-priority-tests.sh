@@ -5,7 +5,7 @@
 # WiFi/camera IRQ contention mission, 2026-08-03). Fakes `ps` and `chrt` as
 # plain scripts on an overridden PATH - same convention this project's
 # other init.d tests use for faking system commands (e.g.
-# openke-display-qualified-tests.sh's PATH override for supervisorctl).
+# rosetteos-display-qualified-tests.sh's PATH override for supervisorctl).
 #
 # Usage: sh tests/wifi-irq-priority-tests.sh
 
@@ -13,7 +13,7 @@ set -u
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
-TARGET="$REPO_ROOT/scripts/build/overlay/etc/init.d/S02openke-wifi-irq-priority"
+TARGET="$REPO_ROOT/scripts/build/overlay/etc/init.d/S02rosetteos-wifi-irq-priority"
 
 PASS=0
 FAIL=0

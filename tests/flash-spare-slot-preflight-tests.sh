@@ -157,9 +157,9 @@ run_case "root=PARTUUID=... resolves to the correct canonical device" \
 
 # --- Test 6: root= via LABEL indirection (a different symlink form)
 # resolves correctly. ---
-ln -sf ../../mmcblk0p7 "$F/dev/disk/by-label/openke-rootfs"
+ln -sf ../../mmcblk0p7 "$F/dev/disk/by-label/rosetteos-rootfs"
 run_case "root=LABEL=... resolves to the correct canonical device" \
-	"$F" "console=ttyS4 root=LABEL=openke-rootfs rootwait" "ALLOW" "$IMG"
+	"$F" "console=ttyS4 root=LABEL=rosetteos-rootfs rootwait" "ALLOW" "$IMG"
 
 # --- Test 7: unresolved root device - no fixture backs this path at
 # all, must refuse rather than guess. ---

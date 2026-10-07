@@ -15,7 +15,7 @@ set -e
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/../.." && pwd)
 
-# OPENKE_VERSION/GUPPYSCREEN_THEME (section 6, below) come
+# ROSETTEOS_VERSION/GUPPYSCREEN_THEME (section 6, below) come
 # from the same authoritative dependency manifest 00-fetch-vendor-sources.sh
 # already sources - see that script/manifests/dependencies.conf's own
 # header for why dependency settings live in one file instead of being hardcoded per-script.
@@ -34,16 +34,16 @@ klipper_build_head=$(git -C "$REPO_ROOT/vendor/klipper" rev-parse HEAD 2>/dev/nu
 }
 
 # 2026-07-23: see 02-configure-buildroot.sh for why this lock exists.
-exec 9>"$REPO_ROOT/.openke-build.lock"
-flock -n 9 || { echo "another build stage already owns $REPO_ROOT/.openke-build.lock" >&2; exit 1; }
+exec 9>"$REPO_ROOT/.rosetteos-build.lock"
+flock -n 9 || { echo "another build stage already owns $REPO_ROOT/.rosetteos-build.lock" >&2; exit 1; }
 
 # Phase 11 (2026-08-15): the orphaned-container-cleanup loop and per-call
-# `--label openke-build-pid=$$` that used to live here are gone - nothing in
+# `--label rosetteos-build-pid=$$` that used to live here are gone - nothing in
 # this script spawns a nested container of its own any more to leak (see
 # 02-configure-buildroot.sh's own Phase 11 note for the full rationale).
 VENDOR="$REPO_ROOT/vendor"
 BUILDROOT_DIR="$VENDOR/system/buildroot"
-OVERLAY="$BUILDROOT_DIR/board/halley5-openke-overlay"
+OVERLAY="$BUILDROOT_DIR/board/halley5-rosetteos-overlay"
 TOOLCHAIN_HOST="$BUILDROOT_DIR/output/host"
 SYSROOT="$TOOLCHAIN_HOST/mipsel-buildroot-linux-gnu/sysroot"
 WORK="$REPO_ROOT/build-work/app-stack-extras"
@@ -310,9 +310,9 @@ rm -rf "$VENDOR/klipper/out" "$VENDOR/klipper/.config" "$VENDOR/klipper/.config.
 mkdir -p "$OVERLAY/opt/klipper"
 rm -rf "$OVERLAY/opt/klipper/klippy"
 
-# OpenKE mutable-runtime closure mission (2026-07-27): empty mount-point
+# RosetteOS mutable-runtime closure mission (2026-07-27): empty mount-point
 # baked into the squashfs so S05nebulaos-activate can bind-mount the real,
-# persistent Klipper venv ($OPENKE_ROOT/envs/klipper) onto it at boot.
+# persistent Klipper venv ($ROSETTEOS_ROOT/envs/klipper) onto it at boot.
 # Required specifically because Moonraker's update_manager hardcodes
 # "~/klippy-env/bin/python" as its bootstrap default for the klipper slot
 # (klippy_connection.py's own __init__, used synchronously at Moonraker
@@ -329,7 +329,7 @@ mkdir -p "$OVERLAY/root/klippy-env"
 # Install the companion extensions tree separately from Klipper core. The
 # extension compatibility code resolves its manifest from the real module
 # path and verifies that runtime modules are symlinks into this tree, which is
-# also how OpenKE identifies a complete, supported installation.
+# also how RosetteOS identifies a complete, supported installation.
 extension_runtime="$OVERLAY/opt/klipper-extensions"
 rm -rf "$extension_runtime"
 mkdir -p "$extension_runtime"
@@ -437,7 +437,7 @@ cp "$VENDOR/klipper/scripts/klippy-requirements.txt" \
 	"$OVERLAY/opt/klipper/scripts/"
 
 # Pure upstream Klipper is copied unchanged from the refreshed official
-# checkout. Fork-only OpenKE/Creality extras are intentionally not
+# checkout. Fork-only RosetteOS/Creality extras are intentionally not
 # injected into the runtime image.
 
 ### 2. Moonraker: source + its Python dependency chain
@@ -447,7 +447,7 @@ rm -rf "$OVERLAY/opt/moonraker/moonraker"
 cp -r "$VENDOR/moonraker/moonraker" "$OVERLAY/opt/moonraker/"
 find "$OVERLAY/opt/moonraker" -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 
-# OpenKE (2026-07-23): vendor/moonraker is a plain upstream clone re-fetched
+# RosetteOS (2026-07-23): vendor/moonraker is a plain upstream clone re-fetched
 # fresh by 00-fetch-vendor-sources.sh every time (unlike the kernel, which
 # is a real fork we commit to) - so this patch is applied to the copy that
 # just landed in the overlay, not to vendor/moonraker itself, which would
@@ -480,7 +480,7 @@ if [ -n "$HOST_PYTHON3" ]; then
 		"/opt/moonraker" "$SCRIPT_DIR/patches/moonraker-sqlite-nolock.patch" ""
 fi
 
-# OpenKE (2026-07-23): zipp added after a real, previously-silent bug found
+# RosetteOS (2026-07-23): zipp added after a real, previously-silent bug found
 # on real hardware - importlib_metadata (below) imports zipp at runtime, but
 # --no-deps meant it was never actually downloaded, so Moonraker died
 # instantly with ModuleNotFoundError: No module named zipp, before opening
@@ -627,7 +627,7 @@ fi
 
 ### 3. ustreamer (camera pipeline)
 #
-# OpenKE fix (USB/webcam stock-parity mission, FIRMWARE.md sec 60): this
+# RosetteOS fix (USB/webcam stock-parity mission, FIRMWARE.md sec 60): this
 # used to build via pellcorp's own `pellcorp/k1-camera-build` docker image,
 # which bundles Ingenic's stock vendor toolchain
 # (/opt/toolchains/mips-gcc720-glibc229, glibc 2.29). That toolchain's
@@ -774,7 +774,7 @@ echo "== copying Mainsail static build =="
 mkdir -p "$OVERLAY/usr/share/mainsail"
 cp -r "$VENDOR"/mainsail-dist/dist/* "$OVERLAY/usr/share/mainsail/"
 
-### 6. GuppyScreen (OpenKlipperEdition frontend at the pinned source commit; consumes the z_compensate
+### 6. GuppyScreen (RosetteOS frontend at the pinned source commit; consumes the z_compensate
 # structured status contract - see docs/z_compensate_status_api.md)
 #
 # GuppyScreen is pinned by stage 00. Reuse its existing tracked binaries when
@@ -803,7 +803,7 @@ else
 	(
 	set -e
 	cd "$GUPPYSCREEN_SRC"
-	export OPENKE_VERSION="$OPENKE_VERSION"
+	export ROSETTEOS_VERSION="$ROSETTEOS_VERSION"
 	export GUPPY_THEME="$GUPPYSCREEN_THEME"
 	# Scoped to this subshell only, NOT the image's global PATH - see
 	# build-env/Dockerfile's own comment on GUPPYSCREEN_TOOLCHAIN_BIN for
@@ -926,24 +926,24 @@ echo "== NebulaOS Klipper extensions copied into mainline klippy/extras/ =="
 . "$SCRIPT_DIR/lib/make-seed-archive.sh"
 
 echo "== creating offline factory-seed archives (Klipper, Moonraker) =="
-# Real bug found live: $OVERLAY/opt/openke-seeds/ is created directly by
+# Real bug found live: $OVERLAY/opt/rosetteos-seeds/ is created directly by
 # this script, not by 02-configure-buildroot.sh's tracked-template resync
 # (which only mirrors scripts/build/overlay/) - so it is never cleaned
 # between runs. A stale, now-uncompressed-format klipper.tar/moonraker.tar
 # left over from before the .tar.gz switch sat alongside the new files and
 # would have doubled the seed footprint in the packaged image. Always
 # start from a clean directory here.
-rm -rf "$OVERLAY/opt/openke-seeds"
-mkdir -p "$OVERLAY/opt/openke-seeds"
+rm -rf "$OVERLAY/opt/rosetteos-seeds"
+mkdir -p "$OVERLAY/opt/rosetteos-seeds"
 # Keep a separate, non-hidden copy of the c_helper platform proof. The
 # Klipper archive also carries the dotfile, but some device tar implementations
 # have proved unreliable around hidden archive entries. S04 installs this
 # sidecar explicitly into the persistent checkout after extraction.
 cp "$CHELPER_VERDICT" \
-	"$OVERLAY/opt/openke-seeds/klipper-chelper-verdict.json"
+	"$OVERLAY/opt/rosetteos-seeds/klipper-chelper-verdict.json"
 cp "$VENDOR/klipper/klippy/chelper/c_helper.so" \
-	"$OVERLAY/opt/openke-seeds/c_helper.so"
-touch -d "@2000000000" "$OVERLAY/opt/openke-seeds/c_helper.so" 2>/dev/null || true
+	"$OVERLAY/opt/rosetteos-seeds/c_helper.so"
+touch -d "@2000000000" "$OVERLAY/opt/rosetteos-seeds/c_helper.so" 2>/dev/null || true
 # Second, separate real bug found live, one layer deeper: Buildroot's own
 # rootfs-overlay copy step (board overlay -> output/target/, and again
 # into output/build/buildroot-fs/ext2/target/) is additive-only - it never
@@ -959,8 +959,8 @@ touch -d "@2000000000" "$OVERLAY/opt/openke-seeds/c_helper.so" 2>/dev/null || tr
 # filenames from both real Buildroot output locations here too, not just
 # the tracked overlay - this is the actual root cause location, and must
 # be revisited again if this seed's filenames ever change in the future.
-for stale_dir in "$BUILDROOT_DIR/output/target/opt/openke-seeds" \
-                 "$BUILDROOT_DIR/output/build/buildroot-fs/ext2/target/opt/openke-seeds" \
+for stale_dir in "$BUILDROOT_DIR/output/target/opt/rosetteos-seeds" \
+                 "$BUILDROOT_DIR/output/build/buildroot-fs/ext2/target/opt/rosetteos-seeds" \
                  "$BUILDROOT_DIR/output/target/opt/nebulaos-seeds" \
                  "$BUILDROOT_DIR/output/build/buildroot-fs/ext2/target/opt/nebulaos-seeds"; do
 	rm -f "$stale_dir/klipper.bundle" "$stale_dir/moonraker.bundle" \
@@ -968,13 +968,13 @@ for stale_dir in "$BUILDROOT_DIR/output/target/opt/openke-seeds" \
 done
 klipper_origin="$KLIPPER_REPO"
 klipper_seed_commit=$(make_seed_archive "$VENDOR/klipper" "$KLIPPER_BRANCH" \
-	"$klipper_origin" "$OVERLAY/opt/openke-seeds/klipper.tar.gz" "/lib/" \
+	"$klipper_origin" "$OVERLAY/opt/rosetteos-seeds/klipper.tar.gz" "/lib/" \
 	"$HOST_PYTHON3" "/opt/klipper" "$extra_stage" "$CHELPER_VERDICT")
 klipper_is_shallow=$(git -C "$VENDOR/klipper" rev-parse --is-shallow-repository)
 
 moonraker_origin="https://github.com/Arksine/moonraker.git"
 moonraker_seed_commit=$(make_seed_archive "$VENDOR/moonraker" master \
-	"$moonraker_origin" "$OVERLAY/opt/openke-seeds/moonraker.tar.gz" "" \
+	"$moonraker_origin" "$OVERLAY/opt/rosetteos-seeds/moonraker.tar.gz" "" \
 	"$HOST_PYTHON3" "/opt/moonraker")
 moonraker_is_shallow=$(git -C "$VENDOR/moonraker" rev-parse --is-shallow-repository)
 mainsail_version=$(cat "$VENDOR/mainsail-dist/dist/.version" 2>/dev/null || echo "unknown")
@@ -991,12 +991,12 @@ build_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 # needed. Not a security hash - just a stable, cheap "does the installed
 # generation match what THIS image expects" fingerprint.
 PRINTER_DATA_CONFIG_SRC="$SCRIPT_DIR/overlay/opt/printer_data/config"
-PRINTER_PROFILES_SRC="$SCRIPT_DIR/overlay/opt/openke-seeds/printer_profiles"
+PRINTER_PROFILES_SRC="$SCRIPT_DIR/overlay/opt/rosetteos-seeds/printer_profiles"
 migration_version=$(printf '%s' "${klipper_seed_commit}:${moonraker_seed_commit}:${GUPPYSCREEN_COMMIT:-unknown}" | sha256sum | cut -c1-16)
 config_version=$(find "$PRINTER_DATA_CONFIG_SRC" "$PRINTER_PROFILES_SRC" -type f -exec sha256sum {} + 2>/dev/null | sort | sha256sum | cut -c1-16)
 firmware_head=$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || echo "unknown")
 
-cat > "$OVERLAY/opt/openke-seeds/seed-manifest.json" <<EOF
+cat > "$OVERLAY/opt/rosetteos-seeds/seed-manifest.json" <<EOF
 {
   "schema_version": 2,
   "build_date": "$build_date",
@@ -1012,7 +1012,7 @@ cat > "$OVERLAY/opt/openke-seeds/seed-manifest.json" <<EOF
       "branch": "$KLIPPER_BRANCH",
       "seed_commit": "$klipper_seed_commit",
       "is_shallow": $klipper_is_shallow,
-      "sha256": "$(sha256sum "$OVERLAY/opt/openke-seeds/klipper.tar.gz" | cut -d' ' -f1)",
+      "sha256": "$(sha256sum "$OVERLAY/opt/rosetteos-seeds/klipper.tar.gz" | cut -d' ' -f1)",
       "compatibility_level": 2,
       "note": "real upstream Klipper history; checkout follows the official master branch at build time"
     },
@@ -1023,7 +1023,7 @@ cat > "$OVERLAY/opt/openke-seeds/seed-manifest.json" <<EOF
       "branch": "master",
       "seed_commit": "$moonraker_seed_commit",
       "is_shallow": $moonraker_is_shallow,
-      "sha256": "$(sha256sum "$OVERLAY/opt/openke-seeds/moonraker.tar.gz" | cut -d' ' -f1)",
+      "sha256": "$(sha256sum "$OVERLAY/opt/rosetteos-seeds/moonraker.tar.gz" | cut -d' ' -f1)",
       "compatibility_level": 2,
       "note": "full, non-shallow real history; HEAD equals official Arksine/moonraker origin/master at build time"
     },
@@ -1037,9 +1037,9 @@ cat > "$OVERLAY/opt/openke-seeds/seed-manifest.json" <<EOF
 }
 EOF
 if [ -f "$REPO_ROOT/manifests/apps.json" ]; then
-	cp -a "$REPO_ROOT/manifests/apps.json" "$OVERLAY/opt/openke-seeds/apps.json"
+	cp -a "$REPO_ROOT/manifests/apps.json" "$OVERLAY/opt/rosetteos-seeds/apps.json"
 fi
-echo "== factory seeds created: $(ls -la "$OVERLAY/opt/openke-seeds/") =="
+echo "== factory seeds created: $(ls -la "$OVERLAY/opt/rosetteos-seeds/") =="
 
 # Clean-Update + Virgin Baseline mission, Phase 6 (2026-08-08): a single,
 # immutable, squashfs-resident record of exactly what this image IS -
@@ -1065,9 +1065,9 @@ echo "== factory seeds created: $(ls -la "$OVERLAY/opt/openke-seeds/") =="
 # project creates is named nebulaos-*; every asset-carrier tag (this one,
 # wifi-firmware-v1.0.0) is not - restricting the match pattern is what
 # actually fixes this, not a coincidence of current tag names.
-firmware_tag=$(git -C "$REPO_ROOT" describe --tags --match 'openke-*' --match 'nebulaos-*' 2>/dev/null || echo "unknown")
+firmware_tag=$(git -C "$REPO_ROOT" describe --tags --match 'rosetteos-*' --match 'nebulaos-*' 2>/dev/null || echo "unknown")
 kernel_sha=$(git -C "$VENDOR/system" rev-parse HEAD 2>/dev/null || echo "unknown")
-cat > "$OVERLAY/opt/openke-version.json" <<EOF
+cat > "$OVERLAY/opt/rosetteos-version.json" <<EOF
 {
   "build_date": "$build_date",
   "firmware_tag": "$firmware_tag",
@@ -1076,7 +1076,7 @@ cat > "$OVERLAY/opt/openke-version.json" <<EOF
   "guppyscreen_sha": "${GUPPYSCREEN_COMMIT:-unknown}"
 }
 EOF
-echo "== wrote /opt/openke-version.json: $(cat "$OVERLAY/opt/openke-version.json") =="
+echo "== wrote /opt/rosetteos-version.json: $(cat "$OVERLAY/opt/rosetteos-version.json") =="
 
 # Production optimization mission, Phase 11 (2026-07-30): pre-built venv
 # seeds, so S04nebulaos-factory-seed can extract a ready-made virtualenv
@@ -1137,7 +1137,7 @@ if [ -n "$HOST_PYTHON3" ]; then
 		rm -rf "$WORK/venv-seed-$envname"
 		if ! "$HOST_PYTHON3" -m venv --system-site-packages --without-pip \
 			"$WORK/venv-seed-$envname" >/tmp/venv-seed-$envname.log 2>&1; then
-			echo "WARNING: could not build $envname venv seed - S04openke-factory-seed will fall back to on-device venv creation" >&2
+			echo "WARNING: could not build $envname venv seed - S04rosetteos-factory-seed will fall back to on-device venv creation" >&2
 			return 1
 		fi
 		vdir="$WORK/venv-seed-$envname"
@@ -1173,14 +1173,14 @@ PYVENVCFG
 		cp "$seed_out" "$seed_cache"
 		printf '%s\n' "$seed_fingerprint" > "$fingerprint_file"
 	}
-	if build_venv_seed klipper /usr/data/openke/envs/klipper "$OVERLAY/opt/openke-seeds/klipper-venv-seed.tar.gz"; then
-		echo "== klipper venv seed created: $(ls -la "$OVERLAY/opt/openke-seeds/klipper-venv-seed.tar.gz") =="
+	if build_venv_seed klipper /usr/data/rosetteos/envs/klipper "$OVERLAY/opt/rosetteos-seeds/klipper-venv-seed.tar.gz"; then
+		echo "== klipper venv seed created: $(ls -la "$OVERLAY/opt/rosetteos-seeds/klipper-venv-seed.tar.gz") =="
 	fi
-	if build_venv_seed moonraker /usr/data/openke/envs/moonraker "$OVERLAY/opt/openke-seeds/moonraker-venv-seed.tar.gz"; then
-		echo "== moonraker venv seed created: $(ls -la "$OVERLAY/opt/openke-seeds/moonraker-venv-seed.tar.gz") =="
+	if build_venv_seed moonraker /usr/data/rosetteos/envs/moonraker "$OVERLAY/opt/rosetteos-seeds/moonraker-venv-seed.tar.gz"; then
+		echo "== moonraker venv seed created: $(ls -la "$OVERLAY/opt/rosetteos-seeds/moonraker-venv-seed.tar.gz") =="
 	fi
 else
-	echo "WARNING: HOST_PYTHON3 not available - shipping without venv seeds, S04openke-factory-seed will use its existing on-device venv creation path" >&2
+	echo "WARNING: HOST_PYTHON3 not available - shipping without venv seeds, S04rosetteos-factory-seed will use its existing on-device venv creation path" >&2
 fi
 
 # Real bug found live (auto-updates-camera-complete mission addendum,
@@ -1190,16 +1190,16 @@ fi
 # immutable default", it is already looking at the (possibly empty)
 # persistent copy, not the real immutable content. The one thing that ever
 # populated printer.cfg/moonraker.conf into a fresh persistent copy was a
-# migration from a legacy /usr/data/openke path, deleted as part of an
+# migration from a legacy /usr/data/rosetteos path, deleted as part of an
 # earlier closure mission on the belief no fresh device would ever need it
 # again - leaving genuinely no code path that seeds these files at all.
-# Reproduced live: a truly wiped /usr/data/openke/printer_data/config
+# Reproduced live: a truly wiped /usr/data/rosetteos/printer_data/config
 # left Klipper and Moonraker crash-looping forever on FileNotFoundError.
 #
 # Fixed the same way klipper.tar.gz/moonraker.tar.gz already solve the
 # identical shadowing problem: ship a second, dedicated immutable copy
-# under /opt/openke-seeds/ (never subject to any bind mount) that
-# S02openke-namespace can copy from into the real persistent location
+# under /opt/rosetteos-seeds/ (never subject to any bind mount) that
+# S02rosetteos-namespace can copy from into the real persistent location
 # whenever it is missing. The actual config content itself is not
 # authored here - it already exists, already deliberately stripped of
 # development-machine calibration data (see printer.cfg's own header),
@@ -1208,12 +1208,12 @@ fi
 # nothing ever mounts over.
 echo "== creating printer_data config seed (Ender-3 V3 KE factory defaults) =="
 PRINTER_DATA_CONFIG_SRC="$SCRIPT_DIR/overlay/opt/printer_data/config"
-PRINTER_DATA_SEED_DEST="$OVERLAY/opt/openke-seeds/printer_data-config"
+PRINTER_DATA_SEED_DEST="$OVERLAY/opt/rosetteos-seeds/printer_data-config"
 if [ ! -f "$PRINTER_DATA_CONFIG_SRC/printer.cfg" ] || [ ! -f "$PRINTER_DATA_CONFIG_SRC/moonraker.conf" ]; then
 	echo "FATAL: $PRINTER_DATA_CONFIG_SRC is missing printer.cfg or moonraker.conf - refusing to build a factory seed that would ship without them" >&2
 	exit 1
 fi
-# Validate the tracked OpenKE-owned config closure. frontend-controls.cfg
+# Validate the tracked RosetteOS-owned config closure. frontend-controls.cfg
 # provides the single frontend-required print-control sections; no external
 # vendor configuration is part of the factory seed.
 # Lightweight sanity checks on the tracked source, not a full Klipper
@@ -1257,7 +1257,7 @@ fi
 
 # Print-control config closure validation (mainline print-controls mission,
 # 2026-07-29 - see docs/NEBULAOS_FRONTEND_PRINT_CONTROLS.md). Shared with
-# tests/openke-frontend-controls-validation-tests.sh via
+# tests/rosetteos-frontend-controls-validation-tests.sh via
 # scripts/build/lib/validate-frontend-controls.sh, so the tests exercise
 # this exact function rather than a parallel reimplementation.
 . "$SCRIPT_DIR/lib/validate-frontend-controls.sh"
@@ -1271,8 +1271,8 @@ if ! frontend_controls_validate_closure "$PRINTER_DATA_CONFIG_CLOSURE" /opt/prin
 	exit 1
 fi
 echo "== print-control config closure validated: virtual_sdcard/pause_resume/display_status each defined exactly once, path correct, no duplicate or circular macros =="
-for stale_dir in "$BUILDROOT_DIR/output/target/opt/openke-seeds" \
-                 "$BUILDROOT_DIR/output/build/buildroot-fs/ext2/target/opt/openke-seeds" \
+for stale_dir in "$BUILDROOT_DIR/output/target/opt/rosetteos-seeds" \
+                 "$BUILDROOT_DIR/output/build/buildroot-fs/ext2/target/opt/rosetteos-seeds" \
                  "$BUILDROOT_DIR/output/target/opt/nebulaos-seeds" \
                  "$BUILDROOT_DIR/output/build/buildroot-fs/ext2/target/opt/nebulaos-seeds"; do
 	rm -rf "$stale_dir/printer_data-config" 2>/dev/null || true
@@ -1294,7 +1294,7 @@ EOF
 echo "== printer_data config seed created: $(ls -la "$PRINTER_DATA_SEED_DEST/") =="
 
 echo "== validating printer profiles repository =="
-PRINTER_PROFILES_SRC="$SCRIPT_DIR/overlay/opt/openke-seeds/printer_profiles"
+PRINTER_PROFILES_SRC="$SCRIPT_DIR/overlay/opt/rosetteos-seeds/printer_profiles"
 if [ ! -d "$PRINTER_PROFILES_SRC" ]; then
 	echo "FATAL: $PRINTER_PROFILES_SRC missing - printer profiles must exist" >&2
 	exit 1
@@ -1309,26 +1309,26 @@ for pdir in "$PRINTER_PROFILES_SRC"/*; do
 done
 echo "== validated $(ls -d "$PRINTER_PROFILES_SRC"/* | wc -l) printer profiles =="
 
-for stale_dir in "$BUILDROOT_DIR/output/target/opt/openke-seeds" \
-                 "$BUILDROOT_DIR/output/build/buildroot-fs/ext2/target/opt/openke-seeds" \
+for stale_dir in "$BUILDROOT_DIR/output/target/opt/rosetteos-seeds" \
+                 "$BUILDROOT_DIR/output/build/buildroot-fs/ext2/target/opt/rosetteos-seeds" \
                  "$BUILDROOT_DIR/output/target/opt/nebulaos-seeds" \
                  "$BUILDROOT_DIR/output/build/buildroot-fs/ext2/target/opt/nebulaos-seeds"; do
 	rm -rf "$stale_dir/printer_profiles" 2>/dev/null || true
 done
-rm -rf "$OVERLAY/opt/openke-seeds/printer_profiles"
-cp -a "$PRINTER_PROFILES_SRC" "$OVERLAY/opt/openke-seeds/printer_profiles"
+rm -rf "$OVERLAY/opt/rosetteos-seeds/printer_profiles"
+cp -a "$PRINTER_PROFILES_SRC" "$OVERLAY/opt/rosetteos-seeds/printer_profiles"
 
 # Stage 04 creates these artifacts after stage 02 has already synchronized
 # the tracked overlay. Buildroot's output/target sync is additive, so refresh
 # the exact generated paths here; otherwise a previous klipper.tar.gz (and
 # its previous Git commit) can remain in the image indefinitely.
-for generated_path in klipper klipper-extensions openke-seeds printer_data; do
+for generated_path in klipper klipper-extensions rosetteos-seeds printer_data; do
 	rm -rf "$BUILDROOT_DIR/output/target/opt/$generated_path"
 	mkdir -p "$(dirname "$BUILDROOT_DIR/output/target/opt/$generated_path")"
 	cp -a "$OVERLAY/opt/$generated_path" \
 		"$BUILDROOT_DIR/output/target/opt/$generated_path"
 done
-packaged_klipper_seed=$(gzip -dc "$BUILDROOT_DIR/output/target/opt/openke-seeds/klipper.tar.gz" 2>/dev/null \
+packaged_klipper_seed=$(gzip -dc "$BUILDROOT_DIR/output/target/opt/rosetteos-seeds/klipper.tar.gz" 2>/dev/null \
 	| tar -xOf - ./.git/refs/heads/$KLIPPER_BRANCH 2>/dev/null \
 	| tr -d '[:space:]' || true)
 [ "$packaged_klipper_seed" = "$KLIPPER_PIN" ] || {

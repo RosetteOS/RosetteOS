@@ -1,8 +1,8 @@
 # Multi-Printer Support & Nebula Smart Kit Profile Architecture
 
-OpenKE is engineered around the **Creality Nebula Pad** hardware platform (Ingenic XBurst2 X2000 MIPS SoC). While the **Creality Ender-3 V3 KE** serves as the initial development baseline and reference target, OpenKE is intentionally architected to support **all 3D printers compatible with Creality's Nebula Smart Kit**.
+RosetteOS is engineered around the **Creality Nebula Pad** hardware platform (Ingenic XBurst2 X2000 MIPS SoC). While the **Creality Ender-3 V3 KE** serves as the initial development baseline and reference target, it is designed to support **all 3D printers compatible with Creality's Nebula Smart Kit**.
 
-OpenKE provides built-in multi-printer support for running the Nebula Pad across multiple printer models with automatic hardware configuration, calibration state preservation, and seamless GUI/CLI profile switching.
+RosetteOS provides built-in multi-printer support for running the Nebula Pad across multiple printer models with automatic hardware configuration, calibration state preservation, and GUI/CLI profile switching.
 
 ---
 
@@ -43,7 +43,7 @@ The table below summarizes the hardware, motion kinematics, probing systems, and
 
 The configuration structure is organized into universal and model-specific layers:
 
-### Layer 1: Universal Base (`OpenKE_Settings.cfg`)
+### Layer 1: Universal Base (`RosetteOS_Settings.cfg`)
 Included by **every** printer profile. Contains universal print acceleration, adaptive meshing, macro hooks, and platform compatibility:
 - `[nebulaos_compat]`: Host-side compatibility preflight verifying Klipper symbol consistency and sensor driver registrations.
 - `[include Macros/Adaptive_Meshing.cfg]`: Computes a localized bed mesh around the actual sliced objects rather than probing the whole bed.
@@ -68,20 +68,20 @@ Defines the physical kinematics, stepper pinouts, direction inversions, step rot
 
 ### Directory Layout
 - **Factory Default Seeds**: `/opt/nebulaos-seeds/printer_profiles/<profile-id>/` (Immutable squashfs overlay)
-- **User Live Configurations**: `/usr/data/openke/printer_profiles/<profile-id>/` (Mutable persistent flash)
-- **Active System Config**: `/usr/data/openke/printer_data/config/` (Bound to `/opt/printer_data/config`)
-- **Historical Backups**: `/usr/data/openke/backups/printer_config/`
+- **User Live Configurations**: `/usr/data/rosetteos/printer_profiles/<profile-id>/` (Mutable persistent flash)
+- **Active System Config**: `/usr/data/rosetteos/printer_data/config/` (Bound to `/opt/printer_data/config`)
+- **Historical Backups**: `/usr/data/rosetteos/backups/printer_config/`
 
 ### State Preservation Flow
 1. When switching away from Profile A:
-   - The current `printer.cfg` (including all `SAVE_CONFIG` blocks, calibrated Z-offsets, bed meshes, and PID values) is saved to `/usr/data/openke/printer_profiles/<Profile-A>/printer.cfg`.
-   - A timestamped backup is recorded under `/usr/data/openke/backups/printer_config/`.
+   - The current `printer.cfg` (including all `SAVE_CONFIG` blocks, calibrated Z-offsets, bed meshes, and PID values) is saved to `/usr/data/rosetteos/printer_profiles/<Profile-A>/printer.cfg`.
+   - A timestamped backup is recorded under `/usr/data/rosetteos/backups/printer_config/`.
 2. When switching to Profile B:
    - If Profile B was previously calibrated by the user, its saved configuration and calibrations are restored.
    - If Profile B has never been used, it is seeded from factory defaults (`/opt/nebulaos-seeds/printer_profiles/<Profile-B>/`).
    - If non-KE profiles are selected, `mcu-auto-upgrade.disabled` is written to prevent serial contention during boot.
 3. Mainsail / Fluidd File Manager Integration:
-   - `/usr/data/openke/printer_profiles/` is linked directly inside the Moonraker config root (`/opt/printer_data/config/printer_profiles`), allowing users to browse, download, and back up all printer profiles directly through the web UI.
+   - `/usr/data/rosetteos/printer_profiles/` is linked directly inside the Moonraker config root (`/opt/printer_data/config/printer_profiles`), allowing users to browse, download, and back up all printer profiles directly through the web UI.
 
 ---
 
@@ -92,30 +92,30 @@ Defines the physical kinematics, stepper pinouts, direction inversions, step rot
 2. **Auto-Display Model Selection**:
    - Immediately upon completing the touch calibration, GuppyScreen automatically opens the **"Select Printer Model"** panel.
 3. **USB Drive Auto-Provisioning**:
-   - If a USB flash drive containing an `openke-profile.txt` file (e.g. `creality-ender3-v3-se`) is plugged in during first boot, `S02nebulaos-namespace` automatically activates that model profile.
+   - If a USB flash drive containing an `rosetteos-profile.txt` file (e.g. `creality-ender3-v3-se`) is plugged in during first boot, `S02nebulaos-namespace` automatically activates that model profile.
 
 ---
 
-## 5. Command-Line Interface (`openke-profile`)
+## 5. Command-Line Interface (`rosetteos-profile`)
 
 ```sh
 # List all active/enabled profiles
-openke-profile list
+rosetteos-profile list
 
 # List all available profiles including generic templates
-openke-profile list --all
+rosetteos-profile list --all
 
 # Output profiles in structured JSON format (for APIs & GuppyScreen)
-openke-profile list --json
+rosetteos-profile list --json
 
 # Show currently active profile
-openke-profile get
+rosetteos-profile get
 
 # Switch to a different printer model and restart Klipper
-openke-profile set creality-ender3-v3-se --restart
+rosetteos-profile set creality-ender3-v3-se --restart
 
 # Reset a profile to clean factory defaults (discarding user calibrations)
-openke-profile set creality-ender3-v3-se --clean --restart
+rosetteos-profile set creality-ender3-v3-se --clean --restart
 ```
 
 ---
@@ -146,7 +146,7 @@ Different printer models use different bed leveling mechanics. The table below d
 
 ## 7. Per-Printer Enabled `[...]` Sections Comparison Matrix
 
-The matrix below details every Klipper configuration section and whether it is enabled directly (`printer.cfg`), conditionally via hardware includes (`V3_Settings.cfg`), or globally via the base stack (`OpenKE_Settings.cfg`) across all supported printer profiles:
+The matrix below details every Klipper configuration section and whether it is enabled directly (`printer.cfg`), conditionally via hardware includes (`V3_Settings.cfg`), or globally via the base stack (`RosetteOS_Settings.cfg`) across all supported printer profiles:
 
 | Section Name | Functional Category | V3 KE | V3 SE | V2 Neo | S1 | V2 | Pro | Base | Rationale / Hardware Dependency |
 |---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---|
@@ -179,12 +179,11 @@ The matrix below details every Klipper configuration section and whether it is e
 | **`[skew_correction]`** | Geometry Tuning | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | XY/XZ/YZ frame squareness compensation |
 | **`[exclude_object]`** | Slicer Object Cancel | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Cancels individual failed parts during a multi-part print |
 | **`[respond]`** | G-code Logging | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Standard `M118` / `RESPOND` message delivery |
-| **`[include OpenKE_Settings.cfg]`** | Universal Stack | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Global macros, adaptive meshing, line purge, profile API |
+| **`[include RosetteOS_Settings.cfg]`** | Universal Stack | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Global macros, adaptive meshing, line purge, profile API |
 | **`[include V3_Settings.cfg]`** | Modular Hardware | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | Loads V3 strain gauge, z_compensate, and mcu_temp |
 | **`[nebulaos_compat]`** | Platform Driver | ✅ *(Base)* | ✅ *(Base)* | ✅ *(Base)* | ✅ *(Base)* | ✅ *(Base)* | ✅ *(Base)* | ✅ *(Base)* | Preflight symbol validation and hardware sensor bridge |
 | **`[virtual_sdcard]`** | Print Execution | ✅ *(Base)* | ✅ *(Base)* | ✅ *(Base)* | ✅ *(Base)* | ✅ *(Base)* | ✅ *(Base)* | ✅ *(Base)* | Fast binary file streaming from `/opt/printer_data/gcodes` |
 | **`[pause_resume]`** | State Handling | ✅ *(Base)* | ✅ *(Base)* | ✅ *(Base)* | ✅ *(Base)* | ✅ *(Base)* | ✅ *(Base)* | ✅ *(Base)* | G-code execution state pause / resume buffers |
 | **`[display_status]`** | GUI Status | ✅ *(Base)* | ✅ *(Base)* | ✅ *(Base)* | ✅ *(Base)* | ✅ *(Base)* | ✅ *(Base)* | ✅ *(Base)* | Progress tracking and M73 display status hooks |
 
-*Legend: ✅ = Enabled directly in `printer.cfg` | ✅ *(V3)* = Enabled via `V3_Settings.cfg` | ✅ *(Base)* = Enabled via `OpenKE_Settings.cfg` | ❌ = Not present / unsupported on this hardware model.*
-
+*Legend: ✅ = Enabled directly in `printer.cfg` | ✅ *(V3)* = Enabled via `V3_Settings.cfg` | ✅ *(Base)* = Enabled via `RosetteOS_Settings.cfg` | ❌ = Not present / unsupported on this hardware model.*

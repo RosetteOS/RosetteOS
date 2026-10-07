@@ -17,8 +17,8 @@
 #   sh scripts/qa/display-live-capture.sh <device-ip> [output-dir]
 #
 # Environment overrides:
-#   OPENKE_SSH_PASSWORD   default: openke (custom's root password)
-#   OPENKE_SSH_USER       default: root
+#   ROSETTEOS_SSH_PASSWORD   default: rosetteos (custom's root password)
+#   ROSETTEOS_SSH_USER       default: root
 #
 # Confirm printer identity (hostname/CID-MAC/manifest) BEFORE running the
 # full capture - this script's own "identity" group is meant to be run
@@ -29,8 +29,8 @@ set -eu
 
 DEVICE_IP="${1:?usage: $0 <device-ip> [output-dir]}"
 OUT_DIR="${2:-}"
-SSH_USER="${OPENKE_SSH_USER:-root}"
-SSH_PASSWORD="${OPENKE_SSH_PASSWORD:-openke}"
+SSH_USER="${ROSETTEOS_SSH_USER:-root}"
+SSH_PASSWORD="${ROSETTEOS_SSH_PASSWORD:-rosetteos}"
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/../.." && pwd)
@@ -71,7 +71,7 @@ remote() {
 group_identity() {
 	echo "== identity =="
 	remote identity-hostname "hostname; uname -a; cat /proc/cmdline; uptime"
-	remote identity-manifest "cat /usr/data/openke/build-manifest.txt 2>/dev/null || cat /opt/build-manifest.txt 2>/dev/null || echo NO_MANIFEST_FOUND"
+	remote identity-manifest "cat /usr/data/rosetteos/build-manifest.txt 2>/dev/null || cat /opt/build-manifest.txt 2>/dev/null || echo NO_MANIFEST_FOUND"
 	remote identity-root-slot "cat /proc/mounts | grep ' / ' ; cat /etc/ota_marker* 2>/dev/null || true"
 	remote identity-mac "cat /sys/class/net/wlan0/address 2>/dev/null || ip link show wlan0 2>/dev/null"
 	remote identity-klipper "curl -s --max-time 5 http://127.0.0.1:7125/printer/info 2>/dev/null || echo NO_MOONRAKER_RESPONSE"
@@ -93,7 +93,7 @@ group_root_slot() {
 group_live_dt() {
 	echo "== live device tree =="
 	remote dt-dpu "find /sys/firmware/devicetree/base -iname '*dpu*' -o -iname '*13050000*' 2>/dev/null | while read -r n; do echo \"--\$n--\"; for f in \"\$n\"/*; do [ -f \"\$f\" ] && echo \"\$f: \$(od -An -tx1 \"\$f\" 2>/dev/null | tr -d ' \n')\"; done; done"
-	remote dt-panel "find /sys/firmware/devicetree/base -iname '*panel*' -o -iname '*openke*' 2>/dev/null"
+	remote dt-panel "find /sys/firmware/devicetree/base -iname '*panel*' -o -iname '*rosetteos*' 2>/dev/null"
 	remote dt-pwm "find /sys/firmware/devicetree/base -iname '*pwm*' 2>/dev/null"
 	remote dt-backlight "find /sys/firmware/devicetree/base -iname '*backlight*' 2>/dev/null || echo NO_BACKLIGHT_NODE"
 	remote dt-touch "find /sys/firmware/devicetree/base -iname '*ns2009*' -o -iname '*i2c4*' 2>/dev/null"
@@ -160,7 +160,7 @@ group_kernel_logs() {
 
 group_boot_timing() {
 	echo "== boot timing =="
-	remote boot-timing "cat /var/log/openke-boot-timing* /var/run/openke-boot-timing* 2>/dev/null || echo NO_BOOT_TIMING_LOG"
+	remote boot-timing "cat /var/log/rosetteos-boot-timing* /var/run/rosetteos-boot-timing* 2>/dev/null || echo NO_BOOT_TIMING_LOG"
 }
 
 echo "=== display-live-capture: target $SSH_USER@$DEVICE_IP, output $OUT_DIR ==="

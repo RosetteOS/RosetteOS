@@ -34,7 +34,7 @@ fi
 
 # --- Extract just the RESOLUTION/DESIRED_FPS + quality-marker case block,
 # so a marker value can be evaluated in isolation without needing the real
-# device, v4l2-ctl, or /usr/data/openke to exist. ---
+# device, v4l2-ctl, or /usr/data/rosetteos to exist. ---
 QUALITY_BLOCK=$(awk '/^RESOLUTION=1920x1080$/,/^esac$/' "$S50WEBCAM")
 if [ -z "$QUALITY_BLOCK" ]; then
 	fail "could not extract the RESOLUTION/quality-marker block from $S50WEBCAM"
@@ -48,7 +48,7 @@ run_with_marker() {
 	fake_bin=$(mktemp -d)
 	cat > "$fake_bin/cat" <<EOF
 #!/bin/sh
-if [ "\$1" = "/usr/data/openke/maintenance/camera-quality-mode" ]; then
+if [ "\$1" = "/usr/data/rosetteos/maintenance/camera-quality-mode" ]; then
 	printf '%s' '$1'
 	exit 0
 fi

@@ -1,9 +1,9 @@
 #!/bin/sh
-# The one documented command to reproduce the current qualified OpenKE
+# The one documented command to reproduce the current qualified RosetteOS
 # baseline from a fresh clone:
 #
-#   git clone https://github.com/OpenKlipperEdition/OpenKE.git
-#   cd OpenKE
+#   git clone https://github.com/RosetteOS/RosetteOS.git
+#   cd RosetteOS
 #   ./build.sh
 #
 # Fetches every pinned dependency (kernel, Klipper, GuppyScreen, Moonraker,
@@ -61,7 +61,7 @@ done
 echo "== build.sh: pulling pinned build environment $IMAGE_REF (engine: $ENGINE) =="
 "$ENGINE" pull "$IMAGE_REF"
 
-# OPENKE_REPO_ROOT: fixed container-internal mount point, deliberately
+# ROSETTEOS_REPO_ROOT: fixed container-internal mount point, deliberately
 # NOT the host's own checkout path.
 #
 # Final Closure mission, Phase C (2026-08-15): this used to mount the
@@ -85,12 +85,12 @@ echo "== build.sh: pulling pinned build environment $IMAGE_REF (engine: $ENGINE)
 # Every script under scripts/build/ already derives its own location via
 # `SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)` rather than a hardcoded
 # path, so this needs no changes anywhere else - they'll all resolve to
-# OPENKE_REPO_ROOT automatically once the working directory is set here.
+# ROSETTEOS_REPO_ROOT automatically once the working directory is set here.
 # Output files stay on the host exactly as before: a bind mount is a
 # transparent, two-way passthrough regardless of which internal path it's
-# mounted at, so anything the container writes under OPENKE_REPO_ROOT
+# mounted at, so anything the container writes under ROSETTEOS_REPO_ROOT
 # still lands at $SCRIPT_DIR on the host.
-OPENKE_REPO_ROOT=/workspace/OpenKE
+ROSETTEOS_REPO_ROOT=/workspace/RosetteOS
 # -e HOME=/tmp: an arbitrary host UID has no /etc/passwd entry inside the
 # container, so HOME defaults to "/" (not writable by this UID) - confirmed
 # live this would break any tool that wants to write a cache/config file
@@ -109,11 +109,11 @@ OPENKE_REPO_ROOT=/workspace/OpenKE
 exec "$ENGINE" run --rm \
 	--user "$(id -u):$(id -g)" \
 	-e HOME=/tmp \
-	-e OPENKE_REPO_ROOT="$OPENKE_REPO_ROOT" \
-	-e OPENKE_CANDIDATE_BUILD="${OPENKE_CANDIDATE_BUILD:-0}" \
+	-e ROSETTEOS_REPO_ROOT="$ROSETTEOS_REPO_ROOT" \
+	-e ROSETTEOS_CANDIDATE_BUILD="${ROSETTEOS_CANDIDATE_BUILD:-0}" \
 	-e FORCE_UNSAFE_CONFIGURE=1 \
-	-v "$SCRIPT_DIR:$OPENKE_REPO_ROOT" \
+	-v "$SCRIPT_DIR:$ROSETTEOS_REPO_ROOT" \
 	-v "$SCRIPT_DIR:/workspace/NebulaOS-firmware" \
-	-w "$OPENKE_REPO_ROOT" \
+	-w "$ROSETTEOS_REPO_ROOT" \
 	"$IMAGE_REF" \
 	"sh scripts/build/build-qualified-baseline.sh"

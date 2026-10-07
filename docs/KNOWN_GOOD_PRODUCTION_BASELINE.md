@@ -2,7 +2,7 @@
 
 Formal, permanent record of the completed USB, webcam, MCU-recovery, and
 A/B-readiness work, frozen as a known-good baseline before the upcoming
-GuppyScreen/OpenKE portability workstream begins. This document is not a
+GuppyScreen/RosetteOS portability workstream begins. This document is not a
 mission log - see `docs/USB_WEBCAM_MISSION_STATUS.md` for the full
 narrative and per-mission 48/50/52-field reports this baseline draws on.
 
@@ -50,7 +50,7 @@ NebulaOS repository as of this baseline.
 
 **GuppyScreen: dirty, and deliberately left untouched (read-only
 inspection only, per this mission's own scope).** This is the *starting
-point* for the next, separate GuppyScreen/OpenKE portability mission,
+point* for the next, separate GuppyScreen/RosetteOS portability mission,
 not something this baseline resolves:
 
 - `k1/scripts/guppy_cmd.cfg` - modified, not committed.
@@ -143,7 +143,7 @@ command):
 ## 5. Frozen functionality
 
 The following are complete, validated, and must not be changed by any
-future work (including the upcoming GuppyScreen/OpenKE portability
+future work (including the upcoming GuppyScreen/RosetteOS portability
 mission) without a proven direct dependency, its own regression plan,
 and full revalidation afterward:
 
@@ -233,7 +233,7 @@ repeated in this baseline mission or any future one.
 
 ## 9. GuppyScreen portability freeze contract
 
-The upcoming OpenKE/GuppyScreen portability work must not alter any
+The upcoming RosetteOS/GuppyScreen portability work must not alter any
 system listed in Section 5 unless:
 
 - a direct dependency on that system is proven, not assumed;

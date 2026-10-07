@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# OpenKE — per-SSID static IP for wlan0.
+# RosetteOS — per-SSID static IP for wlan0.
 #
 # Design (see memory/project_static_ip_design.md for the full spec): this is
 # strictly ADDITIVE to the stock DHCP flow, never a replacement of it. The

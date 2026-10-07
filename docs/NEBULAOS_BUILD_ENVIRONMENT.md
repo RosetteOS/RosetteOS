@@ -1,6 +1,6 @@
 # The NebulaOS build environment
 
-This covers the unified build container (`ghcr.io/openklipperedition/openke-build`) — why it exists,
+This covers the unified build container (`ghcr.io/rosetteos/rosetteos-build`) — why it exists,
 what's actually in it, what deliberately isn't, and what has to pass before a new version of it
 becomes the one everyone builds against.
 
@@ -18,8 +18,8 @@ See `build-env/Dockerfile` and `build-env/versions.env` for the exact, current, 
 
 ## What does it NOT contain?
 
-- **Project source.** `NebulaOS-firmware`, the full `OpenKlipperEdition/System` checkout,
-  `OpenKlipperEdition/GuppyScreen`, Klipper, and Moonraker — all fetched fresh by
+- **Project source.** `NebulaOS-firmware`, the full `RosetteOS/System` checkout,
+  `RosetteOS/GuppyScreen`, Klipper, and Moonraker — all fetched fresh by
   `00-fetch-vendor-sources.sh` at build time; moving branches and immutable inputs are configured in
   `manifests/dependencies.conf`. The image is the factory; the manifest is the material list.
 - **The kernel/rootfs/native-app target compiler.** `mipsel-buildroot-linux-gnu-*` is Buildroot's own
@@ -33,7 +33,7 @@ See `build-env/Dockerfile` and `build-env/versions.env` for the exact, current, 
 Because a floating tag (`:latest`, `:candidate`) can be silently repointed at different content later
 — the exact bug this project already closed once for `pellcorp/k1-bash-build` (see
 `manifests/dependencies.conf`'s own comment on that pin, Final Pre-Flash Audit mission, 2026-08-08).
-A digest is content-addressed: `ghcr.io/openklipperedition/openke-build@sha256:...` can only ever resolve to
+A digest is content-addressed: `ghcr.io/rosetteos/rosetteos-build@sha256:...` can only ever resolve to
 the exact bytes that produced that hash. `manifests/dependencies.conf`'s `BUILD_IMAGE_DIGEST` is the
 one place this is recorded; `build.sh` reads it directly, never a tag.
 
@@ -68,7 +68,7 @@ docker build -t nebulaos-build:local build-env/
 
 To publish a new **candidate** (never automatically canonical): push to a branch touching
 `build-env/**`, or run `.github/workflows/build-environment.yml` via `workflow_dispatch`. It publishes
-to `ghcr.io/openklipperedition/openke-build` under a dated/short-SHA tag and prints the resulting digest —
+to `ghcr.io/rosetteos/rosetteos-build` under a dated/short-SHA tag and prints the resulting digest —
 promotion to canonical is always a separate, deliberate, human step (see below).
 
 ## How is a new build image promoted?
@@ -105,7 +105,7 @@ reviewed commit — never automated, never silent.
   *written*. This means rebuilding `build-env/Dockerfile` today vs. a year from now can resolve
   different `gcc`/`make`/etc. point releases — the Dockerfile itself is not perfectly bit-reproducible
   on rebuild. What *is* reproducible: the **published, digest-pinned image** is immutable once built —
-  anyone pulling `ghcr.io/openklipperedition/openke-build@sha256:...` gets the exact same bytes forever. The
+  anyone pulling `ghcr.io/rosetteos/rosetteos-build@sha256:...` gets the exact same bytes forever. The
   pin is on the resulting image, not on a promise that rebuilding the Dockerfile reproduces it
   identically. (`pellcorp/k1-bash-build`, the container this replaces, had the identical property and
   the identical limitation — this is not a regression, just now made explicit.)
@@ -120,6 +120,6 @@ references `pellcorp/k1-bash-build` or `ghcr.io/coreflake1/guppydev` as a live d
 longer — see the Phase 11 report and the Final Closure report for the full evidence chain
 (repeatability comparison, physical hardware qualification) behind that promotion.
 
-`OpenKlipperEdition/GuppyScreen`'s own separate CI (`.github/workflows/build.yml`) is a distinct, not-yet-
+`RosetteOS/GuppyScreen`'s own separate CI (`.github/workflows/build.yml`) is a distinct, not-yet-
 migrated dependency on `ghcr.io/coreflake1/guppydev:latest` in a different repository - out of
 scope for this image's own promotion, tracked separately.

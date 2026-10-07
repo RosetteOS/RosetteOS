@@ -158,7 +158,7 @@ the exact same pins already documented above as `wlan_reg_on`/`bt_reg_on`. `as_b
 `GPD-4`/`GPD-5` "used" via the pinmux-group path. When `msc1`'s `sdhci_ingenic_probe()` later
 acquires `wlan-reg-on-gpios` (`&gpd 4 ...`, `halley5_v30.dts:513`) as a plain GPIO, it finds the bit
 already set and prints the warning + backtrace - confirmed directly via instrumented logging:
-`OPENKE-DIAG: SECOND/CONFLICTING request for GPD-4 (global gpio 100)`, immediately followed by
+`ROSETTEOS-DIAG: SECOND/CONFLICTING request for GPD-4 (global gpio 100)`, immediately followed by
 `wlan-reg-on -> acquired` (the underlying `pinctrl_gpio_request()` call happens regardless of the
 warning and succeeds every time).
 

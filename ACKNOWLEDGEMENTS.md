@@ -1,10 +1,10 @@
 # Acknowledgements
 
-OpenKE doesn't exist in a vacuum. It is built upon the dedicated bring-up and stabilization work originally performed under the **NebulaOS** project, as well as the broader open-source 3D printing community. This page gives credit where it's actually due, based on what's really in the repo and its history.
+RosetteOS doesn't exist in a vacuum. It is built upon the dedicated bring-up and stabilization work originally performed under the **NebulaOS** project, as well as the broader open-source 3D printing community. This page gives credit where it's actually due, based on what's really in the repo and its history.
 
 ## NebulaOS Origins & Foundation
 
-OpenKE is a direct open-source fork of **NebulaOS** (`coreflake1/NebulaOS-firmware`). OpenKE still uses all of NebulaOS's companion Klipper extensions ([`NebulaOS-klipper-extensions`](https://github.com/coreflake1/NebulaOS-klipper-extensions)), which provide vital hardware support: PRtouch strain-gauge loadcell probing, autonomous Z-offset compensation, bitbanged SPI for the ADXL345 accelerometer, EEPROM bus integration, and power-loss recovery. The Linux 6.6 kernel port, devicetree bindings, and rootfs architecture represent the deep engineering groundwork established by NebulaOS.
+RosetteOS is a direct open-source fork of **NebulaOS** (`coreflake1/NebulaOS-firmware`). RosetteOS still uses all of NebulaOS's companion Klipper extensions ([`NebulaOS-klipper-extensions`](https://github.com/coreflake1/NebulaOS-klipper-extensions)), which provide vital hardware support: PRtouch strain-gauge loadcell probing, autonomous Z-offset compensation, bitbanged SPI for the ADXL345 accelerometer, EEPROM bus integration, and power-loss recovery. The Linux 6.6 kernel port, devicetree bindings, and rootfs architecture represent the deep engineering groundwork established by NebulaOS.
 
 ## Pellcorp
 
@@ -13,11 +13,11 @@ A meaningful amount of the groundwork for this project's build and firmware work
 
 - **[`pellcorp/klipper`](https://github.com/pellcorp/klipper)** — used as a reference to verify the
   sign convention in our own probe/Z-compensation code while building `z_compensate.py`.
-- **[`pellcorp/k1-ustreamer`](https://github.com/pellcorp/k1-ustreamer)** — OpenKE's camera
+- **[`pellcorp/k1-ustreamer`](https://github.com/pellcorp/k1-ustreamer)** — RosetteOS's camera
   pipeline is a real port of this project (`K1_USTREAMER_REPO`/`K1_USTREAMER_PIN`).
 - **`pellcorp/k1-bash-build`** — for a long time, this was the actual MIPS cross-compile toolchain
   container this project's build (and GuppyScreen's) ran inside. As of the unified build environment
-  work (2026-08-15), both now use OpenKE's own build image instead — but that image bundles the
+  work (2026-08-15), both now use RosetteOS's own build image instead — but that image bundles the
   same toolchain this container provided, and its build recipe was faithfully reconstructed from the
   original image rather than replaced with something different. We're not still using the container,
   but the groundwork it represents is still part of how this builds.
@@ -29,7 +29,7 @@ this project possible started there.
 
 ## GuppyScreen lineage
 
-OpenKE's touchscreen UI builds on:
+RosetteOS's touchscreen UI builds on:
 
 - [`ballaswag/guppyscreen`](https://github.com/ballaswag/guppyscreen) — the original GuppyScreen project
 - [`probielodan/guppyscreen`](https://github.com/probielodan/guppyscreen)

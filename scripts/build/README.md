@@ -19,7 +19,7 @@ rootfs-overlay deletion gotcha) are all documented there with root causes, not j
 ## Prerequisites
 
 - Docker or Podman - `./build.sh` pulls the single, digest-pinned
-  `ghcr.io/openklipperedition/openke-build` image (`manifests/dependencies.conf`'s own
+  `ghcr.io/rosetteos/rosetteos-build` image (`manifests/dependencies.conf`'s own
   `BUILD_IMAGE_REPO`/`BUILD_IMAGE_DIGEST`, never a mutable `:latest` tag) and runs the whole
   `00`-`06` pipeline inside it. That image already contains every host build tool these scripts
   need (see `build-env/Dockerfile`) - no separate `apt-get install`, no nested container, no
@@ -36,7 +36,7 @@ rootfs-overlay deletion gotcha) are all documented there with root causes, not j
   `vendor/` directory is gitignored on purpose (large, mixed-provenance sources, see the main
   README), so nothing under `vendor/` is checked into this repo. The kernel is the one exception to
   "gitignored, nothing checked in": this project's kernel changes live as real commits on the
-  `OKE` branch of [`OpenKlipperEdition/System`](https://github.com/OpenKlipperEdition/System) -
+  `OKE` branch of [`RosetteOS/System`](https://github.com/RosetteOS/System) -
   `00-fetch-vendor-sources.sh` clones that branch directly, so the kernel changes travel with their
   own real git history instead of a patch file. What else *is* checked into this repo: the small set
   of files this project actually wrote by hand (`scripts/build/overlay/` - init scripts and configs,
@@ -73,7 +73,7 @@ Buildroot's own overlay dir). No manual step, no real device required.
 ## What each stage does
 
 1. **`00-fetch-vendor-sources.sh`** - clones/downloads every third-party source this build needs.
-   into `vendor/`, checking the pinned full OpenKlipperEdition/System OKE checkout (kernel + Buildroot), official upstream
+   into `vendor/`, checking the pinned full RosetteOS/System OKE checkout (kernel + Buildroot), official upstream
    Klipper at `master`, and GuppyScreen at the latest `OKE` branch HEAD. Immutable inputs such as
    Moonraker (`Arksine/moonraker`), `pellcorp/k1-ustreamer`, and Mainsail remain pinned and
    hash-verified.
@@ -96,13 +96,13 @@ Buildroot's own overlay dir). No manual step, no real device required.
    linux` defconfig plus every option this project added - WiFi/BT/touch/display/RNG/Python3/
    nginx/etc, using a helper that finds-and-replaces each option's *real* existing line rather than
    blindly appending, which is what caused a real class of bugs this session - see `FIRMWARE.md`
-   §14), the kernel config fragment file (`halley5-openke-fragment.config` - includes
+   §14), the kernel config fragment file (`halley5-rosetteos-fragment.config` - includes
    `CONFIG_EXTRA_FIRMWARE`, which embeds the WiFi firmware directly into the kernel image rather
    than relying on the rootfs being mounted yet - `brcmfmac` is built-in and probes for it earlier
    in boot than the real root filesystem mounts, see `FIRMWARE.md` §53), `local.mk` (the
    `LINUX_OVERRIDE_SRCDIR` pointer), and copies this repo's own hand-written overlay content
    (`scripts/build/overlay/`, including whatever `fetch-cyw43430-wifi-firmware.sh` staged) into
-   `board/halley5-openke-overlay/`.
+   `board/halley5-rosetteos-overlay/`.
 4. **`03-build-kernel-and-rootfs.sh`** - the main kernel + rootfs build (`make`) - touch, display,
    WiFi, Bluetooth, camera-kernel-side, and Core SoC infra all come from this one pass, since
    they're all just kernel config + device-tree, no cross-compiled userspace extras needed yet.

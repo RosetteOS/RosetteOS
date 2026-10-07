@@ -1,18 +1,18 @@
-# Building OpenKE from source
+# Building RosetteOS from source
 
 If you're just trying to build the whole OS, this is all you need:
 
 ```sh
-git clone https://github.com/OpenKlipperEdition/OpenKE.git
-cd OpenKE
+git clone https://github.com/RosetteOS/RosetteOS.git
+cd RosetteOS
 ./build.sh
 ```
 
-This exact command, from a genuinely fresh clone, is what reproduces the verified baseline. OpenKE builds upon the solid foundation and bring-up work originally developed under the NebulaOS project.
+This command, from a fresh clone of the repository still named RosetteOS, reproduces the verified baseline. RosetteOS builds on the foundation and bring-up work originally developed under NebulaOS.
 
 ## What it's doing
 
-`build.sh` pulls one build image (`ghcr.io/openklipperedition/openke-build`, pinned by digest in
+`build.sh` pulls one build image (`ghcr.io/rosetteos/rosetteos-build`, pinned by digest in
 `manifests/dependencies.conf`) and runs the whole pipeline inside it. You need Docker or Podman and
 nothing else — the image already has every build tool the pipeline needs, so there's no
 `apt-get install` beforehand, no nested containers, no messing with `/var/run/docker.sock`. See
@@ -29,7 +29,7 @@ Under the hood, inside that container, `build.sh` runs these stages in order (se
 ```sh
 cd scripts/build
 ./00-fetch-vendor-sources.sh      # fetches every pinned dependency, hash-verified
-./01-apply-kernel-patches.sh      # verifies the openke fork's changes landed
+./01-apply-kernel-patches.sh      # verifies the rosetteos fork's changes landed
 ./02-configure-buildroot.sh       # wires up buildroot.config, kernel fragment, overlay
 ./03-build-kernel-and-rootfs.sh   # builds the kernel + base rootfs
 ./04-cross-compile-app-stack.sh   # cross-compiles Klipper extras, GuppyScreen, v4l-utils, etc.

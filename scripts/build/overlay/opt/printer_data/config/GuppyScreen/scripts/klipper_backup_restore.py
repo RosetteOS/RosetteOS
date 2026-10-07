@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-# OpenKE — self-contained Klipper config / Moonraker database backup & restore.
+# RosetteOS — self-contained Klipper config / Moonraker database backup & restore.
 #
 # Replaces a dependency on the separate Creality Helper Script's useful_macros.sh
-# (most OpenKE-only installs don't have it — those macros existed on-screen but
+# (most RosetteOS-only installs don't have it — those macros existed on-screen but
 # silently failed for anyone without a separate Helper Script install). Same
 # backup/restore semantics as upstream (compress on backup, delete-then-extract
-# on restore), just stored in OpenKE's own backup dir instead of inside the
+# on restore), just stored in RosetteOS's own backup dir instead of inside the
 # directory being backed up.
 
 import argparse

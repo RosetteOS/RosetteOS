@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# OpenKE Local Dev Update Server
+# RosetteOS Local Dev Update Server
 # ==============================================================================
 # Serves the latest built .swu package over local HTTP for rapid testing
 # and deployment to printers on your local LAN without needing USB drives.
@@ -41,13 +41,13 @@ if [ -f "${LATEST_SWU}.sha256" ]; then
 else
     SWU_SHA256=$(sha256sum "$LATEST_SWU" | awk '{print $1}')
 fi
-VERSION_NAME=$(echo "$SWU_FILENAME" | sed -E 's/^openke-update-(.*)\.swu$/\1/')
+VERSION_NAME=$(echo "$SWU_FILENAME" | sed -E 's/^rosetteos-update-(.*)\.swu$/\1/')
 if [ -z "$VERSION_NAME" ] || [ "$VERSION_NAME" = "$SWU_FILENAME" ]; then
     VERSION_NAME="dev-latest"
 fi
 
 echo "======================================================="
-echo " OpenKE Local Dev Update Server"
+echo " RosetteOS Local Dev Update Server"
 echo "======================================================="
 echo " Firmware File: $SWU_FILENAME"
 echo " Version:       $VERSION_NAME"
@@ -56,7 +56,7 @@ echo " SHA256:        $SWU_SHA256"
 
 # Link SWU to serving directory for instant startup without disk duplication
 ln -sf "$LATEST_SWU" "$SERVING_DIR/$SWU_FILENAME"
-ln -sf "$LATEST_SWU" "$SERVING_DIR/openke-update.swu"
+ln -sf "$LATEST_SWU" "$SERVING_DIR/rosetteos-update.swu"
 
 # Detect local LAN IP
 HOST_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "127.0.0.1")
@@ -76,7 +76,7 @@ else
         GUPPY_DIR="$REPO_ROOT/../GuppyScreen"
     fi
     RAW_CHANGELOG=$(
-        echo "[ OpenKE System ]"
+        echo "[ RosetteOS System ]"
         git -C "$REPO_ROOT" log --pretty=format:"• %h %s" -n 6 2>/dev/null || echo "• Local development build (${VERSION_NAME})"
         echo ""
         if [ -n "$GUPPY_DIR" ]; then
@@ -92,7 +92,7 @@ fi
 # Generate releases.json
 cat <<EOF > "$SERVING_DIR/releases.json"
 {
-  "repository": "OpenKE Local Dev Server",
+  "repository": "RosetteOS Local Dev Server",
   "channel": "dev",
   "updated_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
   "releases": [
@@ -120,14 +120,14 @@ if [ -n "$PRINTER_IP" ]; then
     if command -v ssh >/dev/null 2>&1; then
         echo "Pushing dev server config via SSH..."
         ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no "root@$PRINTER_IP" \
-            "mkdir -p /usr/data/openke && echo 'dev_server_url=$DEV_SERVER_URL' > /usr/data/openke/openke-update.conf && echo 'dev_server_url=$DEV_SERVER_URL' > /tmp/openke-dev-url" \
+            "mkdir -p /usr/data/rosetteos && echo 'dev_server_url=$DEV_SERVER_URL' > /usr/data/rosetteos/rosetteos-update.conf && echo 'dev_server_url=$DEV_SERVER_URL' > /tmp/rosetteos-dev-url" \
             && echo "Successfully configured printer update server!" || echo "Could not SSH to printer (will rely on manual config)."
     fi
 else
     echo "To configure your printer to see this dev server:"
     echo "  1. SSH to printer: root@<PRINTER_IP>"
-    echo "  2. Run: echo 'dev_server_url=$DEV_SERVER_URL' > /usr/data/openke/openke-update.conf"
-    echo "     (Or create /usr/data/openke-dev-url containing: $DEV_SERVER_URL)"
+    echo "  2. Run: echo 'dev_server_url=$DEV_SERVER_URL' > /usr/data/rosetteos/rosetteos-update.conf"
+    echo "     (Or create /usr/data/rosetteos-dev-url containing: $DEV_SERVER_URL)"
     echo "  3. Open the Firmware Update panel on GuppyScreen and tap 'Refresh'"
 fi
 echo "======================================================="

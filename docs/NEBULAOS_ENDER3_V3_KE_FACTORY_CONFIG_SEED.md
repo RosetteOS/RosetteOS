@@ -4,7 +4,7 @@
 
 ## 1. The problem this closes
 
-A genuinely wiped `/usr/data/nebulaos/printer_data/config` left Klipper and Moonraker crash-looping forever - neither `printer.cfg` nor `moonraker.conf` existed anywhere reachable at boot. The only code that had ever created these files was a one-time migration from a legacy `/usr/data/openke/printer_data` path, removed in an earlier closure mission. Every prior "fresh boot" qualification in this project's history had, without anyone realizing it, relied on that migration's leftover files still being present - nobody had ever actually deleted them before. Full detail: the analysis doc referenced above.
+A genuinely wiped `/usr/data/nebulaos/printer_data/config` left Klipper and Moonraker crash-looping forever - neither `printer.cfg` nor `moonraker.conf` existed anywhere reachable at boot. The only code that had ever created these files was a one-time migration from a legacy `/usr/data/rosetteos/printer_data` path, removed in an earlier closure mission. Every prior "fresh boot" qualification in this project's history had, without anyone realizing it, relied on that migration's leftover files still being present - nobody had ever actually deleted them before. Full detail: the analysis doc referenced above.
 
 ## 2. What ships, and where
 

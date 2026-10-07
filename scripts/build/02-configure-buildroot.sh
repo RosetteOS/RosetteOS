@@ -17,7 +17,7 @@
 # or the kernel fragment/buildroot.config artifacts, and before 03/05 - a real
 # bug this session (FIRMWARE.md sec 24): editing the git-tracked overlay
 # template alone does nothing, since Buildroot only ever reads from
-# vendor/system/buildroot/board/halley5-openke-overlay/ (gitignored), which
+# vendor/system/buildroot/board/halley5-rosetteos-overlay/ (gitignored), which
 # this script is what syncs the template into. A rebuild after only touching
 # the template, without re-running this first, silently uses whatever this
 # script last copied there.
@@ -54,7 +54,7 @@
 # every path below is just the real filesystem path, and the root/non-root
 # chown dance that used to follow every docker --user root call is gone
 # because there's no longer a second UID entering the picture. The
-# per-container `--label openke-build-pid=$$` / orphan-container-cleanup
+# per-container `--label rosetteos-build-pid=$$` / orphan-container-cleanup
 # logic is gone for the same reason: nothing here spawns a container of its
 # own to leak.
 set -e
@@ -70,15 +70,15 @@ DEPS_MANIFEST="$REPO_ROOT/manifests/dependencies.conf"
 # same shared vendor/system/buildroot tree - running two of these at once
 # (e.g. from two terminals) would silently interleave writes. Cheap
 # insurance: a single exclusive lock file, held for the whole script.
-exec 9>"$REPO_ROOT/.openke-build.lock"
-flock -n 9 || { echo "another build stage already owns $REPO_ROOT/.openke-build.lock" >&2; exit 1; }
+exec 9>"$REPO_ROOT/.rosetteos-build.lock"
+flock -n 9 || { echo "another build stage already owns $REPO_ROOT/.rosetteos-build.lock" >&2; exit 1; }
 
 BUILDROOT_DIR="$REPO_ROOT/vendor/system/buildroot"
 ARTIFACTS="$REPO_ROOT/artifacts/buildroot-halley5-v30-image"
 KERNEL_SRCDIR="$REPO_ROOT/vendor/system/kernel/kernel-6.6"
-OPENSSL_FINGERPRINT_FILE="$BUILDROOT_DIR/output/.openke-libopenssl-fingerprint"
-BUSYBOX_FINGERPRINT_FILE="$BUILDROOT_DIR/output/.openke-busybox-fingerprint"
-SWUPDATE_FINGERPRINT_FILE="$BUILDROOT_DIR/output/.openke-swupdate-fingerprint"
+OPENSSL_FINGERPRINT_FILE="$BUILDROOT_DIR/output/.rosetteos-libopenssl-fingerprint"
+BUSYBOX_FINGERPRINT_FILE="$BUILDROOT_DIR/output/.rosetteos-busybox-fingerprint"
+SWUPDATE_FINGERPRINT_FILE="$BUILDROOT_DIR/output/.rosetteos-swupdate-fingerprint"
 
 if [ ! -f "$BUILDROOT_DIR/Makefile" ]; then
 	echo "vendor/system/buildroot not found - run 00-fetch-vendor-sources.sh first" >&2
@@ -87,13 +87,13 @@ fi
 
 cp "$ARTIFACTS/buildroot.config" "$BUILDROOT_DIR/.config"
 mkdir -p "$BUILDROOT_DIR/board"
-cp "$ARTIFACTS/halley5-openke-fragment.config" "$BUILDROOT_DIR/board/halley5-openke-fragment.config"
-cp "$ARTIFACTS/halley5-openke-busybox-fragment.config" "$BUILDROOT_DIR/board/halley5-openke-busybox-fragment.config"
+cp "$ARTIFACTS/halley5-rosetteos-fragment.config" "$BUILDROOT_DIR/board/halley5-rosetteos-fragment.config"
+cp "$ARTIFACTS/halley5-rosetteos-busybox-fragment.config" "$BUILDROOT_DIR/board/halley5-rosetteos-busybox-fragment.config"
 if [ -f "$REPO_ROOT/scripts/build/configs/swupdate.config" ]; then
 	cp "$REPO_ROOT/scripts/build/configs/swupdate.config" "$BUILDROOT_DIR/package/swupdate/swupdate.config"
 fi
 # Phase 11 (2026-08-15): CONFIG_EXTRA_FIRMWARE_DIR in the tracked fragment
-# is a literal "/src/board/halley5-openke-overlay/lib/firmware" - valid
+# is a literal "/src/board/halley5-rosetteos-overlay/lib/firmware" - valid
 # only under the old nested pellcorp/k1-bash-build container, which always
 # mounted this project at the fixed path /src regardless of the host
 # checkout location. Now that the pipeline runs natively (real host paths
@@ -105,18 +105,18 @@ fi
 # diff verbatim against the accepted baseline tag) to point at where the
 # overlay's firmware actually lands post-copy below: real host path, so it
 # works from any checkout location.
-sed -i "s#/src/board/halley5-openke-overlay#$BUILDROOT_DIR/board/halley5-openke-overlay#" \
-	"$BUILDROOT_DIR/board/halley5-openke-fragment.config"
+sed -i "s#/src/board/halley5-rosetteos-overlay#$BUILDROOT_DIR/board/halley5-rosetteos-overlay#" \
+	"$BUILDROOT_DIR/board/halley5-rosetteos-fragment.config"
 cat > "$BUILDROOT_DIR/local.mk" <<EOF
 LINUX_OVERRIDE_SRCDIR = $KERNEL_SRCDIR
 EOF
-rm -rf "$BUILDROOT_DIR/board/halley5-openke-wheels"
-rm -rf "$BUILDROOT_DIR/board/halley5-openke-overlay"
-mkdir -p "$BUILDROOT_DIR/board/halley5-openke-overlay"
-cp -r "$REPO_ROOT/scripts/build/overlay/." "$BUILDROOT_DIR/board/halley5-openke-overlay/"
-mkdir -p "$BUILDROOT_DIR/board/halley5-openke-overlay/opt/printer_data/comms" \
-         "$BUILDROOT_DIR/board/halley5-openke-overlay/opt/printer_data/logs" \
-         "$BUILDROOT_DIR/board/halley5-openke-overlay/opt/printer_data/gcodes"
+rm -rf "$BUILDROOT_DIR/board/halley5-rosetteos-wheels"
+rm -rf "$BUILDROOT_DIR/board/halley5-rosetteos-overlay"
+mkdir -p "$BUILDROOT_DIR/board/halley5-rosetteos-overlay"
+cp -r "$REPO_ROOT/scripts/build/overlay/." "$BUILDROOT_DIR/board/halley5-rosetteos-overlay/"
+mkdir -p "$BUILDROOT_DIR/board/halley5-rosetteos-overlay/opt/printer_data/comms" \
+         "$BUILDROOT_DIR/board/halley5-rosetteos-overlay/opt/printer_data/logs" \
+         "$BUILDROOT_DIR/board/halley5-rosetteos-overlay/opt/printer_data/gcodes"
 # Real bug found live on 2026-07-28: this rm -rf/cp only cleans the BOARD
 # overlay staging dir (above), not output/target/ or
 # output/build/buildroot-fs/ext2/target/ - per the IMPORTANT comment near
@@ -172,7 +172,7 @@ for obsolete_rel in \
 	"usr/libexec/nebulaos-seed-camera" \
 	"opt/printer_data/config/Macros" \
 	"opt/printer_data/config/Nebula.cfg" \
-	"opt/printer_data/config/OpenKE_Settings.cfg" \
+	"opt/printer_data/config/RosetteOS_Settings.cfg" \
 	"opt/printer_data/config/V3_Settings.cfg" \
 	"opt/printer_data/config/camera-quality.cfg" \
 	"opt/printer_data/config/frontend-controls.cfg" \
@@ -221,7 +221,7 @@ busybox_input_fingerprint() {
 		printf 'system_pin=%s\n' "$SYSTEM_PIN"
 		sha256sum \
 			"$BUILDROOT_DIR/.config" \
-			"$BUILDROOT_DIR/board/halley5-openke-busybox-fragment.config"
+			"$BUILDROOT_DIR/board/halley5-rosetteos-busybox-fragment.config"
 	} | sha256sum | awk '{print $1}'
 }
 

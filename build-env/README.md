@@ -1,6 +1,6 @@
-# OpenKE build environment
+# RosetteOS build environment
 
-Source definition for `ghcr.io/openklipperedition/openke-build`, the single container `build.sh` runs the
+Source definition for `ghcr.io/rosetteos/rosetteos-build`, the single container `build.sh` runs the
 whole `scripts/build/00-06` pipeline inside.
 
 ## What's in here
@@ -22,8 +22,8 @@ GuppyScreen's Bootlin mips32el-musl cross-toolchain directly (Migration A — se
 
 ## What this image does NOT contain
 
-- **Project source.** `OpenKE`, the full `OpenKlipperEdition/System` checkout,
-  `OpenKlipperEdition/GuppyScreen`, Klipper, and Moonraker — all fetched fresh by
+- **Project source.** The RosetteOS firmware source, the full `RosetteOS/System` checkout,
+  `RosetteOS/GuppyScreen`, Klipper, and Moonraker — all fetched fresh by
   `00-fetch-vendor-sources.sh` at build time; moving branches and immutable pins are configured in
   `manifests/dependencies.conf`. The image is the factory; `dependencies.conf` is the material list.
 - **The kernel/rootfs/native-app target compiler.** That's Buildroot's own
@@ -35,17 +35,17 @@ GuppyScreen's Bootlin mips32el-musl cross-toolchain directly (Migration A — se
 ## Migration A vs. Migration B
 
 This image is **Migration A**: replace the two nested containers
-(`pellcorp/k1-bash-build`, `ghcr.io/coreflake1/guppydev`) with one OpenKE-owned image, while
+(`pellcorp/k1-bash-build`, `ghcr.io/coreflake1/guppydev`) with one RosetteOS-owned image, while
 changing as little else as possible. GuppyScreen's exact current compiler (Bootlin
 `mips32el--musl--stable-2024.02-1`, pinned by the same SHA256 as
-`OpenKlipperEdition/GuppyScreen/docker/Dockerfile`) is preserved unchanged here on purpose — converging it onto
+`RosetteOS/GuppyScreen/docker/Dockerfile`) is preserved unchanged here on purpose — converging it onto
 Buildroot's own target toolchain is a separate, larger, not-yet-executed experiment (**Migration B**,
 see `docs/NEBULAOS_BUILD_ENVIRONMENT.md`), deliberately not folded into this one.
 
 ## Building it yourself
 
 ```sh
-docker build -t openke-build:local build-env/
+docker build -t rosetteos-build:local build-env/
 ```
 
 ## Why Ubuntu 22.04, not 20.04 (pellcorp's base)

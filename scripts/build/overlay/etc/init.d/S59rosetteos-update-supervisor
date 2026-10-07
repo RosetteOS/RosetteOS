@@ -1,0 +1,47 @@
+#!/bin/sh
+#
+# NebulaOS mutable-runtime mission, Phase 8: launches the update-rollback
+# supervisor (/etc/nebulaos-update-supervisor.sh) as a persistent background
+# poller. Must start after S55klipper/S56moonraker/S58guppyscreen - it
+# queries Moonraker's HTTP API and needs the real service topology (and any
+# already-bind-mounted persistent apps from S05) to be up first, and its own
+# restart actions target those same services.
+#
+# NebulaOS Memory Resilience Gate: this is an update/maintenance-class
+# helper, the most expendable class in the project's own OOM priority
+# table (docs/NEBULAOS_MEMORY_RESILIENCE.md sec 3.3) - 500, same as the
+# factory-seed shell.
+
+SUPERVISOR=/etc/rosetteos-update-supervisor.sh
+PIDFILE=/var/run/rosetteos-update-supervisor.pid
+
+start() {
+	echo "Starting rosetteos-update-supervisor"
+	start-stop-daemon -S -b -m -p "$PIDFILE" \
+		-x /bin/sh -- "$SUPERVISOR" loop
+	[ -f "$PIDFILE" ] && echo 500 > "/proc/$(cat "$PIDFILE")/oom_score_adj" 2>/dev/null
+}
+
+stop() {
+	echo "Stopping rosetteos-update-supervisor"
+	start-stop-daemon -K -p "$PIDFILE"
+}
+
+case "$1" in
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	restart)
+		stop
+		start
+		;;
+	*)
+		echo "Usage: $0 {start|stop|restart}"
+		exit 1
+		;;
+esac
+
+exit 0

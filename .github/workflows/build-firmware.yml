@@ -14,7 +14,7 @@ permissions:
   packages: read
 
 concurrency:
-  group: openke-firmware-${{ github.workflow }}-${{ github.ref }}
+  group: rosetteos-firmware-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -47,40 +47,40 @@ jobs:
         id: dependency-cache
         uses: actions/cache/restore@v4
         with:
-          path: .cache/openke
-          key: openke-dependencies-v2-${{ runner.os }}-${{ hashFiles('manifests/dependencies.conf') }}-${{ github.run_id }}
+          path: .cache/rosetteos
+          key: rosetteos-dependencies-v2-${{ runner.os }}-${{ hashFiles('manifests/dependencies.conf') }}-${{ github.run_id }}
           restore-keys: |
-            openke-dependencies-v2-${{ runner.os }}-${{ hashFiles('manifests/dependencies.conf') }}-
-            openke-dependencies-v2-${{ runner.os }}-
+            rosetteos-dependencies-v2-${{ runner.os }}-${{ hashFiles('manifests/dependencies.conf') }}-
+            rosetteos-dependencies-v2-${{ runner.os }}-
 
       - name: Materialize dependency cache
         shell: bash
         run: |
           set -euo pipefail
 
-          if [[ -d .cache/openke/vendor ]]; then
+          if [[ -d .cache/rosetteos/vendor ]]; then
             mkdir -p vendor
-            rsync -a .cache/openke/vendor/ vendor/
+            rsync -a .cache/rosetteos/vendor/ vendor/
           fi
 
-          if [[ -d .cache/openke/buildroot-dl && -d vendor/system/.git ]]; then
+          if [[ -d .cache/rosetteos/buildroot-dl && -d vendor/system/.git ]]; then
             mkdir -p vendor/system/buildroot/output/dl
-            rsync -a .cache/openke/buildroot-dl/ vendor/system/buildroot/output/dl/
+            rsync -a .cache/rosetteos/buildroot-dl/ vendor/system/buildroot/output/dl/
           fi
 
-          if [[ -d .cache/openke/vendor-downloads ]]; then
+          if [[ -d .cache/rosetteos/vendor-downloads ]]; then
             mkdir -p vendor-downloads
-            rsync -a .cache/openke/vendor-downloads/ vendor-downloads/
+            rsync -a .cache/rosetteos/vendor-downloads/ vendor-downloads/
           fi
 
-          if [[ -d .cache/openke/build-work ]]; then
+          if [[ -d .cache/rosetteos/build-work ]]; then
             mkdir -p build-work
-            rsync -a .cache/openke/build-work/ build-work/
+            rsync -a .cache/rosetteos/build-work/ build-work/
           fi
 
-          if [[ -d .cache/openke/firmware ]]; then
+          if [[ -d .cache/rosetteos/firmware ]]; then
             mkdir -p scripts/build/overlay/lib/firmware
-            rsync -a .cache/openke/firmware/ scripts/build/overlay/lib/firmware/
+            rsync -a .cache/rosetteos/firmware/ scripts/build/overlay/lib/firmware/
           fi
 
       # Preserve the generated Buildroot state separately so a later run of
@@ -107,10 +107,10 @@ jobs:
           path: vendor/system/buildroot/output
           # Assertion-only changes do not invalidate the compiled Buildroot
           # state, so a comparator fix can reuse the failed run's output.
-          key: openke-build-v2-${{ runner.os }}-${{ hashFiles('build.sh', 'scripts/build/*.sh', 'scripts/build/configs/**', 'scripts/build/patches/**', 'scripts/build/overlay/etc/init.d/**', 'scripts/build/overlay/etc/*.sh', 'scripts/build/overlay/etc/*.conf', 'scripts/build/overlay/etc/profile.d/**', 'scripts/build/overlay/etc/sysctl.d/**', 'scripts/build/overlay/etc/network/**', 'scripts/build/overlay/etc/nginx/**', 'scripts/build/overlay/etc/udev/**', 'scripts/build/overlay/etc/hwrevision', 'scripts/build/overlay/etc/openke-version', 'scripts/build/overlay/etc/sw-versions', 'scripts/build/overlay/etc/swupdate.cfg', 'scripts/build/overlay/etc/os-release', 'scripts/build/overlay/usr/bin/**', 'scripts/build/overlay/usr/libexec/**', 'scripts/build/overlay/opt/openke/**', 'scripts/build/overlay/opt/openke-seeds/**', 'scripts/build/overlay/opt/guppyscreen/guppyconfig.json', 'scripts/build/overlay/opt/guppyscreen/themes/**', 'scripts/build/overlay/opt/printer_data/config/*.cfg', 'scripts/build/overlay/opt/printer_data/config/*.conf', 'scripts/build/overlay/opt/printer_data/config/hardware/**', 'scripts/build/overlay/opt/printer_data/config/macros/**', 'scripts/build/overlay/opt/printer_data/config/GuppyScreen/**', 'artifacts/buildroot-halley5-v30-image/*.config', 'artifacts/buildroot-halley5-v30-image/*.dts', 'manifests/dependencies.conf') }}-${{ github.run_id }}
+          key: rosetteos-build-v2-${{ runner.os }}-${{ hashFiles('build.sh', 'scripts/build/*.sh', 'scripts/build/configs/**', 'scripts/build/patches/**', 'scripts/build/overlay/etc/init.d/**', 'scripts/build/overlay/etc/*.sh', 'scripts/build/overlay/etc/*.conf', 'scripts/build/overlay/etc/profile.d/**', 'scripts/build/overlay/etc/sysctl.d/**', 'scripts/build/overlay/etc/network/**', 'scripts/build/overlay/etc/nginx/**', 'scripts/build/overlay/etc/udev/**', 'scripts/build/overlay/etc/hwrevision', 'scripts/build/overlay/etc/rosetteos-version', 'scripts/build/overlay/etc/sw-versions', 'scripts/build/overlay/etc/swupdate.cfg', 'scripts/build/overlay/etc/os-release', 'scripts/build/overlay/usr/bin/**', 'scripts/build/overlay/usr/libexec/**', 'scripts/build/overlay/opt/rosetteos/**', 'scripts/build/overlay/opt/rosetteos-seeds/**', 'scripts/build/overlay/opt/guppyscreen/guppyconfig.json', 'scripts/build/overlay/opt/guppyscreen/themes/**', 'scripts/build/overlay/opt/printer_data/config/*.cfg', 'scripts/build/overlay/opt/printer_data/config/*.conf', 'scripts/build/overlay/opt/printer_data/config/hardware/**', 'scripts/build/overlay/opt/printer_data/config/macros/**', 'scripts/build/overlay/opt/printer_data/config/GuppyScreen/**', 'artifacts/buildroot-halley5-v30-image/*.config', 'artifacts/buildroot-halley5-v30-image/*.dts', 'manifests/dependencies.conf') }}-${{ github.run_id }}
           restore-keys: |
-            openke-build-v2-${{ runner.os }}-${{ hashFiles('build.sh', 'scripts/build/*.sh', 'scripts/build/configs/**', 'scripts/build/patches/**', 'scripts/build/overlay/etc/init.d/**', 'scripts/build/overlay/etc/*.sh', 'scripts/build/overlay/etc/*.conf', 'scripts/build/overlay/etc/profile.d/**', 'scripts/build/overlay/etc/sysctl.d/**', 'scripts/build/overlay/etc/network/**', 'scripts/build/overlay/etc/nginx/**', 'scripts/build/overlay/etc/udev/**', 'scripts/build/overlay/etc/hwrevision', 'scripts/build/overlay/etc/openke-version', 'scripts/build/overlay/etc/sw-versions', 'scripts/build/overlay/etc/swupdate.cfg', 'scripts/build/overlay/etc/os-release', 'scripts/build/overlay/usr/bin/**', 'scripts/build/overlay/usr/libexec/**', 'scripts/build/overlay/opt/openke/**', 'scripts/build/overlay/opt/openke-seeds/**', 'scripts/build/overlay/opt/guppyscreen/guppyconfig.json', 'scripts/build/overlay/opt/guppyscreen/themes/**', 'scripts/build/overlay/opt/printer_data/config/*.cfg', 'scripts/build/overlay/opt/printer_data/config/*.conf', 'scripts/build/overlay/opt/printer_data/config/hardware/**', 'scripts/build/overlay/opt/printer_data/config/macros/**', 'scripts/build/overlay/opt/printer_data/config/GuppyScreen/**', 'artifacts/buildroot-halley5-v30-image/*.config', 'artifacts/buildroot-halley5-v30-image/*.dts', 'manifests/dependencies.conf') }}-
-            openke-build-v2-${{ runner.os }}-
+            rosetteos-build-v2-${{ runner.os }}-${{ hashFiles('build.sh', 'scripts/build/*.sh', 'scripts/build/configs/**', 'scripts/build/patches/**', 'scripts/build/overlay/etc/init.d/**', 'scripts/build/overlay/etc/*.sh', 'scripts/build/overlay/etc/*.conf', 'scripts/build/overlay/etc/profile.d/**', 'scripts/build/overlay/etc/sysctl.d/**', 'scripts/build/overlay/etc/network/**', 'scripts/build/overlay/etc/nginx/**', 'scripts/build/overlay/etc/udev/**', 'scripts/build/overlay/etc/hwrevision', 'scripts/build/overlay/etc/rosetteos-version', 'scripts/build/overlay/etc/sw-versions', 'scripts/build/overlay/etc/swupdate.cfg', 'scripts/build/overlay/etc/os-release', 'scripts/build/overlay/usr/bin/**', 'scripts/build/overlay/usr/libexec/**', 'scripts/build/overlay/opt/rosetteos/**', 'scripts/build/overlay/opt/rosetteos-seeds/**', 'scripts/build/overlay/opt/guppyscreen/guppyconfig.json', 'scripts/build/overlay/opt/guppyscreen/themes/**', 'scripts/build/overlay/opt/printer_data/config/*.cfg', 'scripts/build/overlay/opt/printer_data/config/*.conf', 'scripts/build/overlay/opt/printer_data/config/hardware/**', 'scripts/build/overlay/opt/printer_data/config/macros/**', 'scripts/build/overlay/opt/printer_data/config/GuppyScreen/**', 'artifacts/buildroot-halley5-v30-image/*.config', 'artifacts/buildroot-halley5-v30-image/*.dts', 'manifests/dependencies.conf') }}-
+            rosetteos-build-v2-${{ runner.os }}-
 
       - name: Build and verify firmware
         id: build
@@ -126,33 +126,33 @@ jobs:
         run: |
           set -euo pipefail
 
-          rm -rf .cache/openke
-          mkdir -p .cache/openke/vendor
+          rm -rf .cache/rosetteos
+          mkdir -p .cache/rosetteos/vendor
 
           # Preserve source checkouts and git metadata, but omit the generated
           # Buildroot output tree. It is rebuilt by the canonical pipeline.
           if [[ -d vendor ]]; then
-            rsync -a --exclude='system/buildroot/output/' vendor/ .cache/openke/vendor/
+            rsync -a --exclude='system/buildroot/output/' vendor/ .cache/rosetteos/vendor/
           fi
 
           if [[ -d vendor/system/buildroot/output/dl ]]; then
-            mkdir -p .cache/openke/buildroot-dl
-            rsync -a vendor/system/buildroot/output/dl/ .cache/openke/buildroot-dl/
+            mkdir -p .cache/rosetteos/buildroot-dl
+            rsync -a vendor/system/buildroot/output/dl/ .cache/rosetteos/buildroot-dl/
           fi
 
           if [[ -d vendor-downloads ]]; then
-            mkdir -p .cache/openke/vendor-downloads
-            rsync -a vendor-downloads/ .cache/openke/vendor-downloads/
+            mkdir -p .cache/rosetteos/vendor-downloads
+            rsync -a vendor-downloads/ .cache/rosetteos/vendor-downloads/
           fi
 
           if [[ -d build-work ]]; then
-            mkdir -p .cache/openke/build-work
-            rsync -a build-work/ .cache/openke/build-work/
+            mkdir -p .cache/rosetteos/build-work
+            rsync -a build-work/ .cache/rosetteos/build-work/
           fi
 
           if [[ -d scripts/build/overlay/lib/firmware ]]; then
-            mkdir -p .cache/openke/firmware
-            rsync -a scripts/build/overlay/lib/firmware/ .cache/openke/firmware/
+            mkdir -p .cache/rosetteos/firmware
+            rsync -a scripts/build/overlay/lib/firmware/ .cache/rosetteos/firmware/
           fi
 
       - name: Save dependency cache
@@ -160,8 +160,8 @@ jobs:
         continue-on-error: true
         uses: actions/cache/save@v4
         with:
-          path: .cache/openke
-          key: openke-dependencies-v2-${{ runner.os }}-${{ hashFiles('manifests/dependencies.conf') }}-${{ github.run_id }}
+          path: .cache/rosetteos
+          key: rosetteos-dependencies-v2-${{ runner.os }}-${{ hashFiles('manifests/dependencies.conf') }}-${{ github.run_id }}
 
       - name: Save Buildroot output cache
         if: ${{ always() && hashFiles('vendor/system/buildroot/Makefile') != '' }}
@@ -169,7 +169,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: vendor/system/buildroot/output
-          key: openke-build-v2-${{ runner.os }}-${{ hashFiles('build.sh', 'scripts/build/*.sh', 'scripts/build/configs/**', 'scripts/build/patches/**', 'scripts/build/overlay/etc/init.d/**', 'scripts/build/overlay/etc/*.sh', 'scripts/build/overlay/etc/*.conf', 'scripts/build/overlay/etc/profile.d/**', 'scripts/build/overlay/etc/sysctl.d/**', 'scripts/build/overlay/etc/network/**', 'scripts/build/overlay/etc/nginx/**', 'scripts/build/overlay/etc/udev/**', 'scripts/build/overlay/etc/hwrevision', 'scripts/build/overlay/etc/openke-version', 'scripts/build/overlay/etc/sw-versions', 'scripts/build/overlay/etc/swupdate.cfg', 'scripts/build/overlay/etc/os-release', 'scripts/build/overlay/usr/bin/**', 'scripts/build/overlay/usr/libexec/**', 'scripts/build/overlay/opt/openke/**', 'scripts/build/overlay/opt/openke-seeds/**', 'scripts/build/overlay/opt/guppyscreen/guppyconfig.json', 'scripts/build/overlay/opt/guppyscreen/themes/**', 'scripts/build/overlay/opt/printer_data/config/*.cfg', 'scripts/build/overlay/opt/printer_data/config/*.conf', 'scripts/build/overlay/opt/printer_data/config/hardware/**', 'scripts/build/overlay/opt/printer_data/config/macros/**', 'scripts/build/overlay/opt/printer_data/config/GuppyScreen/**', 'artifacts/buildroot-halley5-v30-image/*.config', 'artifacts/buildroot-halley5-v30-image/*.dts', 'manifests/dependencies.conf') }}-${{ github.run_id }}
+          key: rosetteos-build-v2-${{ runner.os }}-${{ hashFiles('build.sh', 'scripts/build/*.sh', 'scripts/build/configs/**', 'scripts/build/patches/**', 'scripts/build/overlay/etc/init.d/**', 'scripts/build/overlay/etc/*.sh', 'scripts/build/overlay/etc/*.conf', 'scripts/build/overlay/etc/profile.d/**', 'scripts/build/overlay/etc/sysctl.d/**', 'scripts/build/overlay/etc/network/**', 'scripts/build/overlay/etc/nginx/**', 'scripts/build/overlay/etc/udev/**', 'scripts/build/overlay/etc/hwrevision', 'scripts/build/overlay/etc/rosetteos-version', 'scripts/build/overlay/etc/sw-versions', 'scripts/build/overlay/etc/swupdate.cfg', 'scripts/build/overlay/etc/os-release', 'scripts/build/overlay/usr/bin/**', 'scripts/build/overlay/usr/libexec/**', 'scripts/build/overlay/opt/rosetteos/**', 'scripts/build/overlay/opt/rosetteos-seeds/**', 'scripts/build/overlay/opt/guppyscreen/guppyconfig.json', 'scripts/build/overlay/opt/guppyscreen/themes/**', 'scripts/build/overlay/opt/printer_data/config/*.cfg', 'scripts/build/overlay/opt/printer_data/config/*.conf', 'scripts/build/overlay/opt/printer_data/config/hardware/**', 'scripts/build/overlay/opt/printer_data/config/macros/**', 'scripts/build/overlay/opt/printer_data/config/GuppyScreen/**', 'artifacts/buildroot-halley5-v30-image/*.config', 'artifacts/buildroot-halley5-v30-image/*.dts', 'manifests/dependencies.conf') }}-${{ github.run_id }}
 
       - name: Collect failure diagnostics
         if: ${{ always() && steps.build.outcome == 'failure' }}
@@ -193,7 +193,7 @@ jobs:
         if: ${{ always() && steps.build.outcome == 'failure' }}
         uses: actions/upload-artifact@v4
         with:
-          name: openke-build-diagnostics-${{ github.sha }}
+          name: rosetteos-build-diagnostics-${{ github.sha }}
           path: ci-diagnostics/
           if-no-files-found: warn
           retention-days: 14
@@ -213,7 +213,7 @@ jobs:
 
           # 2. Generate GuppyScreen-compatible release manifest
           python3 scripts/build/lib/generate-release-manifest.py \
-            --swu "$bundle/openke-update-nightly.swu" \
+            --swu "$bundle/rosetteos-update-nightly.swu" \
             --output "$bundle/releases.json" \
             --changelog "$bundle/changelog.txt" \
             --channel "nightly" \
@@ -249,7 +249,7 @@ jobs:
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: openke-firmware-${{ github.sha }}
+          name: rosetteos-firmware-${{ github.sha }}
           path: ci-artifacts/
           if-no-files-found: error
           retention-days: 30
@@ -268,8 +268,8 @@ jobs:
           TITLE="Nightly"
 
           release_files=(
-            "$bundle/openke-update-nightly.swu"
-            "$bundle/openke-update-nightly.swu.sha256"
+            "$bundle/rosetteos-update-nightly.swu"
+            "$bundle/rosetteos-update-nightly.swu.sha256"
             "$bundle/releases.json"
             "$bundle/changelog.txt"
             "$bundle/SHA256SUMS"

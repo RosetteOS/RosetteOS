@@ -14,10 +14,10 @@
 # for the pieces they own.
 #
 # THIS IS THE ONLY SCRIPT ALLOWED TO ADD/REMOVE THE
-#   OPENKE_ACCELEROMETER_EEPROM_BUS_ENABLE_VARIANT_DTS_BEGIN/END
+#   ROSETTEOS_ACCELEROMETER_EEPROM_BUS_ENABLE_VARIANT_DTS_BEGIN/END
 # block in kernel/kernel-6.6/module_drivers/dts/x2000/halley5_v30.dts, and
-# the matching OPENKE_ACCELEROMETER_EEPROM_BUS_ENABLE_VARIANT_BEGIN/END
-# block in halley5-openke-fragment.config.
+# the matching ROSETTEOS_ACCELEROMETER_EEPROM_BUS_ENABLE_VARIANT_BEGIN/END
+# block in halley5-rosetteos-fragment.config.
 #
 # IMPORTANT - the DTS is shared with wifi-sdio-variant.sh, display-vsync-
 # variant.sh, backlight-final-controller-variant.sh, pwm-state-readback-
@@ -107,13 +107,13 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/../.." && pwd)
 KERNEL_DIR="$REPO_ROOT/vendor/system"
 DTS="$KERNEL_DIR/kernel/kernel-6.6/module_drivers/dts/x2000/halley5_v30.dts"
-FRAGMENT="$REPO_ROOT/artifacts/buildroot-halley5-v30-image/halley5-openke-fragment.config"
+FRAGMENT="$REPO_ROOT/artifacts/buildroot-halley5-v30-image/halley5-rosetteos-fragment.config"
 MARKER="$KERNEL_DIR/.accelerometer-eeprom-bus-enable-variant"
 
-BEGIN_MARK="#--- OPENKE_ACCELEROMETER_EEPROM_BUS_ENABLE_VARIANT_BEGIN ---"
-END_MARK="#--- OPENKE_ACCELEROMETER_EEPROM_BUS_ENABLE_VARIANT_END ---"
-DTS_MARK_BEGIN="--- OPENKE_ACCELEROMETER_EEPROM_BUS_ENABLE_VARIANT_DTS_BEGIN ---"
-DTS_MARK_END="--- OPENKE_ACCELEROMETER_EEPROM_BUS_ENABLE_VARIANT_DTS_END ---"
+BEGIN_MARK="#--- ROSETTEOS_ACCELEROMETER_EEPROM_BUS_ENABLE_VARIANT_BEGIN ---"
+END_MARK="#--- ROSETTEOS_ACCELEROMETER_EEPROM_BUS_ENABLE_VARIANT_END ---"
+DTS_MARK_BEGIN="--- ROSETTEOS_ACCELEROMETER_EEPROM_BUS_ENABLE_VARIANT_DTS_BEGIN ---"
+DTS_MARK_END="--- ROSETTEOS_ACCELEROMETER_EEPROM_BUS_ENABLE_VARIANT_DTS_END ---"
 
 case "$VARIANT" in
 	FIX0|FIX1) ;;
@@ -166,7 +166,7 @@ if [ "$VARIANT" = "FIX1" ]; then
 		echo "	 * node below is the Linux 6.6 in-tree at24/nvmem driver, NOT"
 		echo "	 * [bl24c16f] (which owned this same chip directly over"
 		echo "	 * i2c_mcu:rpi/i2c-chardev in Phase 1.9A and is retired from"
-		echo "	 * production use as of Phase 1.9B - see OpenKE_Settings.cfg and"
+		echo "	 * production use as of Phase 1.9B - see RosetteOS_Settings.cfg and"
 		echo "	 * nebulaos_power_loss_recovery.py). The BL24C16F is electrically"
 		echo "	 * and functionally an Atmel 24C16 - same 2048 bytes, same 16-byte"
 		echo "	 * write page, same 8-bit internal address split across 8 I2C slave"
@@ -320,7 +320,7 @@ if [ "$VARIANT" = "FIX1" ]; then
 		echo "# real kernel at24 driver above (which binds its i2c_client"
 		echo "# directly, no /dev/i2c-* chardev involved), nothing else on this"
 		echo "# board uses a userspace i2c-chardev consumer any more - confirmed"
-		echo "# by inspecting OpenKE_Settings.cfg: [adxl345] is SPI, not I2C, and no"
+		echo "# by inspecting RosetteOS_Settings.cfg: [adxl345] is SPI, not I2C, and no"
 		echo "# other [xxx] section declares an i2c_mcu/i2c_bus option."
 		echo "$END_MARK"
 	} >> "$FRAGMENT"

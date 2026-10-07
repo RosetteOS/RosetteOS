@@ -1,0 +1,113 @@
+#!/bin/sh
+#
+# NebulaOS mutable-runtime mission, Memory Resilience Gate: fallback
+# (lower-priority) disk-backed swap, layered under S00zram-swap. zram
+# alone may not be enough for larger/longer memory-heavy operations
+# (Moonraker environment installs, Phase 7); a disk swap file gives a
+# second, larger safety margin before the OOM-killer would otherwise act.
+#
+# Deliberately NOT the stock swap file at /usr/data/swap - this mission's
+# own direction is not to depend on a stock-owned resource. This is a new,
+# RosetteOS-owned file, sized and managed independently, excluded from
+# retention cleanup (docs/NEBULAOS_RETENTION_POLICY.md - the retention
+# manager's own allowlist never touches system/, so this file is already
+# out of its reach by construction, not by a special-case exception).
+#
+# Must run after S02rosetteos-namespace (needs /usr/data/rosetteos to
+# exist) and before S04rosetteos-factory-seed (the memory-heavy step this
+# exists to protect).
+
+ROSETTEOS_ROOT="${ROSETTEOS_ROOT:-/usr/data/rosetteos}"
+SWAPFILE="$ROSETTEOS_ROOT/system/swapfile"
+SWAP_SIZE_BYTES=$((128 * 1024 * 1024))
+SWAP_PRIORITY=10
+
+log() {
+	echo "S03rosetteos-diskswap: $1"
+}
+
+start() {
+	if ! awk '$2=="/usr/data" {found=1} END{exit !found}' /proc/mounts; then
+		log "/usr/data not mounted - skipping disk swap this boot (zram alone remains active)"
+		return 0
+	fi
+	testfile="/usr/data/.rosetteos-diskswap-rw-test-$$"
+	if ! ( : > "$testfile" ) 2>/dev/null; then
+		log "/usr/data is not writable - skipping disk swap this boot"
+		return 0
+	fi
+	rm -f "$testfile"
+
+	if [ ! -d "$ROSETTEOS_ROOT/system" ]; then
+		log "$ROSETTEOS_ROOT/system does not exist yet (S02rosetteos-namespace should have created it) - skipping"
+		return 0
+	fi
+
+	if grep -q "^$SWAPFILE " /proc/swaps 2>/dev/null; then
+		log "$SWAPFILE already active in /proc/swaps - skipping (idempotent)"
+		return 0
+	fi
+
+	# Validate any existing file before trusting it - never blindly
+	# swapon() something that might not actually be a valid, correctly
+	# sized swap file (a previous interrupted boot, a truncated copy,
+	# etc.). Recreate from scratch if anything looks wrong, but never
+	# truncate/rewrite a file that is already a genuinely active swap
+	# (the /proc/swaps check above already guards that case).
+	valid=false
+	if [ -f "$SWAPFILE" ]; then
+		actual_size=$(wc -c < "$SWAPFILE" 2>/dev/null)
+		owner=$(ls -ldn "$SWAPFILE" 2>/dev/null | awk '{print $3":"$4}')
+		perms=$(ls -ld "$SWAPFILE" 2>/dev/null | cut -c1-10)
+		if [ "$actual_size" = "$SWAP_SIZE_BYTES" ] && [ "$owner" = "0:0" ] && [ "$perms" = "-rw-------" ]; then
+			valid=true
+		else
+			log "existing $SWAPFILE failed validation (size=$actual_size owner=$owner perms=$perms) - recreating"
+			rm -f "$SWAPFILE"
+		fi
+	fi
+
+	if [ "$valid" != "true" ]; then
+		log "creating $SWAPFILE ($SWAP_SIZE_BYTES bytes)"
+		# Deterministic, fully-allocated (never sparse) - dd with a fixed
+		# block count rather than truncate/fallocate, per this mission's
+		# own explicit preference (known, simple, easy-to-verify
+		# filesystem allocation behavior on this exact ext4/eMMC setup).
+		umask 077
+		if ! dd if=/dev/zero of="$SWAPFILE" bs=1M count=$((SWAP_SIZE_BYTES / 1048576)) conv=fsync 2>/dev/null; then
+			log "ERROR: failed to allocate $SWAPFILE - removing any partial file, skipping disk swap this boot"
+			rm -f "$SWAPFILE"
+			return 0
+		fi
+		chmod 600 "$SWAPFILE"
+
+		actual_size=$(wc -c < "$SWAPFILE" 2>/dev/null)
+		if [ "$actual_size" != "$SWAP_SIZE_BYTES" ]; then
+			log "ERROR: $SWAPFILE allocated as $actual_size bytes, expected $SWAP_SIZE_BYTES - removing, skipping disk swap this boot"
+			rm -f "$SWAPFILE"
+			return 0
+		fi
+
+		if ! mkswap "$SWAPFILE" >/dev/null 2>&1; then
+			log "ERROR: mkswap $SWAPFILE failed - removing, skipping disk swap this boot"
+			rm -f "$SWAPFILE"
+			return 0
+		fi
+	fi
+
+	if ! swapon -p "$SWAP_PRIORITY" "$SWAPFILE" 2>/dev/null; then
+		log "ERROR: swapon $SWAPFILE failed"
+		return 0
+	fi
+
+	log "disk swap active: $SWAPFILE, size=$SWAP_SIZE_BYTES bytes, priority=$SWAP_PRIORITY (lower than zram's priority)"
+}
+
+case "$1" in
+	start)
+		start
+		;;
+	*)
+		;;
+esac
+exit 0

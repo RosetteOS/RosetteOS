@@ -60,7 +60,7 @@ moonraker_would_parse_ok() {
 
 # --- Test 1: the exact real-world regression name (39 chars, the actual
 # S98 service name that broke this live) parses as two fields. ---
-LONG_NAME="openke-display-sleep-wake-controller"
+LONG_NAME="rosetteos-display-sleep-wake-controller"
 LINE=$(sh "$SHIM" status "$LONG_NAME" 2>/dev/null)
 if moonraker_would_parse_ok "$LINE"; then
 	pass
@@ -70,7 +70,7 @@ fi
 
 # --- Test 2: an even longer, hypothetical future name (never shipped,
 # but proves this isn't a fix tuned to exactly 39 chars) also parses. ---
-VERY_LONG_NAME="openke-some-hypothetical-future-controller-with-a-very-long-name"
+VERY_LONG_NAME="rosetteos-some-hypothetical-future-controller-with-a-very-long-name"
 LINE=$(sh "$SHIM" status "$VERY_LONG_NAME" 2>/dev/null)
 if moonraker_would_parse_ok "$LINE"; then
 	pass

@@ -55,7 +55,7 @@ p10=userdata.
 
 **Live device tree**: DPU node `/sys/firmware/devicetree/base/ahb0/dpu@13050000`
 (`compatible="ingenic,dpu"`, `status="okay"`, `interrupts=<0x1f 0x0a>` = hwirq 31). Panel node
-`openke_panel` present. **Backlight DT node: zero matches anywhere** (empty result, not a
+`rosetteos_panel` present. **Backlight DT node: zero matches anywhere** (empty result, not a
 command failure) - PROVEN_FROM_LIVE_READ_ONLY confirmation of the offline finding. Touch node
 `ns2009@48` on i2c4. PWM controller node exposes all 16 channels' pinmux groups in the DT (static
 wiring only, not evidence of use).
@@ -96,7 +96,7 @@ offline finding that touch has no dedicated GPIO IRQ registered anywhere in the 
 i2c4 interrupt counts are very low (19/9), consistent with occasional I2C polling traffic rather
 than an IRQ-driven device.
 
-**Kernel logs** (real, quoted): `input: ns2009_ts as .../input/input0`; **`openke_panel: invalid
+**Kernel logs** (real, quoted): `input: ns2009_ts as .../input/input0`; **`rosetteos_panel: invalid
 gpio vdd_en: -2`** (ENOENT - the panel driver's own probe path attempted to resolve a `vdd_en`
 GPIO and found none, independently corroborating the deliberate DT omission documented in
 device-tree-display.txt from an entirely different angle - the boot log, not just static DTS

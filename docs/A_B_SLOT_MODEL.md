@@ -7,7 +7,7 @@ guide, it's the reference for anyone actually working on this stuff.
 ## The layout
 
 ```
-Slot 1 (stock)              Slot 2 (custom / OpenKE)
+Slot 1 (stock)              Slot 2 (custom / RosetteOS)
   mmcblk0p5  kernel            mmcblk0p6  kernel2
   mmcblk0p7  rootfs             mmcblk0p8  rootfs2
   (8 MiB / 500 MB)              (8 MiB / 500 MB - real, fixed capacities)
@@ -21,7 +21,7 @@ Slot 1 (stock)              Slot 2 (custom / OpenKE)
 ```
 
 These are two fixed physical slots, not a rotating pair. Slot 1 is Creality's stock kernel and
-rootfs. Slot 2 is OpenKE's slot (and SWUpdate supports streaming to both slot 1 and slot 2 when running in pure custom mode).
+rootfs. Slot 2 is RosetteOS's slot (and SWUpdate supports streaming to both slot 1 and slot 2 when running in pure custom mode).
 
 The important part: **we never overwrite the slot we're currently booted from.** That's not just a
 convention, it's enforced in code (more on that below).
@@ -29,7 +29,7 @@ convention, it's enforced in code (more on that below).
 ### `/overlay` and `/usr/data` are shared, not duplicated
 
 `mmcblk0p9` (`/overlay`) and `mmcblk0p10` (`/usr/data`) are the same physical partitions no matter
-which slot is active — they don't get a separate copy per OS. Stock and OpenKE just use their own
+which slot is active — they don't get a separate copy per OS. Stock and RosetteOS use their own
 subdirectories underneath, so switching slots doesn't expose one OS's files to the other, and
 doesn't wipe either one out. `docs/DEVELOPER_RECOVERY.md` has the full breakdown of what actually
 lives where and what survives a switch.
@@ -72,11 +72,11 @@ an inconsistency:
 
 | From | Tool |
 |---|---|
-| Custom (OpenKE) | `/etc/ota_marker.sh`'s `write_ota_marker()` — OpenKE's helper, ships as part of the rootfs |
+| Custom (RosetteOS) | `/etc/ota_marker.sh`'s `write_ota_marker()` — RosetteOS's helper, ships as part of the rootfs |
 | Stock (Creality) | `/etc/ota_bin/ota_local_method.sh`'s `local_set_next_boot_device()` — Creality's own pre-existing tool, already on stock |
 
-If you're switching over from stock for the first time, you use stock's own tool, since OpenKE's
-helper doesn't exist there yet. Once you're running OpenKE, its own tool takes over. Both have
+If you're switching over from stock for the first time, you use stock's own tool, since RosetteOS's
+helper doesn't exist there yet. Once you're running RosetteOS, its own tool takes over. Both have
 been used successfully on real hardware to flip the marker and switch slots.
 
 The part that actually reads the marker at boot time lives in the bootloader, which is vendor code
@@ -101,12 +101,12 @@ S99confirm-good    -- polls Moonraker's /server/info for klippy_state=="ready"
                      next reboot lands on stock automatically
 ```
 
-The idea is simple: the moment an OpenKE boot starts, it assumes the worst and sets the marker
+The idea is simple: the moment a RosetteOS boot starts, it assumes the worst and sets the marker
 back to stock. Only once Klipper and Moonraker are actually confirmed healthy does it flip the
-marker forward again. So if an OpenKE boot ever crashes or hangs, the *next* reboot lands you back
+marker forward again. So if a RosetteOS boot ever crashes or hangs, the *next* reboot lands you back
 on stock automatically — you don't need to do anything.
 
-**One thing to be aware of:** this safety net lives inside OpenKE's own boot sequence (inherited from its NebulaOS lineage). If the
+**One thing to be aware of:** this safety net lives inside RosetteOS's own boot sequence (inherited from its NebulaOS lineage). If the
 kernel never gets far enough to even start userspace — or the rootfs fails to mount before
 `/sbin/init` runs — `S00revert-safety` never gets the chance to run, and the marker just stays
 wherever it already was. If it was already pointed at `ota:kernel2`, a genuinely broken kernel or

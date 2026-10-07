@@ -25,7 +25,7 @@
 # experimental/toggleable A-B tools - each one's "off" state resets ONLY the
 # files it owns to the real git-committed baseline first, and the tracked
 # Kconfig fragment (artifacts/buildroot-halley5-v30-image/
-# halley5-openke-fragment.config) is reset to not-selected after every
+# halley5-rosetteos-fragment.config) is reset to not-selected after every
 # real qualification build, on purpose, so an unreviewed experiment can
 # never silently become the new invisible default (see each script's own
 # header for this rationale). The side effect: nobody had a single command

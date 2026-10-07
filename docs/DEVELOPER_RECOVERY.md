@@ -1,4 +1,4 @@
-# Recovering an OpenKE printer
+# Recovering a RosetteOS printer
 
 If a development build goes sideways, don't jump straight to USB recovery — there are a few easier
 ways back, roughly in order of how bad things have to get before you need them.
@@ -6,12 +6,12 @@ ways back, roughly in order of how bad things have to get before you need them.
 ## 1. It just fixes itself
 
 Most of the time, you don't need to do anything. This is covered in full in
-`docs/A_B_SLOT_MODEL.md`, but the short version: the moment an OpenKE boot starts, it sets the
+`docs/A_B_SLOT_MODEL.md`, but the short version: the moment a RosetteOS boot starts, it sets the
 boot marker back to stock. Only once Klipper and Moonraker are confirmed actually healthy does it
 flip the marker forward again. So if a boot crashes or hangs, the next reboot lands you back on
 stock on its own.
 
-The one thing to know: this safety net lives *inside* OpenKE itself (inherited from NebulaOS). If the kernel never gets far
+The one thing to know: this safety net lives *inside* RosetteOS (inherited from NebulaOS). If the kernel never gets far
 enough to start userspace, it never gets the chance to run, and you're in the "the device won't
 come up at all" case instead — that's when you'd reach for USB recovery below. We haven't
 specifically tested that exact failure case (deliberately flashing something broken enough to hit
@@ -100,9 +100,9 @@ and this doc isn't going to pretend one exists.
 
 Creality has its own official recovery images and USB flashing tooling that reinstalls everything —
 bootloader, kernel, rootfs, the works — back to a genuinely factory-fresh state, using the same USB
-mask-ROM mode as step 3 above. That's Creality's own tooling, though, not something OpenKE
+mask-ROM mode as step 3 above. That's Creality's own tooling, though, not something RosetteOS
 provides, pins, or has actually run as part of any of our own testing. If you need it, treat it as
-Creality's procedure, not a documented OpenKE recovery path.
+Creality's procedure, not a documented RosetteOS recovery path.
 
 ## What actually survives a slot switch
 
@@ -110,7 +110,7 @@ Creality's procedure, not a documented OpenKE recovery path.
 |---|---|
 | `printer.cfg`, macros, `moonraker.conf` | Survives — lives in a dedicated directory this whole mechanism never touches |
 | Z offset / calibration, bed mesh | Survives — saved into `printer.cfg` via `SAVE_CONFIG`, though we haven't specifically re-tested this exact scenario |
-| OpenKE's own WiFi credentials | Survives — confirmed on real hardware during a full persistent-state reset |
+| RosetteOS WiFi credentials | Survives — confirmed on real hardware during a full persistent-state reset |
 | Moonraker config/state | Survives — confirmed on real hardware |
 | GuppyScreen config/theme | Survives — confirmed across a real flash during the Final Closure testing |
 | G-code uploads | Survives — confirmed as part of a real backup |
@@ -119,7 +119,7 @@ Creality's procedure, not a documented OpenKE recovery path.
 | Camera config, timelapses | Same — not verified either way |
 
 Stock keeps its own config in a separate area of the same shared `/usr/data` partition, so switching
-to stock never touches OpenKE's data and vice versa — see `A_B_SLOT_MODEL.md` for how that's
+to stock never touches RosetteOS's data and vice versa — see `A_B_SLOT_MODEL.md` for how that's
 arranged.
 
 ## Related docs

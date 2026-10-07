@@ -82,24 +82,24 @@ DEPS_MANIFEST="$REPO_ROOT/manifests/dependencies.conf"
 . "$DEPS_MANIFEST"
 
 # 2026-07-23: see 02-configure-buildroot.sh for why this lock exists.
-exec 9>"$REPO_ROOT/.openke-build.lock"
-flock -n 9 || { echo "another build stage already owns $REPO_ROOT/.openke-build.lock" >&2; exit 1; }
+exec 9>"$REPO_ROOT/.rosetteos-build.lock"
+flock -n 9 || { echo "another build stage already owns $REPO_ROOT/.rosetteos-build.lock" >&2; exit 1; }
 
 BUILDROOT_DIR="$REPO_ROOT/vendor/system/buildroot"
 KERNEL_MOUNT="$REPO_ROOT/vendor/system/kernel/kernel-6.6"
-KERNEL_FINGERPRINT_FILE="$BUILDROOT_DIR/output/.openke-kernel-fingerprint"
-OPENSSL_FINGERPRINT_FILE="$BUILDROOT_DIR/output/.openke-libopenssl-fingerprint"
-BUSYBOX_FINGERPRINT_FILE="$BUILDROOT_DIR/output/.openke-busybox-fingerprint"
-WPA_SUPPLICANT_FINGERPRINT_FILE="$BUILDROOT_DIR/output/.openke-wpa-supplicant-fingerprint"
-SWUPDATE_FINGERPRINT_FILE="$BUILDROOT_DIR/output/.openke-swupdate-fingerprint"
+KERNEL_FINGERPRINT_FILE="$BUILDROOT_DIR/output/.rosetteos-kernel-fingerprint"
+OPENSSL_FINGERPRINT_FILE="$BUILDROOT_DIR/output/.rosetteos-libopenssl-fingerprint"
+BUSYBOX_FINGERPRINT_FILE="$BUILDROOT_DIR/output/.rosetteos-busybox-fingerprint"
+WPA_SUPPLICANT_FINGERPRINT_FILE="$BUILDROOT_DIR/output/.rosetteos-wpa-supplicant-fingerprint"
+SWUPDATE_FINGERPRINT_FILE="$BUILDROOT_DIR/output/.rosetteos-swupdate-fingerprint"
 
 if [ ! -f "$BUILDROOT_DIR/.config" ]; then
 	echo "buildroot not configured - run 02-configure-buildroot.sh first" >&2
 	exit 1
 fi
 for kernel_input in \
-	"$BUILDROOT_DIR/board/halley5-openke-fragment.config" \
-	"$BUILDROOT_DIR/board/halley5-openke-busybox-fragment.config" \
+	"$BUILDROOT_DIR/board/halley5-rosetteos-fragment.config" \
+	"$BUILDROOT_DIR/board/halley5-rosetteos-busybox-fragment.config" \
 	"$BUILDROOT_DIR/local.mk"; do
 	[ -f "$kernel_input" ] || {
 		echo "kernel input missing: $kernel_input - run 02-configure-buildroot.sh first" >&2
@@ -120,7 +120,7 @@ busybox_input_fingerprint() {
 		printf 'system_pin=%s\n' "$SYSTEM_PIN"
 		sha256sum \
 			"$BUILDROOT_DIR/.config" \
-			"$BUILDROOT_DIR/board/halley5-openke-busybox-fragment.config"
+			"$BUILDROOT_DIR/board/halley5-rosetteos-busybox-fragment.config"
 	} | sha256sum | awk '{print $1}'
 }
 wpa_supplicant_input_fingerprint() {
@@ -168,7 +168,7 @@ kernel_input_fingerprint() {
 		git -C "$REPO_ROOT/vendor/system" status --porcelain=v2 -uall -- kernel/kernel-6.6
 		sha256sum \
 			"$BUILDROOT_DIR/.config" \
-			"$BUILDROOT_DIR/board/halley5-openke-fragment.config" \
+			"$BUILDROOT_DIR/board/halley5-rosetteos-fragment.config" \
 			"$BUILDROOT_DIR/local.mk"
 	} | sha256sum | awk '{print $1}'
 }

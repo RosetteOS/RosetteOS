@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# OpenKE addition (USB/webcam stock-parity mission, 2026-07-26): mount/
+# RosetteOS addition (USB/webcam stock-parity mission, 2026-07-26): mount/
 # unmount a USB mass-storage device under Moonraker's own gcodes root, so
 # its files show up in GuppyScreen (and Mainsail/Fluidd) through the exact
 # same file-listing path any other gcode already uses - see

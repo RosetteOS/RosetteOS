@@ -42,7 +42,7 @@ pause/resume endpoints** that drive a real close()/reopen() cycle internally
 mitigation is achievable with new orchestration glue and, at most, a small
 patch to k1-ustreamer — not a from-scratch redesign.
 
-SimpleAF (pellcorp/creality, `k1/` target) and stock/OpenKE both independently
+SimpleAF (pellcorp/creality, `k1/` target) and stock/RosetteOS both independently
 converge on the **same always-open camera model** (continuously-running
 capture daemon, no viewer-count gating, no supervised restart in SimpleAF's
 case) — this is not something NebulaOS inherited from either; the three are
@@ -102,7 +102,7 @@ checkouts in this repo on 2026-07-31; none were re-fetched or modified.
 | Repo | Declared pin (fetch script) | Actual HEAD | Status |
 |---|---|---|---|
 | `vendor/buildroot-x2000` | `74d020081096972857acdb9e76c6c5335455d430` (`scripts/build/00-fetch-vendor-sources.sh`, `clone_pinned buildroot-x2000 ...`) | `74d020081096972857acdb9e76c6c5335455d430` | **PIN_MATCH**. Working tree shows a modified `package/python-matplotlib/python-matplotlib.mk` and untracked `board/halley5-nebulaos-*` files — all fully accounted for and deterministic, not accidental drift: the `.mk` change is copied in verbatim from the tracked `scripts/build/vendor-patches/python-matplotlib/python-matplotlib.mk` by `02-configure-buildroot.sh:139` (documented rationale in-file: matplotlib's `setup_requires` numpy fetch is broken under cross-compilation, fixed by a vendored host-platform wheel), and the `board/halley5-nebulaos-*` files are this project's own tracked config-layer inputs, copied in by the same script. **No automatic HEAD-vs-pin check exists for this repo** (see below) — the pin only matches today by chance of nobody having run `git pull` inside it. |
-| `vendor/x2000_kernel_6.6` (kernel, fork `coreflake1/NebulaOS`) | **Branch name `openke`**, not a commit SHA (`00-fetch-vendor-sources.sh`: `git -C x2000_kernel_6.6 checkout openke`) | `f7ff80a8aa21886a32783dab167e451298c60a8d` | **PIN_DRIFT-BY-DESIGN**. Every other `clone_pinned` call in this script pins to an exact SHA; the kernel is the sole exception, pinned to a branch that can move on every fresh fetch. The current HEAD is recorded post-hoc in `artifacts/buildroot-halley5-v30-image/build-manifest.txt:4` (`git_commit_kernel=f7ff80a8a...`, `git_dirty_kernel=no`) — but that is a record made *after* a build, not a gate enforced *before* one. `01-apply-kernel-patches.sh:30` only checks the branch name (`openke`), never a specific commit. **If `openke` moves upstream before a fresh clone, a rebuild would silently use different kernel source with no error**, and there is no single place in the repo that states "the current authoritative pin is `f7ff80a8a...`" as a durable, checked value — only the manifest's after-the-fact record. |
+| `vendor/x2000_kernel_6.6` (kernel, fork `coreflake1/NebulaOS`) | **Branch name `rosetteos`**, not a commit SHA (`00-fetch-vendor-sources.sh`: `git -C x2000_kernel_6.6 checkout rosetteos`) | `f7ff80a8aa21886a32783dab167e451298c60a8d` | **PIN_DRIFT-BY-DESIGN**. Every other `clone_pinned` call in this script pins to an exact SHA; the kernel is the sole exception, pinned to a branch that can move on every fresh fetch. The current HEAD is recorded post-hoc in `artifacts/buildroot-halley5-v30-image/build-manifest.txt:4` (`git_commit_kernel=f7ff80a8a...`, `git_dirty_kernel=no`) — but that is a record made *after* a build, not a gate enforced *before* one. `01-apply-kernel-patches.sh:30` only checks the branch name (`rosetteos`), never a specific commit. **If `rosetteos` moves upstream before a fresh clone, a rebuild would silently use different kernel source with no error**, and there is no single place in the repo that states "the current authoritative pin is `f7ff80a8a...`" as a durable, checked value — only the manifest's after-the-fact record. |
 | `vendor/x2000_kernel` (Jubian540/x2000_kernel fork, non-6.6) | **Not declared anywhere** in `00-fetch-vendor-sources.sh` | `7f14bc69e3125a92abf88b6e9525df405e1cd0e0` | **RETAINED, DOCUMENTED (corrected 2026-07-31)**. Not consumed by the numbered `00`-`06` build pipeline, but **not actually orphaned** either — this initial characterization was too hasty. `README.md:176`, multiple `FIRMWARE.md` sections, and `docs/PIN_OWNERSHIP_MAP.md:221` all confirm real, ongoing reference use: cross-compiling a stock-vermagic-matching kernel module, confirming the exact stock kernel version, and as a reference-tree search target during pin-conflict investigations. See `docs/NEBULAOS_RELEASE_ARTIFACT_PROVENANCE.md`'s "Orphaned vendor tree resolution" section for the full resolution — kept, not deleted. |
 | `vendor/klipper` (fork `coreflake1/NebulaOS-klipper`) | `b3d5ab2b9484f1558586c3a2ea43d46ff9a473a7` | `d839d0375a31327e57e0a35e99e70ba60814ec05` (one real commit ahead: `"chelper: replace incompatible upstream c_helper.so with NebulaOS's own build"`) | **PIN_DRIFT, already caught**. Confirmed `b3d5ab2...` is a genuine ancestor of the actual HEAD (`git merge-base --is-ancestor` succeeds) — not diverged, just stale. This is **not a hidden gap**: `scripts/build/06-verify.sh:39-55` already implements `check_vendor_pin()` and calls `check_vendor_pin klipper b3d5ab2b9484f1558586c3a2ea43d46ff9a473a7` (line 55), with an in-file comment (lines 30-38) explicitly documenting that this exact MISS is expected until the fetch script's own pin comment is bumped, and warning future readers not to silence it by changing the expected SHA to match. **A fresh `00-fetch-vendor-sources.sh` run today would check out `b3d5ab2` and miss the c_helper.so replacement commit the current build actually depends on** — this is a live, real reproducibility risk despite being correctly flagged. Working tree also shows the expected, previously-documented `M klippy/chelper/c_helper.so` build-artifact drift (unrelated to this pin gap). |
 | `vendor/moonraker` (upstream `Arksine/moonraker`) | `d5ee17128bb88434aacdab90c2e9e990e2b64e4a` | `d5ee17128bb88434aacdab90c2e9e990e2b64e4a` | **PIN_MATCH**, and covered by `check_vendor_pin moonraker ...` (`06-verify.sh:56`). Clean. |
@@ -142,10 +142,10 @@ engineering pass — commits `0e69da1` and the release-artifact-provenance
 work; see `docs/NEBULAOS_RELEASE_ARTIFACT_PROVENANCE.md` for artifact
 details):
 
-1. ~~Kernel fetch pins to a moving branch name (`openke`), not a SHA; no
+1. ~~Kernel fetch pins to a moving branch name (`rosetteos`), not a SHA; no
    pre-build gate enforces a known-good commit.~~ **FIXED**:
    `00-fetch-vendor-sources.sh` now pins an exact SHA and fails loudly if
-   `openke` has moved past it; `01-apply-kernel-patches.sh` independently
+   `rosetteos` has moved past it; `01-apply-kernel-patches.sh` independently
    re-verifies the same pin.
 2. ~~`vendor/x2000_kernel` (non-6.6) and `vendor/mainsail` are orphaned,
    undeclared, unused vendor trees with no fetch-script provenance.~~
@@ -262,7 +262,7 @@ the other.
 
 ---
 
-## 5. Stock/OpenKE camera lifecycle
+## 5. Stock/RosetteOS camera lifecycle
 
 **Classification: SAME_ALWAYS_OPEN_MODEL, with one honestly-unproven leg.**
 
@@ -290,7 +290,7 @@ UVC pipeline), not a real measured comparison. Confirming any of these three
 would require powering on real stock hardware with a webcam attached, which
 this mission does not do.
 
-| Behavior | NebulaOS | SimpleAF | Stock/OpenKE |
+| Behavior | NebulaOS | SimpleAF | Stock/RosetteOS |
 |---|---|---|---|
 | Streamer | k1-ustreamer (fork) | stock ustreamer (unmodified) | `cam_app` (closed) + `mjpg_streamer` |
 | Starts at boot | Yes | Yes | Likely (inferred, not directly captured) |
@@ -649,7 +649,7 @@ are now accurately recorded.
 | UART MCU comms | Low | Generic 8250 core + thin Ingenic glue (`8250_ingenic.c`, zero raw_spinlock/IRQF_NO_THREAD/tasklet hits — clock/pinctrl plumbing only); core `8250_port.c` uses `IRQF_SHARED`, no `IRQF_NO_THREAD`, zero raw_spinlock in the whole `8250/` tree. | Confirm MCU/motion-control timing tolerance survives threaded serial IRQ; low baseline rate makes this a minor concern next to DWC2. |
 | eMMC | Low | Ingenic glue (`sdhci-ingenic.c`) calls generic `sdhci_add_host()` with none of its own IRQ/locking; core `drivers/mmc/host/sdhci.c` already splits hard/threaded IRQ handling (`sdhci_thread_irq`), zero raw_spinlock, `IRQF_SHARED` with no `IRQF_NO_THREAD` — RT-friendly by design already. | Confirm no throughput/latency regression once its IRQ shares RT's threading model board-wide. |
 | Wi-Fi | **UNKNOWN — not derivable from available source** | The vendored `ingenic_sdio.c` glue is for `rtl8723ds_wlan`, but DTS comments indicate the board's actually-used driver is a binary blob (`cywdhd.ko`, Cypress/Broadcom) whose source is **not present** in this tree — only `bcmdhd_101_10_591_x`, `bcmdhd_1_363_125_17`, `bl602`, and `rtl8189fs`/`rtl8723ds` trees exist, and none is conclusively the shipped module. | Identify the actual shipped Wi-Fi module directly on-device before any RT judgment is possible. |
-| Display/touch | Low | Panel driver (`panel-openke-general-480x272.c`) has zero interrupt involvement (register-programming only). Touch (`ns2009.c`) is confirmed **polled**, not interrupt-driven (`input_setup_polling`, `ns2009_ts_poll`), so it already runs from a preemptible kernel workqueue — RT changes effectively nothing here. | None significant. |
+| Display/touch | Low | Panel driver (`panel-rosetteos-general-480x272.c`) has zero interrupt involvement (register-programming only). Touch (`ns2009.c`) is confirmed **polled**, not interrupt-driven (`input_setup_polling`, `ns2009_ts_poll`), so it already runs from a preemptible kernel workqueue — RT changes effectively nothing here. | None significant. |
 | Watchdog | Low | The only `request_irq` in `ingenic_wdt.c` is compiled out entirely (`#if IRQ_SWITCH` where `IRQ_SWITCH` is `#define`d `0`) — no live watchdog IRQ handler exists to be affected by RT. | Confirm which of two watchdog driver variants is actually built/loaded; low priority given the IRQ path is disabled either way. |
 
 ---
@@ -746,7 +746,7 @@ board without proceeding to a print test at all.
   or exit-based variant (D) — not measurable from source.
 - GuppyScreen's actual camera-viewing behavior and tolerance for an
   on-demand or paused camera — source is entirely unavailable (binary only).
-- Stock/OpenKE's actual boot-time camera-start timing and USB interrupt
+- Stock/RosetteOS's actual boot-time camera-start timing and USB interrupt
   rate — never measured, only inferred by analogy.
 - ~~The identity of the actual shipped Wi-Fi kernel module (source-unclear,
   §13) and its RT-safety.~~ **Resolved by the Wi-Fi follow-on mission, §18**
@@ -778,7 +778,7 @@ disassembly work (not inferred from a filename): the kernel Kconfig
 fragment's own comment states this explicitly ("our real, live-confirmed
 chip is a Cypress CYW43438", `artifacts/buildroot-halley5-v30-image/
 halley5-nebulaos-fragment.config:171-172` context), and the device-tree's
-Bluetooth node uses `compatible = "openke,bcm4343x-bt"` (`halley5_v30.dts:241`)
+Bluetooth node uses `compatible = "rosetteos,bcm4343x-bt"` (`halley5_v30.dts:241`)
 — the "4343x" family designation matches the CYW43438/BCM43430 silicon
 family mainline Linux already recognizes generically. Transport is SDIO on
 host controller instance `msc1` (`halley5_v30.dts:450-576`). Combo Bluetooth
@@ -830,7 +830,7 @@ treats a missing CLM blob as non-fatal and never re-requests it). Firmware
 provenance is fully accounted for: same blobs as stock, differing only in
 filename convention. **No mismatched or generic-wrong-board file exists.**
 
-### 18.4 Stock/OpenKE Wi-Fi model — **IDENTIFIED (partially, for fields with no vendored evidence)**
+### 18.4 Stock/RosetteOS Wi-Fi model — **IDENTIFIED (partially, for fields with no vendored evidence)**
 
 Stock's driver is the vendor's own out-of-tree **`cywdhd.ko`** (Broadcom/
 Cypress "DHD" family, disassembled — no `.c` source exists anywhere in this
@@ -862,7 +862,7 @@ ping) — this is existing, established evidence, correctly distinguished
 here from the earlier, now-resolved investigation stages that a shallower
 read could mistake for the current state.
 
-| Wi-Fi component | NebulaOS | Stock/OpenKE | Difference | Likely impact |
+| Wi-Fi component | NebulaOS | Stock/RosetteOS | Difference | Likely impact |
 |---|---|---|---|---|
 | Driver | mainline `brcmfmac`, in-tree, GPL | `cywdhd.ko`, out-of-tree binary, no source | Deliberate | LIKELY_BENEFICIAL (openness/maintainability) |
 | Firmware | `brcmfmac43430-sdio.bin` | `cyw43438-7.46.58.13.bin` | Byte-identical, renamed | NEUTRAL |
@@ -892,7 +892,7 @@ list), making it dead code in this vendored snapshot despite being a real
 file. No power-save, regulatory, association-policy, or DHCP-behavior
 changes exist anywhere in SimpleAF's `k1/` target.
 
-| Behavior | NebulaOS | SimpleAF | Stock/OpenKE |
+| Behavior | NebulaOS | SimpleAF | Stock/RosetteOS |
 |---|---|---|---|
 | Driver | mainline brcmfmac | Not touched — assumes stock's driver present | `cywdhd.ko` |
 | Firmware | Reused stock blob | Not touched | `cyw43438-7.46.58.13.bin` |
@@ -1496,7 +1496,7 @@ DEVICE_MODIFICATIONS: NONE
 VENDOR_PIN_STATUS: GAPS_IDENTIFIED
 NEBULAOS_CAMERA_MODEL: IDENTIFIED
 SIMPLEAF_CAMERA_MODEL: IDENTIFIED
-STOCK_OPENKE_CAMERA_MODEL: IDENTIFIED_OR_PARTIAL
+STOCK_ROSETTEOS_CAMERA_MODEL: IDENTIFIED_OR_PARTIAL
 
 USB_INTERRUPT_SOURCE: IDENTIFIED
 USERSPACE_POLLING_CAUSE: NO
@@ -1561,7 +1561,7 @@ RECONNECT_POLICY: IDENTIFIED (wpa_supplicant default reassociation + udhcpc
   NebulaOS-level watchdog exists or is needed)
 
 SIMPLEAF_WIFI_MODEL: IDENTIFIED
-STOCK_OPENKE_WIFI_MODEL: IDENTIFIED_OR_PARTIAL (driver/firmware/power-
+STOCK_ROSETTEOS_WIFI_MODEL: IDENTIFIED_OR_PARTIAL (driver/firmware/power-
   sequencing identified; country/power-save policy UNKNOWN — not derivable)
 NEBULAOS_DIFFERS_FROM_STOCK: YES (driver family and power-sequencing
   mechanism differ by deliberate choice; firmware/NVRAM/calibration reused

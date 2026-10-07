@@ -59,7 +59,7 @@ with local HEAD == remote HEAD.
 
 Device located via `nmap -p 22 --open` scan (IP had drifted, as expected -
 see project memory on DHCP lease churn): `192.168.0.242`, dropbear banner,
-password `openke` accepted. Confirmed:
+password `rosetteos` accepted. Confirmed:
 
 - `/proc/cmdline`: `root=/dev/mmcblk0p8 ... rootfstype=squashfs ro` - real
   board, currently booted on the **custom** slot (rootfs2). Partition

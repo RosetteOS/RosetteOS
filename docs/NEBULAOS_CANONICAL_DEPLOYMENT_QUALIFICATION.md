@@ -49,7 +49,7 @@ established stock-mediated inactive-slot process, then live-qualifies it.
 | pinctrl / kernel errors | Zero pinctrl-specific errors. Four other `dmesg` lines matched a generic error/fail grep; all four cross-checked against `docs/BOOT_WARNING_AUDIT.md` and confirmed pre-existing, already-classified, zero-functional-impact (`pdmam` optional IRQ, a known benign WiFi manual-insert race, an optional TCU IRQ, and the already-`STOCK_EQUIVALENT_ACCEPTED` CLM blob absence) - none are new regressions from this deployment. |
 | Klipper | `state: "ready"`, `"Printer is ready"` |
 | Moonraker | responding, serving Klipper's state correctly |
-| GuppyScreen | `v1.5.0-OpenKE`, connected to Moonraker, "loaded calibration coefficients" |
+| GuppyScreen | `v1.5.0-RosetteOS`, connected to Moonraker, "loaded calibration coefficients" |
 | S99confirm-good | Confirmed executed successfully (OTA marker survived at `ota:kernel2` post-boot, not reverted by `S00revert-safety`) |
 | `z_compensate` HTTP structured status | `GET /printer/objects/query?z_compensate` returns `{calibration_id, calibration_state, calibration_z_offset, calibration_error}` - correct idle shape |
 | `z_compensate` WebSocket structured status | `printer.objects.subscribe` over a raw WS connection returns the identical structured shape |

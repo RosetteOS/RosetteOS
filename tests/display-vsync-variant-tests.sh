@@ -17,7 +17,7 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 VARIANT_SCRIPT="$REPO_ROOT/scripts/build/display-vsync-variant.sh"
 SYSTEM_DIR="$REPO_ROOT/vendor/system"
-FRAGMENT="$REPO_ROOT/artifacts/buildroot-halley5-v30-image/halley5-openke-fragment.config"
+FRAGMENT="$REPO_ROOT/artifacts/buildroot-halley5-v30-image/halley5-rosetteos-fragment.config"
 AFFECTED_FILES="kernel/kernel-6.6/module_drivers/drivers/video/fbdev/ingenic/fb_stage/Kconfig kernel/kernel-6.6/module_drivers/drivers/video/fbdev/ingenic/fb_stage/ingenicfb.c kernel/kernel-6.6/module_drivers/drivers/video/fbdev/ingenic/include/ingenicfb.h"
 
 PASS=0

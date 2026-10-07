@@ -8,11 +8,11 @@
 +import os
 +
 +_extra_component_dirs = [
-+    "/usr/data/openke/components",
-+    "/usr/data/openke/moonraker-components",
++    "/usr/data/rosetteos/components",
++    "/usr/data/rosetteos/moonraker-components",
 +    "/opt/printer_data/components",
 +    "/usr/data/printer_data/components",
-+    os.environ.get("OPENKE_MOONRAKER_COMPONENTS_DIR", ""),
++    os.environ.get("ROSETTEOS_MOONRAKER_COMPONENTS_DIR", ""),
 +]
 +
 +for _dir in _extra_component_dirs:

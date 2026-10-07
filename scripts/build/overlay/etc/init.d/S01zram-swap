@@ -8,7 +8,7 @@
 # `git clone` of an 11.5MB bundle needing only ~37-56MB total-vm). This
 # script activates zram (compressed RAM swap) as early as possible - no
 # dependency on /usr/data being mounted at all - so it is active well
-# before S04openke-factory-seed's own memory-heavy git/copy operations
+# before S04rosetteos-factory-seed's own memory-heavy git/copy operations
 # run. Runs immediately after S00revert-safety (name sorts "S00z..." after
 # "S00r..." but still before any "S01*" script - deliberate).
 #

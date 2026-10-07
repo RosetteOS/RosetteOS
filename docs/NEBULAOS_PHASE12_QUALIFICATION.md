@@ -178,7 +178,7 @@ Phase R (Recover, both apps):     PASS (git-side) - Moonraker's own dead-after-r
 Phase R2 (camera persistence):    PASS - edit survives Klipper+Moonraker restart, deletion respected, no re-creation
 Phase S (controlled rollback):   Bug found (rollback silently undone) and fixed (§30 Bug 7); fix verified live
 Phase T (remote-checkable regression): PASS - clean dmesg, correct mounts, Mainsail/camera serving real
-  content, WiFi/SSH stable throughout, no legacy /usr/data/openke, healthy disk/swap. Physical-only checks
+  content, WiFi/SSH stable throughout, no legacy /usr/data/rosetteos, healthy disk/swap. Physical-only checks
   (display/touch visual confirmation, USB hotplug, a live flash-slot write) were not re-executed this
   session - no code path touching them changed, and their prior live qualification (§1-10 above) stands.
 ```
@@ -187,7 +187,7 @@ Phase T (remote-checkable regression): PASS - clean dmesg, correct mounts, Mains
 
 ## 13. Critical finding and fix: genuinely fresh install had no printer.cfg or moonraker.conf (2026-07-29)
 
-A deliberate, genuinely-wiped-namespace test (immediately following §12's work, going further than any prior "fresh boot" test in this project's history) found that **every previous clean-install qualification, including this document's own §11/§12 entries, was a false positive**: Klipper and Moonraker crash-looped forever on `FileNotFoundError` for `printer.cfg`/`moonraker.conf`, because the only code that had ever created these files - a migration from a legacy `/usr/data/openke` path - was removed in an earlier mission, and the development device had simply never had these specific files deleted before. Full root cause, fix, and build-time hardening: `NEBULAOS_MOONRAKER_UPDATE_AND_CAMERA_ANALYSIS.md` §31 and the dedicated `docs/NEBULAOS_ENDER3_V3_KE_FACTORY_CONFIG_SEED.md`.
+A deliberate, genuinely-wiped-namespace test (immediately following §12's work, going further than any prior "fresh boot" test in this project's history) found that **every previous clean-install qualification, including this document's own §11/§12 entries, was a false positive**: Klipper and Moonraker crash-looped forever on `FileNotFoundError` for `printer.cfg`/`moonraker.conf`, because the only code that had ever created these files - a migration from a legacy `/usr/data/rosetteos` path - was removed in an earlier mission, and the development device had simply never had these specific files deleted before. Full root cause, fix, and build-time hardening: `NEBULAOS_MOONRAKER_UPDATE_AND_CAMERA_ANALYSIS.md` §31 and the dedicated `docs/NEBULAOS_ENDER3_V3_KE_FACTORY_CONFIG_SEED.md`.
 
 **This is now the actual, genuine clean-install qualification gate**, superseding every earlier fresh-boot claim in this document:
 
@@ -262,7 +262,7 @@ persistence: ordinary reboot left the seed marker/timestamp unchanged (no unwant
 | Shared G-code | PASS | Live, repeated |
 | Disk/memory pressure | PASS | Live (Memory Resilience Gate) |
 | Retention disk-pressure floors | **PASS** (closure mission, measured not guessed) | Live measurement, see `NEBULAOS_RETENTION_POLICY.md` §4 |
-| `/usr/data/openke` removal | **PASS** (closure mission) | Live, two-cold-boot proof |
+| `/usr/data/rosetteos` removal | **PASS** (closure mission) | Live, two-cold-boot proof |
 | Flash-spare-slot live-target positive path | **QUALIFIED** (final-seal mission) | Live, `--check-only` from stock, SAFE TO FLASH |
 | Flash-spare-slot live-target refusal path | **QUALIFIED** (final-seal mission) | Live negative control, zero-write hash proof |
 | GuppyScreen Wi-Fi status | **PASS** (final-seal mission) | User-confirmed on physical device screen |

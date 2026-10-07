@@ -3,7 +3,7 @@
 # Offline tests for Phase 1.9A (host MCU / ADXL345 / BL24C16F restoration).
 #
 # Validates the klipper_mcu (MACH_LINUX) build step, the S54nebulaos-host-mcu
-# service, and the OpenKE_Settings.cfg config sections - all static analysis of
+# service, and the RosetteOS_Settings.cfg config sections - all static analysis of
 # script/config text and repo state. Does NOT require the Buildroot
 # toolchain, a real build, or hardware - see 06-verify.sh for the
 # rootfs-content checks that do need a real built image, and
@@ -17,7 +17,7 @@ set -u
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 BUILD_SCRIPT="$REPO_ROOT/scripts/build/04-cross-compile-app-stack.sh"
-HOST_MCU_SERVICE="$REPO_ROOT/scripts/build/overlay/etc/init.d/S54openke-host-mcu"
+HOST_MCU_SERVICE="$REPO_ROOT/scripts/build/overlay/etc/init.d/S54rosetteos-host-mcu"
 KLIPPER_SERVICE="$REPO_ROOT/scripts/build/overlay/etc/init.d/S55klipper"
 PRINTER_CFG="$REPO_ROOT/scripts/build/overlay/opt/printer_data/config/printer.cfg"
 NEBULA_CFG="$REPO_ROOT/scripts/build/overlay/opt/printer_data/config/hardware/nebula_pad.cfg"

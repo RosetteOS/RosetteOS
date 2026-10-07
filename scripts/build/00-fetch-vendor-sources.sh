@@ -36,7 +36,7 @@ for required in SYSTEM_REPO SYSTEM_PIN \
 	MAINSAIL_TAG MAINSAIL_SHA256 \
 	WIFI_FIRMWARE_RELEASE_TAG WIFI_FIRMWARE_RELEASE_URL WIFI_FIRMWARE_ARCHIVE_SHA256 \
 	WIFI_FIRMWARE_TXT_SHA256 WIFI_FIRMWARE_BIN_SHA256 WIFI_FIRMWARE_CLM_SHA256 \
-	GUPPYSCREEN_REPO GUPPYSCREEN_PIN GUPPYSCREEN_THEME OPENKE_VERSION; do
+	GUPPYSCREEN_REPO GUPPYSCREEN_PIN GUPPYSCREEN_THEME ROSETTEOS_VERSION; do
 	require_setting "$required"
 done
 echo "== all required dependency settings present in $MANIFEST =="
@@ -56,7 +56,7 @@ sh "$SCRIPT_DIR/../firmware/fetch-wireless-regdb.sh"
 # directly from Infineon's own upstream repo and hash-verified inside that
 # script itself (WIFI_FIRMWARE_BIN_SHA256/WIFI_FIRMWARE_CLM_SHA256 above).
 # Required to compile the kernel (CONFIG_EXTRA_FIRMWARE embeds both - see
-# artifacts/buildroot-halley5-v30-image/halley5-openke-fragment.config),
+# artifacts/buildroot-halley5-v30-image/halley5-rosetteos-fragment.config),
 # not just to boot. See docs/NEBULAOS_WIFI_125_ENGINEERING_TEST.md for the
 # full qualification history behind this pin.
 sh "$SCRIPT_DIR/../firmware/fetch-cyw43430-wifi-firmware.sh"
@@ -232,7 +232,7 @@ if [ -e "system" ] && [ ! -d "system/.git" ]; then
 	exit 1
 fi
 if [ ! -d "system/.git" ]; then
-	echo "== initializing full OpenKlipperEdition/System at pinned commit =="
+	echo "== initializing full RosetteOS/System at pinned commit =="
 	git init system >/dev/null
 	git -C system remote add origin "$SYSTEM_REPO"
 	git -C system fetch --depth 1 origin "$SYSTEM_PIN"
@@ -257,11 +257,11 @@ system_actual=$(git -C system rev-parse HEAD)
 	exit 1
 }
 [ -f "system/buildroot/Makefile" ] || {
-	echo "FATAL: full OpenKlipperEdition/System checkout is missing buildroot/Makefile" >&2
+	echo "FATAL: full RosetteOS/System checkout is missing buildroot/Makefile" >&2
 	exit 1
 }
 [ -f "system/kernel/kernel-6.6/Makefile" ] || {
-	echo "FATAL: full OpenKlipperEdition/System checkout is missing kernel/kernel-6.6/Makefile" >&2
+	echo "FATAL: full RosetteOS/System checkout is missing kernel/kernel-6.6/Makefile" >&2
 	exit 1
 }
 echo "== system matches pinned commit $system_actual; kernel + buildroot present =="

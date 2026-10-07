@@ -25,7 +25,7 @@ the class of bug Phase 1 found and fixed for Klipper.
 **Owner: NebulaOS firmware/release only. No independent updater exists,
 and none should be added without a deliberate future mission.**
 
-- Canonical source: `OpenKlipperEdition/GuppyScreen`, `OKE` branch,
+- Canonical source: `RosetteOS/GuppyScreen`, `OKE` branch,
   refreshed to the latest branch tip on each build; the fetched SHA is recorded in the build manifest.
 - Served from `/opt/guppyscreen` - **immutable, squashfs-resident**, not
   persistent-data-backed. A new image ships a new binary automatically;

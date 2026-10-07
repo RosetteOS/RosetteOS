@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# OpenKE — reload the camera pipeline (S50webcam / ustreamer).
+# RosetteOS — reload the camera pipeline (S50webcam / ustreamer).
 #
 # USB/webcam stock-parity mission (2026-07-26): this script previously killed
 # and relaunched Creality's own stock cam_app + mjpg_streamer binaries -

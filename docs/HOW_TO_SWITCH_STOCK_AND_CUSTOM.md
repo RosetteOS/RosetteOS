@@ -4,7 +4,7 @@ Your printer's little computer (the Nebula Pad) can hold **two complete operatin
 same time**, on two separate storage slots:
 
 - **Stock** — the original Creality software that came with the printer.
-- **Custom** — OpenKE firmware (real Klipper, Moonraker, Mainsail, GuppyScreen, built upon NebulaOS).
+- **Custom** — RosetteOS (real Klipper, Moonraker, Mainsail, GuppyScreen, built upon NebulaOS).
 
 Only one runs at a time. A tiny file tells the printer which one to boot next time it powers on.
 Nothing you do here ever deletes or overwrites the other one — they're on completely separate
@@ -35,8 +35,8 @@ that flips a switch, then reboot the printer. Two minutes, no tools, no opening 
    ```
    ssh root@<the-ip-address>
    ```
-   Password: `openke` on **custom**. Stock's root password is different (this project doesn't
-   control or change it) - a real "Permission denied" was hit live confirming `openke` does not
+   Password: `rosetteos` on **custom**. Stock's root password is different (this project doesn't
+   control or change it) - a real "Permission denied" was hit live confirming `rosetteos` does not
    work on stock; check with whoever set up the printer if you don't already have it.
 
 3. **Tell it which one to boot next.** Run exactly one of these two commands:
@@ -53,7 +53,7 @@ that flips a switch, then reboot the printer. Two minutes, no tools, no opening 
 
    (`/etc/ota_marker.sh` only exists on the **custom** side. If you're currently on **stock** and
    want to switch to custom, use stock's own equivalent, built-in tool instead — this is Creality's
-   own pre-existing switcher, not something OpenKE/NebulaOS added, and it does the same job:
+   own pre-existing switcher, not something RosetteOS/NebulaOS added, and it does the same job:
    ```
    sh -c '. /etc/ota_bin/ota_local_method.sh; local_set_next_boot_device'
    ```

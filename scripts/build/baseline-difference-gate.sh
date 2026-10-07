@@ -104,7 +104,7 @@ compare_baseline_file() {
 	elif diff -q "$expected_tmp" "$actual_tmp" >/dev/null; then
 		echo "IDENTICAL: $file (after environment-path normalization)"
 	else
-		if [ "${OPENKE_CANDIDATE_BUILD:-0}" = "1" ]; then
+		if [ "${ROSETTEOS_CANDIDATE_BUILD:-0}" = "1" ]; then
 			echo "DIFFERS (PERMITTED IN CANDIDATE BUILD): $file"
 			diff -u "$expected_tmp" "$actual_tmp" | head -40 || true
 		else
@@ -124,7 +124,7 @@ compare_baseline_file() {
 	echo ""
 
 	echo "## Tracked config/DTS artifacts (must be byte-identical)"
-	for f in kernel.config halley5_v30.dts buildroot.config halley5-openke-busybox-fragment.config; do
+	for f in kernel.config halley5_v30.dts buildroot.config halley5-rosetteos-busybox-fragment.config; do
 		if [ ! -f "$ARTIFACT_DIR/$f" ]; then
 			echo "SKIP: $f not found in current build"
 			continue
@@ -134,7 +134,7 @@ compare_baseline_file() {
 		elif git -C "$REPO_ROOT" diff --quiet "$BASELINE_TAG" -- "artifacts/buildroot-halley5-v30-image/$f" 2>/dev/null; then
 			echo "IDENTICAL: $f"
 		else
-			if [ "${OPENKE_CANDIDATE_BUILD:-0}" = "1" ]; then
+			if [ "${ROSETTEOS_CANDIDATE_BUILD:-0}" = "1" ]; then
 				echo "DIFFERS (PERMITTED IN CANDIDATE BUILD): $f"
 				git -C "$REPO_ROOT" diff "$BASELINE_TAG" -- "artifacts/buildroot-halley5-v30-image/$f" 2>/dev/null | head -40
 			else

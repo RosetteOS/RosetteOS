@@ -257,9 +257,9 @@ editing it, before spending 10+ minutes re-running a build against it.
 
 ### Extra findings from this pass
 
-- **Stock SSH password is `Creality2023`**, not `openke` (custom-only).
+- **Stock SSH password is `Creality2023`**, not `rosetteos` (custom-only).
   Saved to the `reference-device-access` memory. An earlier FIRMWARE.md
-  note claiming "root/openke... same as before" for a stock session
+  note claiming "root/rosetteos... same as before" for a stock session
   turns out to describe serial console access specifically, not SSH.
 - Switching TO custom from stock needs a different mechanism than the
   reverse: stock has no `write_ota_marker.sh`; use

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# OpenKE addition (FIRMWARE.md sec 13): starts Klipper's host-side "klippy"
+# RosetteOS addition (FIRMWARE.md sec 13): starts Klipper's host-side "klippy"
 # process. Must come before S56moonraker, since Moonraker connects to
 # klippy's own API-server Unix socket, not the other way around.
 
@@ -11,8 +11,8 @@ LOGFILE=/opt/printer_data/logs/klippy.log
 PIDFILE=/var/run/klippy.pid
 
 # NebulaOS mutable-runtime closure mission (2026-07-27): prefer the
-# writable venv S04openke-factory-seed creates at
-# /usr/data/openke/envs/klipper - matches S56moonraker's own identical
+# writable venv S04rosetteos-factory-seed creates at
+# /usr/data/rosetteos/envs/klipper - matches S56moonraker's own identical
 # pattern. Required, not cosmetic: Moonraker's update_manager hardcodes
 # klipper's AppType/virtualenv detection from Klippy's own reported
 # executable (get_base_configuration() in vendor/moonraker's
@@ -25,7 +25,7 @@ PIDFILE=/var/run/klippy.pid
 # S56moonraker, so this script never fails to start Klipper over a
 # missing venv.
 PYTHON3=/usr/bin/python3
-[ -x /usr/data/openke/envs/klipper/bin/python3 ] && PYTHON3=/usr/data/openke/envs/klipper/bin/python3
+[ -x /usr/data/rosetteos/envs/klipper/bin/python3 ] && PYTHON3=/usr/data/rosetteos/envs/klipper/bin/python3
 
 # Embedded memory optimizations: strip docstrings/asserts and restrict glibc heap arenas
 export PYTHONOPTIMIZE=2
@@ -34,9 +34,9 @@ export MALLOC_ARENA_MAX=1
 start() {
 	echo "Starting klippy (using $PYTHON3)"
 	if [ ! -f /opt/klipper/klippy/chelper/c_helper.so ] || [ ! -s /opt/klipper/klippy/chelper/c_helper.so ]; then
-		if [ -f /opt/openke-seeds/c_helper.so ]; then
+		if [ -f /opt/rosetteos-seeds/c_helper.so ]; then
 			mkdir -p /opt/klipper/klippy/chelper
-			cp /opt/openke-seeds/c_helper.so /opt/klipper/klippy/chelper/c_helper.so 2>/dev/null || true
+			cp /opt/rosetteos-seeds/c_helper.so /opt/klipper/klippy/chelper/c_helper.so 2>/dev/null || true
 		fi
 	fi
 	if [ -f /opt/klipper/klippy/chelper/c_helper.so ]; then
