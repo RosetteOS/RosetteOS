@@ -81,7 +81,7 @@
 			   regulator-boot-on;
 		  };
 
-		  /* OpenKE (2026-07-22, FIRMWARE.md sec 44): 3 real GPIO-based fixes in a row
+		  /* RosetteOS (2026-07-22, FIRMWARE.md sec 44): 3 real GPIO-based fixes in a row
 		   * (wrong pin -> wrong polarity -> pin stolen by uart4's over-wide mux group)
 		   * all left "mmc1: Failed to initialize a non-removable card" byte-identical -
 		   * the card never responds at all, at any frequency. Reconsidered the model
@@ -102,7 +102,7 @@
 		   * own early probe, well before mmc1 ever probes - decoupled from pwrseq's
 		   * post_power_on delay entirely, since a shared rail's real settling time has
 		   * nothing to do with any individual card's reset sequencing. */
-		  /* OpenKE (2026-07-22, FIRMWARE.md sec 52): a LIVE read of PA01 on the
+		  /* RosetteOS (2026-07-22, FIRMWARE.md sec 52): a LIVE read of PA01 on the
 		   * real, currently-working, currently-associated stock system -
 		   * /sys/kernel/debug/gpio, "gpio-1 (|bt_wifi_power) out lo" - shows raw
 		   * LOW during real, active WiFi traffic. This directly confirms
@@ -129,7 +129,7 @@
 		  };
 };
 
-/* OpenKE (2026-07-23): was status="okay" with pinctrl-0 = <&uart0_pd> (gpd 23-26), which
+/* RosetteOS (2026-07-23): was status="okay" with pinctrl-0 = <&uart0_pd> (gpd 23-26), which
  * hard-conflicts with msc0_8bit (gpd 17-26) - the real eMMC boot storage, already confirmed
  * essential above. dmesg showed "pin GPD-23 already requested by 13450000.msc; cannot claim
  * for 10030000.serial" every boot; msc0 always wins the pin so nothing actually broke, but
@@ -139,7 +139,7 @@
 	status = "disable";
 };
 
-/* OpenKE (2026-07-21, FIRMWARE.md sec 43): real, confirmed gap - this board file never
+/* RosetteOS (2026-07-21, FIRMWARE.md sec 43): real, confirmed gap - this board file never
  * referenced &uart1 at all, unlike every other uart actually in use here. Klipper's own
  * printer.cfg confirms /dev/ttyS1 is the real serial link to the printer's mainboard MCU
  * ([mcu] serial:/dev/ttyS1, vendor/device-backups/printer_data_config/printer.cfg) - the
@@ -148,7 +148,7 @@
  * pins were never actually muxed to the UART1 function, only the controller itself being
  * nominally "on".
  *
- * OpenKE (2026-07-23, stock-parity audit): the fix above used x2000-pinctrl.dtsi's own
+ * RosetteOS (2026-07-23, stock-parity audit): the fix above used x2000-pinctrl.dtsi's own
  * uart1_pc (gpc 21-24, a 4-pin TX/RX/RTS/CTS group - the SoC vendor SDK's only defined
  * uart1 group) on the assumption it was the sole option. Live evidence disproved that:
  * pulled and decoded the real, running stock device's own live pinctrl debugfs
@@ -206,14 +206,14 @@
 	 * this board has no hardware RTS/CTS wired for this UART, confirmed
 	 * against x2000-v12-pinctrl.dtsi's uart3_pd (4-pin) alternative not
 	 * being used here - the real reason Creality used H5 instead of H4,
-	 * and why this node uses our own openke,bcm4343x-bt H5 vendor glue
+	 * and why this node uses our own rosetteos,bcm4343x-bt H5 vendor glue
 	 * (drivers/bluetooth/hci_h5.c) rather than the H4-only upstream
 	 * Broadcom path. No enable-gpios property: no dedicated BT reset/
 	 * enable pin has been confirmed live (only the shared WiFi-side
 	 * regulator/reset in &msc1's wlan_pwrseq below is confirmed) - the
 	 * driver treats this as optional and skips GPIO toggling if absent.
 	 *
-	 * OpenKE (2026-07-23): uart3_pc (gpc 25-26) is the SAME two physical pins
+	 * RosetteOS (2026-07-23): uart3_pc (gpc 25-26) is the SAME two physical pins
 	 * as i2c4_pc (&i2c4 below, real touchscreen bus) - confirmed by resolving
 	 * both pinctrl phandles in the real stock device's own live DTB: identical
 	 * <bank 25 26>, only the funcsel differs (uart3 FUNCTION0 vs i2c4 FUNCTION1).
@@ -238,7 +238,7 @@
 	 * BT stays a known, real, unfixed limitation until someone implements the
 	 * dynamic hand-off. */
 	bluetooth {
-		compatible = "openke,bcm4343x-bt";
+		compatible = "rosetteos,bcm4343x-bt";
 	};
 };
 
@@ -307,7 +307,7 @@
 	 * (confirmed live via /sys/bus/i2c/devices/4-0048/name on the real printer).
 	 * The reference v30 board disables this bus; our board customization needs it. */
 	status = "okay";
-	/* OpenKE (2026-07-20, FIRMWARE.md sec 32): pinctrl-0 was missing entirely here - the
+	/* RosetteOS (2026-07-20, FIRMWARE.md sec 32): pinctrl-0 was missing entirely here - the
 	 * base x2000.dtsi's own i2c4 node has none either, and this override never added one.
 	 * Found by pulling and decoding the real stock device's own live /sys/firmware/fdt: its
 	 * i2c4 node references a real "i2c4-pc" pinmux group - which already exists in our own
@@ -354,7 +354,7 @@
 
 /* Real Ender 3 V3 KE display (480x272, confirmed live via
  * /sys/class/graphics/fb0/modes on the real printer) - see
- * displays/panel-openke-general-480x272.c for the panel driver and the real
+ * displays/panel-rosetteos-general-480x272.c for the panel driver and the real
  * caveats (timing values are a best-effort default, not read from a datasheet
  * for this exact panel). The reference board doesn't wire up a plain-RGB panel
  * at all by default (only the MIPI examples above are ever #include'd). */
@@ -363,8 +363,8 @@
 };
 
 / {
-	openke_panel: openke_panel {
-		compatible = "openke,general-480x272";
+	rosetteos_panel: rosetteos_panel {
+		compatible = "rosetteos,general-480x272";
 		/* GPIO roles + pin numbers confirmed live on the real device via
 		 * /sys/module/lcd_general_480x272/parameters/{gpio_lcd_power_en,gpio_lcd_rst}
 		 * (PC21, PB16).
@@ -377,7 +377,7 @@
 		 * holds it as a driven output in its steady state, unlike this
 		 * driver's previous unconditional gpio_direction_output(..., 1)
 		 * at probe with no release. This DT node omitting the property
-		 * is what makes panel-openke-general-480x272.c's own existing
+		 * is what makes panel-rosetteos-general-480x272.c's own existing
 		 * gpio_is_valid() guards skip requesting/driving it at all,
 		 * matching stock's observed hands-off steady state exactly - not
 		 * a polarity change, a real ownership-parity test.
@@ -417,7 +417,7 @@
 };
 
 &msc0 {
-	/* OpenKE (2026-07-20, FIRMWARE.md sec 31/32): this is the real eMMC - confirmed by pulling
+	/* RosetteOS (2026-07-20, FIRMWARE.md sec 31/32): this is the real eMMC - confirmed by pulling
 	 * the actual live stock device's own /sys/firmware/fdt and decoding it with dtc. Stock has
 	 * this exact node (0x13450000) status="okay", 8-bit bus, mmc-hs200-1_8v, 100MHz,
 	 * non-removable - while msc1 (WiFi/SDIO) and msc2 (SD slot) are BOTH disabled on stock's own
@@ -449,7 +449,7 @@
 
 &msc1 {
 	status = "okay";
-	/* OpenKE (2026-07-22, FIRMWARE.md sec 52): reverted back to the base "ingenic,sdhci"
+	/* RosetteOS (2026-07-22, FIRMWARE.md sec 52): reverted back to the base "ingenic,sdhci"
 	 * compatible (sdhci-ingenic.c) - sec 47's "wrong driver entirely" finding was itself
 	 * wrong. Disassembled the real, live, WORKING soc_msc.ko off the stock device (not
 	 * just cywdhd.ko this time) and its own symbol table proves stock's msc1 driver IS
@@ -469,7 +469,7 @@
 	 * jzmmc_clk_ctrl, which is what caused the original misdirection once cywdhd.ko's
 	 * disassembly turned up those two names. */
 	compatible = "ingenic,sdhci";
-	/* OpenKE (2026-07-22, FIRMWARE.md sec 44): 4 real fixes to the reset/power gpios
+	/* RosetteOS (2026-07-22, FIRMWARE.md sec 44): 4 real fixes to the reset/power gpios
 	 * (wrong pin, wrong polarity, pin stolen by uart4's mux group, wrong power model)
 	 * all left "mmc1: Failed to initialize a non-removable card" byte-identical -
 	 * confirmed via a decompiled build-output .dtb that every one of those fixes DID
@@ -489,7 +489,7 @@
 	 * instead. If the chip genuinely needs this clock running to respond to
 	 * anything at all, this alone would explain zero response regardless of every
 	 * reset/power gpio being individually correct. */
-	/* OpenKE (2026-07-22, FIRMWARE.md sec 48): pinctrl-0 above used to also include
+	/* RosetteOS (2026-07-22, FIRMWARE.md sec 48): pinctrl-0 above used to also include
 	 * <&rtc32k_enable> (sec 45's fix for the "clock forced off at boot" theory) - but
 	 * stock's own real reference devicetree (vendor/x2000_kernel, the genuine 4.94 SDK
 	 * source stock was actually built from, as opposed to guessing) has pinctrl-0 =
@@ -519,7 +519,7 @@
 	ingenic,rst-gpios = <0>;
 	ingenic,removal-manual;
 
-	/* OpenKE (2026-07-21, FIRMWARE.md sec 44): gpd 1 / gpd 0 below were WRONG - not a
+	/* RosetteOS (2026-07-21, FIRMWARE.md sec 44): gpd 1 / gpd 0 below were WRONG - not a
 	 * guess, a confirmed hardware fact. Extracted stock's own out-of-tree module-loading
 	 * scripts (module_driver/soc_msc.sh, cywdhd.sh) from a real full-disk backup
 	 * (nebula_system_backup.bin's rootfs partition) and read the vendor's own insmod
@@ -532,7 +532,7 @@
 	 * gpio_bt_wifi_power = PA01 (port A pin 1), a separate shared power-rail enable for
 	 * the combo chip.
 	 *
-	 * OpenKE (2026-07-22): pin numbers alone (real-hardware tested) did NOT fix WiFi -
+	 * RosetteOS (2026-07-22): pin numbers alone (real-hardware tested) did NOT fix WiFi -
 	 * identical "Failed to initialize a non-removable card" persisted. Root cause: the
 	 * active-flag polarity below was backwards. Traced drivers/mmc/core/pwrseq_simple.c's
 	 * actual logical sequence: pre_power_on() sets the gpio array to logical 1 (asserted/
@@ -543,7 +543,7 @@
 	 * real enable level per pin - or so this reasoning assumed from the module
 	 * parameter *names* alone, without ever disassembling the real driver to check.
 	 *
-	 * OpenKE (2026-07-22, FIRMWARE.md sec 50): that assumption was wrong. Disassembling
+	 * RosetteOS (2026-07-22, FIRMWARE.md sec 50): that assumption was wrong. Disassembling
 	 * stock's actual, live cywdhd.ko (bcm_wlan_power_on()/bcm_wlan_power_off()) shows
 	 * the real instruction sequence writes raw GPIO value 1 (physical HIGH) as the
 	 * enabled state on gpd 4/WL_REG_ON, and raw 0 (LOW) as held/reset - the opposite of
@@ -551,7 +551,7 @@
 	 * GPIO_ACTIVE_LOW (so post_power_on's logical-0 release lands on the real,
 	 * disassembly-proven physical-HIGH enabled state) - see the reset-gpios comment
 	 * for the full trace. */
-	/* OpenKE (2026-07-22, FIRMWARE.md sec 51): moved WL_REG_ON out of
+	/* RosetteOS (2026-07-22, FIRMWARE.md sec 51): moved WL_REG_ON out of
 	 * mmc-pwrseq-simple entirely - sec 50's live instrumentation proved
 	 * mmc_power_up() genuinely runs pwrseq's full pre/post_power_on sequence
 	 * (power_mode transitions 0->2) with the descriptor confirmed correctly
@@ -594,7 +594,7 @@
 	ingenic,rst-gpio = <0>;
 };
 
-/* OpenKE (2026-07-23, stock-parity audit): disabled - inherited Halley5
+/* RosetteOS (2026-07-23, stock-parity audit): disabled - inherited Halley5
  * reference-board MSC2/microSD config with no evidence it belongs on this
  * board. Stock's own live device tree never enables msc2 at all (Phase 1/2
  * runtime and DTB comparison, docs/DTB_PARITY_REPORT.md); no physical SD
@@ -611,7 +611,7 @@
  * if a genuine microSD slot is ever confirmed on a future board
  * revision. */
 &msc2 {
-	/* OpenKE (2026-07-23): "disabled" is the real devicetree-spec value
+	/* RosetteOS (2026-07-23): "disabled" is the real devicetree-spec value
 	 * (along with "okay"/"fail"/"fail-sss") - "disable" elsewhere in this
 	 * file (uart0, uart2, spi0, nemc, ...) is pre-existing, non-canonical,
 	 * and still functions correctly under this kernel's own
@@ -777,7 +777,7 @@
 	status = "okay";
 	/*ingenic,id-dete-gpio = <&gpd 18 GPIO_ACTIVE_LOW INGENIC_GPIO_NOBIAS>; Shares pins with msc1*/
 	ingenic,vbus-dete-gpio = <&gpd 17 GPIO_ACTIVE_LOW INGENIC_GPIO_NOBIAS>;
-	/* OpenKE (2026-07-21, FIRMWARE.md sec 42): wrong pin - real, live-confirmed via stock's
+	/* RosetteOS (2026-07-21, FIRMWARE.md sec 42): wrong pin - real, live-confirmed via stock's
 	 * own decompiled DTB (vendor/device-backups/stock-live-device-tree.dtb): stock's real,
 	 * working drvvbus-gpio is gpc pin 9 (raw value <0x07 0x09 0x01 0x00>, phandle 0x07 = gpc
 	 * confirmed against stock's own gpio-bank phandle table), not gpe pin 22. Both our tree
@@ -990,7 +990,7 @@
 &mscaler1 {
 	status = "disabled";
 };
-/* OPENKE_BACKLIGHT_FINAL_CONTROLLER_VARIANT_DTS_BEGIN */
+/* ROSETTEOS_BACKLIGHT_FINAL_CONTROLLER_VARIANT_DTS_BEGIN */
 /* Post-incident backlight controller redesign (2026-08-02+) -
  * DISPLAY-B-FINAL kernel-owned exclusive owner of GPC0 (as GPIO
  * and as PWM channel 0's peripheral function) and the candidate
@@ -1013,8 +1013,8 @@
 		status = "okay";
 	};
 };
-/* OPENKE_BACKLIGHT_FINAL_CONTROLLER_VARIANT_DTS_END */
-/* --- OPENKE_ACCELEROMETER_EEPROM_BUS_ENABLE_VARIANT_DTS_BEGIN --- */
+/* ROSETTEOS_BACKLIGHT_FINAL_CONTROLLER_VARIANT_DTS_END */
+/* --- ROSETTEOS_ACCELEROMETER_EEPROM_BUS_ENABLE_VARIANT_DTS_BEGIN --- */
 &i2c2 {
 	/* Phase 1.9A host-MCU accelerometer/EEPROM bus enablement:
 	 * the physical BL24C16F EEPROM is wired here on the real Ender 3 V3
@@ -1030,7 +1030,7 @@
 	 * node below is the Linux 6.6 in-tree at24/nvmem driver, NOT
 	 * [bl24c16f] (which owned this same chip directly over
 	 * i2c_mcu:rpi/i2c-chardev in Phase 1.9A and is retired from
-	 * production use as of Phase 1.9B - see OpenKE_Settings.cfg and
+	 * production use as of Phase 1.9B - see RosetteOS_Settings.cfg and
 	 * nebulaos_power_loss_recovery.py). The BL24C16F is electrically
 	 * and functionally an Atmel 24C16 - same 2048 bytes, same 16-byte
 	 * write page, same 8-bit internal address split across 8 I2C slave
@@ -1163,4 +1163,4 @@
 		};
 	};
 };
-/* --- OPENKE_ACCELEROMETER_EEPROM_BUS_ENABLE_VARIANT_DTS_END --- */
+/* --- ROSETTEOS_ACCELEROMETER_EEPROM_BUS_ENABLE_VARIANT_DTS_END --- */

@@ -1,12 +1,143 @@
 # Baseline difference report
-# Generated: 2026-09-30T02:12:32Z
-# Baseline tag: openke-canonical-baseline-2026-09-29-opkg-qualified (3cc3a8826e572e04c84bbf610712e092dc6be033)
+# Generated: 2026-10-08T00:17:35Z
+# Baseline tag: rosetteos-canonical-baseline-2026-09-29-opkg-qualified (3cc3a8826e572e04c84bbf610712e092dc6be033)
 
 ## Tracked config/DTS artifacts (must be byte-identical)
-IDENTICAL: kernel.config (after environment-path normalization)
-IDENTICAL: halley5_v30.dts
-IDENTICAL: buildroot.config (after environment-path normalization)
-IDENTICAL: halley5-openke-busybox-fragment.config
+DIFFERS (PERMITTED IN CANDIDATE BUILD): kernel.config
+--- /tmp/tmp.xTvENKcYRV	2026-10-08 00:17:35.155101500 +0000
++++ /tmp/tmp.tZtFDqkiPQ	2026-10-08 00:17:35.150101507 +0000
+@@ -3973,7 +3973,7 @@
+ # CONFIG_STAGE_GC9203 is not set
+ # CONFIG_STAGE_ST7701S is not set
+ # CONFIG_STAGE_ST7701S_RGB666 is not set
+-CONFIG_STAGE_OPENKE_GENERAL_480X272=y
++CONFIG_STAGE_ROSETTEOS_GENERAL_480X272=y
+ # CONFIG_STAGE_ST7701S_DX is not set
+ # CONFIG_STAGE_YTS500XLAI is not set
+ # CONFIG_STAGE_YLYM286A is not set
+DIFFERS (PERMITTED IN CANDIDATE BUILD): halley5_v30.dts
+diff --git a/artifacts/buildroot-halley5-v30-image/halley5_v30.dts b/artifacts/buildroot-halley5-v30-image/halley5_v30.dts
+index 1cb8876..34d3fe6 100644
+--- a/artifacts/buildroot-halley5-v30-image/halley5_v30.dts
++++ b/artifacts/buildroot-halley5-v30-image/halley5_v30.dts
+@@ -81,7 +81,7 @@
+ 			   regulator-boot-on;
+ 		  };
+ 
+-		  /* OpenKE (2026-07-22, FIRMWARE.md sec 44): 3 real GPIO-based fixes in a row
++		  /* RosetteOS (2026-07-22, FIRMWARE.md sec 44): 3 real GPIO-based fixes in a row
+ 		   * (wrong pin -> wrong polarity -> pin stolen by uart4's over-wide mux group)
+ 		   * all left "mmc1: Failed to initialize a non-removable card" byte-identical -
+ 		   * the card never responds at all, at any frequency. Reconsidered the model
+@@ -102,7 +102,7 @@
+ 		   * own early probe, well before mmc1 ever probes - decoupled from pwrseq's
+ 		   * post_power_on delay entirely, since a shared rail's real settling time has
+ 		   * nothing to do with any individual card's reset sequencing. */
+-		  /* OpenKE (2026-07-22, FIRMWARE.md sec 52): a LIVE read of PA01 on the
++		  /* RosetteOS (2026-07-22, FIRMWARE.md sec 52): a LIVE read of PA01 on the
+ 		   * real, currently-working, currently-associated stock system -
+ 		   * /sys/kernel/debug/gpio, "gpio-1 (|bt_wifi_power) out lo" - shows raw
+ 		   * LOW during real, active WiFi traffic. This directly confirms
+@@ -129,7 +129,7 @@
+ 		  };
+ };
+ 
+-/* OpenKE (2026-07-23): was status="okay" with pinctrl-0 = <&uart0_pd> (gpd 23-26), which
++/* RosetteOS (2026-07-23): was status="okay" with pinctrl-0 = <&uart0_pd> (gpd 23-26), which
+  * hard-conflicts with msc0_8bit (gpd 17-26) - the real eMMC boot storage, already confirmed
+  * essential above. dmesg showed "pin GPD-23 already requested by 13450000.msc; cannot claim
+  * for 10030000.serial" every boot; msc0 always wins the pin so nothing actually broke, but
+@@ -139,7 +139,7 @@
+ 	status = "disable";
+ };
+ 
+-/* OpenKE (2026-07-21, FIRMWARE.md sec 43): real, confirmed gap - this board file never
++/* RosetteOS (2026-07-21, FIRMWARE.md sec 43): real, confirmed gap - this board file never
+  * referenced &uart1 at all, unlike every other uart actually in use here. Klipper's own
+  * printer.cfg confirms /dev/ttyS1 is the real serial link to the printer's mainboard MCU
+  * ([mcu] serial:/dev/ttyS1, vendor/device-backups/printer_data_config/printer.cfg) - the
+DIFFERS (PERMITTED IN CANDIDATE BUILD): buildroot.config
+--- /tmp/tmp.cbdvbw44cL	2026-10-08 00:17:35.201101434 +0000
++++ /tmp/tmp.wOjhhaZ22G	2026-10-08 00:17:35.196101441 +0000
+@@ -441,8 +441,8 @@
+ #
+ BR2_ROOTFS_SKELETON_DEFAULT=y
+ # BR2_ROOTFS_SKELETON_CUSTOM is not set
+-BR2_TARGET_GENERIC_HOSTNAME="openke"
+-BR2_TARGET_GENERIC_ISSUE="Welcome to OpenKE"
++BR2_TARGET_GENERIC_HOSTNAME="rosetteos"
++BR2_TARGET_GENERIC_ISSUE="Welcome to RosetteOS"
+ BR2_TARGET_GENERIC_PASSWD_SHA256=y
+ # BR2_TARGET_GENERIC_PASSWD_SHA512 is not set
+ BR2_TARGET_GENERIC_PASSWD_METHOD="sha-256"
+@@ -470,7 +470,7 @@
+ # BR2_ROOTFS_DEVICE_TABLE_SUPPORTS_EXTENDED_ATTRIBUTES is not set
+ # BR2_ROOTFS_MERGED_USR is not set
+ BR2_TARGET_ENABLE_ROOT_LOGIN=y
+-BR2_TARGET_GENERIC_ROOT_PASSWD="openke"
++BR2_TARGET_GENERIC_ROOT_PASSWD="rosetteos"
+ BR2_SYSTEM_BIN_SH_BUSYBOX=y
+ 
+ #
+@@ -497,7 +497,7 @@
+ # BR2_SYSTEM_ENABLE_NLS is not set
+ # BR2_TARGET_TZ_INFO is not set
+ BR2_ROOTFS_USERS_TABLES=""
+-BR2_ROOTFS_OVERLAY="board/halley5-openke-overlay"
++BR2_ROOTFS_OVERLAY="board/halley5-rosetteos-overlay"
+ BR2_ROOTFS_PRE_BUILD_SCRIPT=""
+ BR2_ROOTFS_POST_BUILD_SCRIPT=""
+ BR2_ROOTFS_POST_FAKEROOT_SCRIPT=""
+@@ -525,7 +525,7 @@
+ # BR2_LINUX_KERNEL_USE_ARCH_DEFAULT_CONFIG is not set
+ # BR2_LINUX_KERNEL_USE_CUSTOM_CONFIG is not set
+ BR2_LINUX_KERNEL_DEFCONFIG="x2000_halley5_v30_linux"
+-BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES="$(CONFIG_DIR)/board/halley5-openke-fragment.config"
++BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES="$(CONFIG_DIR)/board/halley5-rosetteos-fragment.config"
+ BR2_LINUX_KERNEL_CUSTOM_LOGO_PATH=""
+ # BR2_LINUX_KERNEL_UIMAGE is not set
+ # BR2_LINUX_KERNEL_VMLINUX_BIN is not set
+DIFFERS (PERMITTED IN CANDIDATE BUILD): halley5-rosetteos-busybox-fragment.config
+diff --git a/artifacts/buildroot-halley5-v30-image/halley5-rosetteos-busybox-fragment.config b/artifacts/buildroot-halley5-v30-image/halley5-rosetteos-busybox-fragment.config
+new file mode 100644
+index 0000000..dcceb07
+--- /dev/null
++++ b/artifacts/buildroot-halley5-v30-image/halley5-rosetteos-busybox-fragment.config
+@@ -0,0 +1,53 @@
++# NebulaOS mutable-runtime mission, Memory Resilience Gate (2026-07-26):
++# real bug found live on the actual device - `swapon -p 100 /dev/zram0`
++# failed outright ("swapon: invalid option -- 'p'"), and the documented
++# BusyBox workaround (an /etc/fstab entry with a "pri=" mount option,
++# activated via `swapon -a`) DID bring the swap area up but silently
++# ignored the requested priority (confirmed live: /proc/swaps showed
++# priority -2, not the requested 100) - because
++# CONFIG_FEATURE_SWAPON_PRI was not enabled in this project's BusyBox
++# build at all (confirmed directly against
++# vendor/buildroot-x2000/package/busybox/busybox.config, not guessed).
++# Without this, there is no way to make the NebulaOS disk swap file
++# genuinely lower-priority than zram, which this whole memory-resilience
++# design depends on.
++CONFIG_FEATURE_SWAPON_PRI=y
++
++# NebulaOS mutable-runtime mission, Phase 7 live-HTTPS qualification
++# (2026-07-26): two more real gaps found live, both blocking real HTTPS
++# to GitHub entirely (not just during the early-boot pre-NTP window this
++# project already knew about) - confirmed directly, not guessed:
++# - No NTP client existed anywhere on this image at all (`which ntpd
++#   chronyd sntp` all empty) - the clock was permanently stuck at its
++#   post-reset default (confirmed live: `date -u` read "Sun Mar 1 2020"
++#   on a device that had been running for hours), not just briefly wrong
++#   at boot. `git`/curl/wget HTTPS all failed with "certificate is not
++#   yet valid" as a direct, permanent consequence.
++# - BusyBox's own `wget` had no HTTPS support compiled in at all
++#   (confirmed: `wget --help` shows only "HTTP or FTP", and a real
++#   https:// URL was rejected outright with "not an http or ftp url") -
++#   a separate gap from the clock issue, would have blocked
++#   `wget --spider https://github.com/` even with a correct clock.
++CONFIG_NTPD=y
++CONFIG_FEATURE_WGET_HTTPS=y
++
++# NebulaOS mutable-runtime mission, Phase 7 live qualification (2026-07-26):
 
 ## rootfs.squashfs content comparison
 New rootfs.squashfs file count: 0
@@ -30,43 +161,57 @@ New rootfs.squashfs file count: 0
 
 ## build-manifest.txt full diff (for reference, not a pass/fail signal by itself)
 diff --git a/artifacts/buildroot-halley5-v30-image/build-manifest.txt b/artifacts/buildroot-halley5-v30-image/build-manifest.txt
-index 55df24b..4eff594 100644
+index 55df24b..52b8bcf 100644
 --- a/artifacts/buildroot-halley5-v30-image/build-manifest.txt
 +++ b/artifacts/buildroot-halley5-v30-image/build-manifest.txt
-@@ -1,7 +1,7 @@
+@@ -1,36 +1,36 @@
 -built_at=2026-09-29T01:11:49Z
-+built_at=2026-09-29T23:45:54Z
- build_image_repo=ghcr.io/openklipperedition/openke-build
- build_image_digest=sha256:6881c505c5d94c82c755cd54ffd97877977619d1ccaab2b3c7d68c94c52eb93a
+-build_image_repo=ghcr.io/openklipperedition/openke-build
+-build_image_digest=sha256:6881c505c5d94c82c755cd54ffd97877977619d1ccaab2b3c7d68c94c52eb93a
 -git_commit_main=715860b5604b413bb61f7989dab187495876f739
-+git_commit_main=d1969e6951e8f7b48b504f88850d6f073ae6813d
++built_at=2026-10-08T00:14:41Z
++build_image_repo=ghcr.io/rosetteos/rosetteos-build
++build_image_digest=sha256:cc8bd43f8d0dbb96ac305b13ff6793d37f39e7a9eb9e70e29e316fee4588764d
++git_commit_main=3aab71c1eb34630e24c7b6db2d8bc8b4f3cc9303
  git_commit_main_dirty=yes
- git_commit_system=de33e48a79f4e1ce5d820b7e0720cae8b18be6b1
+-git_commit_system=de33e48a79f4e1ce5d820b7e0720cae8b18be6b1
++git_commit_system=acfea1a0066e7afc609c72f26a47a4df23106d4a
  git_commit_system_dirty=yes
-@@ -11,13 +11,13 @@ git_commit_mcu=2c9bab5be07deef4c8df6d7db3b614d748a18065
- git_commit_mcu_dirty=yes
+ git_commit_klipper=58bd67db3ce1be1951c3e4a6d1156a79903d4edc
+ git_commit_klipper_dirty=no
+ git_commit_mcu=2c9bab5be07deef4c8df6d7db3b614d748a18065
+-git_commit_mcu_dirty=yes
++git_commit_mcu_dirty=no
  git_commit_moonraker=985c1d0bbeb90bc057d34a232c9dc3b05e0c6c8d
  git_commit_moonraker_dirty=no
 -git_commit_guppyscreen=26ed385513aab78eba877ef51c84229ce72ec9cd
-+git_commit_guppyscreen=a12533f58dca30cd8d03ffc8ce10a1d279e63282
++git_commit_guppyscreen=ebe0cffc39126edd00f03183b8ff91abaecbb99f
  git_commit_guppyscreen_dirty=yes
  git_commit_k1_ustreamer=18e30bb313d54b1b01dd995bd31ce5a3d5adffd6
  git_commit_k1_ustreamer_dirty=no
  git_submodules_k1_ustreamer=jpeg-9d@541f5a573b5cf1c2a1b67c33a6c83e964e6a1913;ustreamer@7fe8c873b382777da015dc475a706a04c1e3200b;
  mainsail_zip_sha256=c4d9d96f89851c6ae0709c2f20725447f3fe8c57cf193869b0083441bd93378a
 -guppyscreen_sha256=5a5b18c5185d82ea599e65d1349f85b68fe5dd2255f141bb672c9f33c366e59f
-+guppyscreen_sha256=79336c1896b858d0cd3c5e83c0fbbbea0556edc2cc7df59ec297e57d6a6d0be6
++guppyscreen_sha256=b1ff2b0df1dff0f809ae04f5f61ab9706474e7d773160b3fab3cda390076cae2
  guppybeep_sha256=fe2a7d3b37aadfdb19f8357ca25efb37e776d785ca270f4553800d3002b1702c
  wifi_firmware_sha256=82ed67a211877efa47aff4aab83d6d2d1ccf3d5d0f5c396df97f292ade01de9e
  wifi_clm_sha256=1dbe1a396b68786bb189b7c255318ae546fd2e9d15f70ccc8ecbdc52b6cd4c47
-@@ -30,7 +30,7 @@ mcu_klipper_creality_bin_sha256=c2db4f34586c5df88b0d8d40e1d2d1c0f3bea90ab879c7c3
+ wifi_nvram_sha256=78fee458ab69c0a66ea462f6d6769e15b36f73582693f4dbb5a0e8e8be3cfb0a
+ regulatory_db_sha256=0a4abd7ae20d07bb70642937ccb2293a72a6504730eea45a698882599f586368
+-kernel_config_sha256=e3bbd983d257cf4f2fe2bc9fca5f70cb86cc3e155b7467a41e86d70aedd697de
+-buildroot_config_sha256=706ece8691ab59741c9ba972d41090e96cf4272da9511c02cbfaeea5603c21b4
+-device_tree_sha256=7bced541ff4d77dc0e392c8084c5f322fc2810b0ba12911cb87ee73c2fdf9b5a
++kernel_config_sha256=48f49e0c81845652d3a9cf16e69f5663e48dc9dd56e7316d1143cde720386154
++buildroot_config_sha256=4d49e5980b44a5c8fbdbe9efea82f397d2a71b597c37297fd96dfd2446da5de0
++device_tree_sha256=f31ea731e2a9291a7c22d1a6b61762998caf84948585cf6c8fa219391ad2b2d2
+ mcu_klipper_creality_bin_sha256=c2db4f34586c5df88b0d8d40e1d2d1c0f3bea90ab879c7c3a1ccc3a64f91db0c
  mcu_klipper_raw_bin_sha256=add546c7dd626c70a86ec33283cccdf4ad7956916d736af6b96f989b1b4188bd
  mcu_v3_se_klipper_bin_sha256=f07ade93b39ad2714c88cb323be9c2ebc5ac8a0691293a90b6fea15b13aa20d1
  mcu_v2_neo_klipper_bin_sha256=58e36cd07e787d735f54da81fb7f17070253bcc2071b1cdbc673cfac4fc62a40
 -xImage_sha256=e4e2177a64d02018c6c0554b844c74db369b0fc362409c3f0c9e0c71b6db9d5b
-+xImage_sha256=506375381ac4b8c065baeeb68ee1317eae6b15a46dd9e256f22cd160562f497f
++xImage_sha256=2b627082af0ed01022bccf1df4085ad205750285d3322b4ef5e6beb9876520a2
  xImage_size=5546048
 -rootfs_squashfs_sha256=aa416377a238b408292ba6ae76a79bca0025a7019480e6f61d26f97536bace90
 -rootfs_squashfs_size=376811520
-+rootfs_squashfs_sha256=e3006f8f3afffa021135654d5d39e1c9689e7d03866f094303d344e2d5de0f7a
-+rootfs_squashfs_size=376819712
++rootfs_squashfs_sha256=c3c2561b4d81775e5f0dc1a8a5e62960b247a4c32b541cb33affdd2a9204ff35
++rootfs_squashfs_size=385060864
