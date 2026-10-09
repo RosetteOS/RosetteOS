@@ -1,0 +1,95 @@
+#!/bin/sh
+#
+# /etc/init.d/S41rosetteos-mdns
+#
+# Starts RosetteOS Multicast DNS (mDNS) Responder Daemon
+# Publishes <hostname>.local and network services (HTTP, SSH, OctoPrint, Moonraker)
+#
+
+DAEMON="rosetteos-mdns"
+EXEC="/usr/sbin/$DAEMON"
+PIDFILE="/var/run/$DAEMON.pid"
+CFGFILE="/etc/default/$DAEMON"
+
+[ -x "$EXEC" ] || exit 0
+
+# Source configuration
+[ -r "$CFGFILE" ] && . "$CFGFILE"
+
+if [ "$ENABLED" = "no" ] || [ "$ENABLED" = "0" ] || [ "$ENABLED" = "false" ]; then
+	echo "$DAEMON disabled in $CFGFILE"
+	exit 0
+fi
+
+start() {
+	printf "Starting %s: " "$DAEMON"
+	if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
+		echo "already running."
+		return 0
+	fi
+
+	# Start daemon via start-stop-daemon or directly with --daemon flag
+	start-stop-daemon -S -q -p "$PIDFILE" -x "$EXEC" -- --daemon -p "$PIDFILE" -c "$CFGFILE"
+	status=$?
+	if [ "$status" -eq 0 ]; then
+		echo "OK"
+	else
+		echo "FAIL"
+	fi
+	return "$status"
+}
+
+stop() {
+	printf "Stopping %s: " "$DAEMON"
+	if [ ! -f "$PIDFILE" ]; then
+		echo "not running."
+		return 0
+	fi
+
+	start-stop-daemon -K -q -p "$PIDFILE" -s TERM
+	status=$?
+	rm -f "$PIDFILE"
+	if [ "$status" -eq 0 ]; then
+		echo "OK"
+	else
+		echo "FAIL"
+	fi
+	return "$status"
+}
+
+restart() {
+	stop
+	sleep 1
+	start
+}
+
+status() {
+	if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
+		echo "$DAEMON (pid $(cat "$PIDFILE")) is running."
+		return 0
+	else
+		echo "$DAEMON is stopped."
+		return 3
+	fi
+}
+
+case "$1" in
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	restart|reload)
+		restart
+		;;
+	status)
+		status
+		;;
+	*)
+		echo "Usage: $0 {start|stop|restart|reload|status}"
+		exit 1
+		;;
+esac
+
+exit $?

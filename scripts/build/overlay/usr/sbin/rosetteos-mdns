@@ -1,0 +1,352 @@
+#!/usr/bin/env python3
+"""
+RosetteOS Multicast DNS (mDNS) Responder Daemon
+
+Publishes system hostname resolution (<hostname>.local) and standard DNS-SD
+service advertisements for the 3D printer stack:
+  - HTTP Web UI (Mainsail / Fluidd via Nginx, port 80)
+  - Dropbear SSH console (port 22)
+  - OctoPrint API emulation (port 80)
+  - Moonraker API service (port 7125)
+
+Enables zero-configuration network discovery across macOS, iOS, Windows, and Linux
+clients as well as slicers (OrcaSlicer, PrusaSlicer, Bambu Studio, Cura).
+"""
+
+import sys
+import os
+import time
+import signal
+import socket
+import struct
+import argparse
+import logging
+from typing import Dict, List, Optional, Tuple
+
+try:
+    from zeroconf import Zeroconf, ServiceInfo, IPVersion
+except ImportError:
+    # If run in build/host environment without system-wide python-zeroconf
+    sys.stderr.write("FATAL: python zeroconf module not found.\n")
+    sys.exit(1)
+
+
+DEFAULT_CONFIG = "/etc/default/rosetteos-mdns"
+DEFAULT_PIDFILE = "/var/run/rosetteos-mdns.pid"
+DEFAULT_DOMAIN = "local"
+
+
+def get_default_hostname() -> str:
+    """Returns local system hostname stripped of domain suffix."""
+    try:
+        h = socket.gethostname().strip()
+        if h and h != "localhost":
+            return h.split(".")[0]
+    except Exception:
+        pass
+    return "rosetteos"
+
+
+def detect_primary_ip(interface: Optional[str] = None) -> Optional[str]:
+    """
+    Detect the primary IPv4 address of the active network interface.
+    Attempts UDP connect routing first, falling back to SIOCGIFADDR ioctl.
+    """
+    if interface:
+        try:
+            import fcntl
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            ifr = struct.pack("256s", interface.encode()[:15])
+            res = fcntl.ioctl(s.fileno(), 0x8915, ifr)  # SIOCGIFADDR
+            s.close()
+            return socket.inet_ntoa(res[20:24])
+        except Exception:
+            pass
+
+    # Method 1: Connect to a probe IP (non-blocking UDP routing query)
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        if ip and not ip.startswith("127."):
+            return ip
+    except Exception:
+        pass
+
+    # Method 2: Scan candidate interfaces (wlan0, eth0)
+    for iface in ["wlan0", "eth0", "ra0", "wlan1"]:
+        try:
+            import fcntl
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            ifr = struct.pack("256s", iface.encode()[:15])
+            res = fcntl.ioctl(s.fileno(), 0x8915, ifr)
+            s.close()
+            candidate_ip = socket.inet_ntoa(res[20:24])
+            if candidate_ip and not candidate_ip.startswith("127."):
+                return candidate_ip
+        except Exception:
+            continue
+
+    return None
+
+
+def parse_config_file(cfg_path: str) -> Dict[str, str]:
+    """Parses shell-style /etc/default/rosetteos-mdns configuration file."""
+    cfg: Dict[str, str] = {}
+    if not os.path.isfile(cfg_path):
+        return cfg
+
+    try:
+        with open(cfg_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" in line:
+                    key, val = line.split("=", 1)
+                    key = key.strip()
+                    val = val.strip().strip('"').strip("'")
+                    cfg[key] = val
+    except Exception as e:
+        logging.warning("Failed to parse config file %s: %s", cfg_path, e)
+    return cfg
+
+
+class RosetteOSMdnsDaemon:
+    def __init__(self, hostname: str, domain: str = "local",
+                 interface: Optional[str] = None,
+                 services: Optional[List[str]] = None,
+                 http_port: int = 80,
+                 ssh_port: int = 22,
+                 moonraker_port: int = 7125,
+                 octoprint_port: int = 80):
+        self.hostname = hostname
+        self.domain = domain
+        self.interface = interface
+        self.services = services or ["http", "ssh", "octoprint", "moonraker"]
+        self.http_port = http_port
+        self.ssh_port = ssh_port
+        self.moonraker_port = moonraker_port
+        self.octoprint_port = octoprint_port
+
+        self.zc: Optional[Zeroconf] = None
+        self.current_ip: Optional[str] = None
+        self.registered_infos: List[ServiceInfo] = []
+        self.running = False
+
+    def build_service_infos(self, ip_str: str) -> List[ServiceInfo]:
+        """Creates Zeroconf ServiceInfo instances for requested services."""
+        ip_bytes = socket.inet_aton(ip_str)
+        server_fqdn = f"{self.hostname}.{self.domain}."
+        infos: List[ServiceInfo] = []
+
+        # 1. HTTP Web UI (Mainsail / Fluidd via Nginx)
+        if "http" in self.services:
+            info_http = ServiceInfo(
+                type_="_http._tcp.local.",
+                name=f"{self.hostname} Web Interface._http._tcp.local.",
+                addresses=[ip_bytes],
+                port=self.http_port,
+                properties={
+                    "path": "/",
+                    "adminurl": f"http://{self.hostname}.{self.domain}/"
+                },
+                server=server_fqdn
+            )
+            infos.append(info_http)
+
+        # 2. Dropbear SSH Console
+        if "ssh" in self.services:
+            info_ssh = ServiceInfo(
+                type_="_ssh._tcp.local.",
+                name=f"{self.hostname} SSH._ssh._tcp.local.",
+                addresses=[ip_bytes],
+                port=self.ssh_port,
+                properties={"u": "root"},
+                server=server_fqdn
+            )
+            infos.append(info_ssh)
+
+        # 3. OctoPrint API Compatibility (used by slicers for printer connection)
+        if "octoprint" in self.services:
+            info_octo = ServiceInfo(
+                type_="_octoprint._tcp.local.",
+                name=f"{self.hostname} OctoPrint API._octoprint._tcp.local.",
+                addresses=[ip_bytes],
+                port=self.octoprint_port,
+                properties={"path": "/api", "version": "1.0.0"},
+                server=server_fqdn
+            )
+            infos.append(info_octo)
+
+        # 4. Moonraker API Service Fallback Announcement
+        if "moonraker" in self.services:
+            info_moon = ServiceInfo(
+                type_="_moonraker._tcp.local.",
+                name=f"{self.hostname} Moonraker._moonraker._tcp.local.",
+                addresses=[ip_bytes],
+                port=self.moonraker_port,
+                properties={"version": "1.0.0"},
+                server=server_fqdn
+            )
+            infos.append(info_moon)
+
+        return infos
+
+    def start_broadcasting(self, ip_str: str):
+        """Initializes Zeroconf and publishes records for the specified IP."""
+        logging.info("Starting mDNS broadcast for %s.%s on IP %s",
+                     self.hostname, self.domain, ip_str)
+        try:
+            if not self.zc:
+                self.zc = Zeroconf(ip_version=IPVersion.V4Only)
+
+            new_infos = self.build_service_infos(ip_str)
+            for info in new_infos:
+                self.zc.register_service(info)
+                self.registered_infos.append(info)
+                logging.info("  Registered mDNS service: %s (port %d)", info.name, info.port)
+
+            self.current_ip = ip_str
+        except Exception as e:
+            logging.error("Failed to register mDNS services: %s", e)
+
+    def stop_broadcasting(self):
+        """Unregisters all services and cleans up Zeroconf socket."""
+        if not self.zc:
+            return
+
+        logging.info("Stopping mDNS broadcast...")
+        for info in self.registered_infos:
+            try:
+                self.zc.unregister_service(info)
+            except Exception as e:
+                logging.debug("Error unregistering service %s: %s", info.name, e)
+
+        self.registered_infos.clear()
+        try:
+            self.zc.close()
+        except Exception as e:
+            logging.debug("Error closing Zeroconf: %s", e)
+        self.zc = None
+        self.current_ip = None
+
+    def run(self):
+        """Main service loop monitoring network state and IP transitions."""
+        self.running = True
+        logging.info("RosetteOS mDNS Responder started (hostname=%s.%s)",
+                     self.hostname, self.domain)
+
+        while self.running:
+            active_ip = detect_primary_ip(self.interface)
+            if active_ip != self.current_ip:
+                if self.current_ip:
+                    logging.info("Network change detected (%s -> %s)",
+                                 self.current_ip, active_ip)
+                    self.stop_broadcasting()
+
+                if active_ip:
+                    self.start_broadcasting(active_ip)
+                else:
+                    logging.info("No active IP address detected, awaiting network association...")
+
+            time.sleep(5)
+
+        self.stop_broadcasting()
+        logging.info("RosetteOS mDNS Responder exited cleanly.")
+
+
+def daemonize(pid_file: Optional[str] = None):
+    """Forks into background daemon process."""
+    if os.fork() > 0:
+        sys.exit(0)
+    os.setsid()
+    if os.fork() > 0:
+        sys.exit(0)
+
+    # Write PID file if requested
+    if pid_file:
+        try:
+            with open(pid_file, "w", encoding="utf-8") as f:
+                f.write(f"{os.getpid()}\n")
+        except Exception as e:
+            sys.stderr.write(f"Warning: could not write pidfile {pid_file}: {e}\n")
+
+    sys.stdout.flush()
+    sys.stderr.flush()
+    with open(os.devnull, "r") as devnull_r:
+        os.dup2(devnull_r.fileno(), sys.stdin.fileno())
+    with open(os.devnull, "a+") as devnull_w:
+        os.dup2(devnull_w.fileno(), sys.stdout.fileno())
+        os.dup2(devnull_w.fileno(), sys.stderr.fileno())
+
+
+def main():
+    parser = argparse.ArgumentParser(description="RosetteOS mDNS Responder Daemon")
+    parser.add_argument("-c", "--config", default=DEFAULT_CONFIG, help="Path to config file")
+    parser.add_argument("-H", "--hostname", default=None, help="mDNS hostname (without .local)")
+    parser.add_argument("-d", "--domain", default=DEFAULT_DOMAIN, help="mDNS domain (default: local)")
+    parser.add_argument("-i", "--interface", default=None, help="Network interface to bind")
+    parser.add_argument("-s", "--services", default=None, help="Comma-separated services (http,ssh,octoprint,moonraker)")
+    parser.add_argument("--http-port", type=int, default=80, help="HTTP web port (default: 80)")
+    parser.add_argument("--ssh-port", type=int, default=22, help="SSH port (default: 22)")
+    parser.add_argument("--moonraker-port", type=int, default=7125, help="Moonraker port (default: 7125)")
+    parser.add_argument("--octoprint-port", type=int, default=80, help="OctoPrint API port (default: 80)")
+    parser.add_argument("-D", "--daemon", action="store_true", help="Run as background daemon")
+    parser.add_argument("-p", "--pidfile", default=DEFAULT_PIDFILE, help="Path to pid file")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
+    args = parser.parse_args()
+
+    cfg = parse_config_file(args.config)
+    if cfg.get("ENABLED", "yes").lower() in ("no", "0", "false"):
+        print("mDNS daemon disabled in configuration file.")
+        sys.exit(0)
+
+    hostname = args.hostname or cfg.get("HOSTNAME") or get_default_hostname()
+    domain = args.domain or cfg.get("MDNS_DOMAIN") or DEFAULT_DOMAIN
+    interface = args.interface or cfg.get("INTERFACE")
+    services_str = args.services or cfg.get("SERVICES") or "http,ssh,octoprint,moonraker"
+    services = [s.strip().lower() for s in services_str.split(",") if s.strip()]
+
+    http_port = int(cfg.get("HTTP_PORT", args.http_port))
+    ssh_port = int(cfg.get("SSH_PORT", args.ssh_port))
+    moonraker_port = int(cfg.get("MOONRAKER_PORT", args.moonraker_port))
+    octoprint_port = int(cfg.get("OCTOPRINT_PORT", args.octoprint_port))
+
+    log_level = logging.DEBUG if args.verbose else logging.INFO
+    logging.basicConfig(level=log_level, format="%(asctime)s [%(levelname)s] %(message)s")
+
+    daemon = RosetteOSMdnsDaemon(
+        hostname=hostname,
+        domain=domain,
+        interface=interface,
+        services=services,
+        http_port=http_port,
+        ssh_port=ssh_port,
+        moonraker_port=moonraker_port,
+        octoprint_port=octoprint_port
+    )
+
+    def sig_handler(signum, frame):
+        logging.info("Received signal %d, shutting down...", signum)
+        daemon.running = False
+
+    signal.signal(signal.SIGTERM, sig_handler)
+    signal.signal(signal.SIGINT, sig_handler)
+
+    if args.daemon:
+        daemonize(args.pidfile)
+
+    try:
+        daemon.run()
+    finally:
+        if args.daemon and os.path.isfile(args.pidfile):
+            try:
+                os.remove(args.pidfile)
+            except Exception:
+                pass
+
+
+if __name__ == "__main__":
+    main()
