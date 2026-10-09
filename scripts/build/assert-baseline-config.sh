@@ -205,6 +205,8 @@ post-build)
 	if ! git -C "$REPO_ROOT" rev-parse --verify -q "$BASELINE_REF" >/dev/null; then
 		if [ "$BASELINE_REF" = "nebulaos-canonical-baseline-2026-08-28-sftp-qualified" ] && git -C "$REPO_ROOT" rev-parse --verify -q "4490de6ee6b7e6e0bd036b9a05a436a37705f4b2" >/dev/null; then
 			git -C "$REPO_ROOT" tag "$BASELINE_REF" 4490de6ee6b7e6e0bd036b9a05a436a37705f4b2 2>/dev/null || true
+		elif [ "$BASELINE_REF" = "rosetteos-canonical-baseline-2026-09-29-opkg-qualified" ] && git -C "$REPO_ROOT" rev-parse --verify -q "openke-canonical-baseline-2026-09-29-opkg-qualified" >/dev/null; then
+			git -C "$REPO_ROOT" tag "$BASELINE_REF" "openke-canonical-baseline-2026-09-29-opkg-qualified" 2>/dev/null || true
 		fi
 	fi
 	git -C "$REPO_ROOT" rev-parse --verify -q "$BASELINE_REF" >/dev/null || {

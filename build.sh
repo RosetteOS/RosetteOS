@@ -106,11 +106,15 @@ ROSETTEOS_REPO_ROOT=/workspace/RosetteOS
 # Also mount at /workspace/NebulaOS-firmware for backward compatibility with
 # pre-existing or cached Buildroot host tools whose RPATH/RUNPATH or shebangs
 # reference the heritage path.
+# Default to candidate build mode when building against a candidate container tag
+CANDIDATE_DEFAULT=0
+[ -n "$BUILD_IMAGE_CANDIDATE_TAG" ] && CANDIDATE_DEFAULT=1
+
 exec "$ENGINE" run --rm \
 	--user "$(id -u):$(id -g)" \
 	-e HOME=/tmp \
 	-e ROSETTEOS_REPO_ROOT="$ROSETTEOS_REPO_ROOT" \
-	-e ROSETTEOS_CANDIDATE_BUILD="${ROSETTEOS_CANDIDATE_BUILD:-0}" \
+	-e ROSETTEOS_CANDIDATE_BUILD="${ROSETTEOS_CANDIDATE_BUILD:-$CANDIDATE_DEFAULT}" \
 	-e FORCE_UNSAFE_CONFIGURE=1 \
 	-v "$SCRIPT_DIR:$ROSETTEOS_REPO_ROOT" \
 	-v "$SCRIPT_DIR:/workspace/NebulaOS-firmware" \
