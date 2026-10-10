@@ -175,7 +175,7 @@ class RosetteOSMdnsDaemon:
                 name=f"{self.hostname} OctoPrint API._octoprint._tcp.local.",
                 addresses=[ip_bytes],
                 port=self.octoprint_port,
-                properties={"path": "/api", "version": "1.0.0"},
+                properties={"path": "/", "version": "1.0.0"},
                 server=server_fqdn
             )
             infos.append(info_octo)

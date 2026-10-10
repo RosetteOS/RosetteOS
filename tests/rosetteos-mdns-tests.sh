@@ -99,11 +99,11 @@ s_octo = ServiceInfo(
     name=f"{hostname} OctoPrint API._octoprint._tcp.local.",
     addresses=[ip_bytes],
     port=80,
-    properties={"path": "/api", "version": "1.0.0"},
+    properties={"path": "/", "version": "1.0.0"},
     server=server_fqdn
 )
 assert s_octo.port == 80
-assert s_octo.properties[b"path"] == b"/api"
+assert s_octo.properties[b"path"] == b"/"
 
 # 4. Moonraker service
 s_moon = ServiceInfo(
