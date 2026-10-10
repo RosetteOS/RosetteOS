@@ -4,7 +4,11 @@
 #
 #   git clone https://github.com/RosetteOS/RosetteOS.git
 #   cd RosetteOS
-#   ./build.sh
+#   ./build.sh [--swu]
+#
+# Pass `--swu` to package a verified SWUpdate (.swu) archive at the end
+# of the build:
+#   ./build.sh --swu
 #
 # Fetches every pinned dependency (kernel, Klipper, GuppyScreen, Moonraker,
 # Buildroot, ustreamer, Mainsail, wireless-regdb, WiFi firmware - see
@@ -41,6 +45,30 @@
 set -e
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+
+BUILD_SWU=0
+for arg in "$@"; do
+	case "$arg" in
+		--swu)
+			BUILD_SWU=1
+			;;
+		-h|--help)
+			echo "Usage: $0 [--swu]"
+			echo ""
+			echo "Options:"
+			echo "  --swu        Package a verified SWUpdate (.swu) archive at the end of the build"
+			echo "  -h, --help   Display this help message and exit"
+			exit 0
+			;;
+		*)
+			echo "FATAL: unknown argument: $arg" >&2
+			echo "Usage: $0 [--swu]" >&2
+			exit 1
+			;;
+	esac
+done
+[ "${ROSETTEOS_BUILD_SWU:-0}" = "1" ] && BUILD_SWU=1
+
 MANIFEST="$SCRIPT_DIR/manifests/dependencies.conf"
 [ -f "$MANIFEST" ] || { echo "FATAL: $MANIFEST not found" >&2; exit 1; }
 . "$MANIFEST"
@@ -110,6 +138,9 @@ ROSETTEOS_REPO_ROOT=/workspace/RosetteOS
 CANDIDATE_DEFAULT=0
 [ -n "$BUILD_IMAGE_CANDIDATE_TAG" ] && CANDIDATE_DEFAULT=1
 
+BUILD_CMD="sh scripts/build/build-qualified-baseline.sh"
+[ "$BUILD_SWU" -eq 1 ] && BUILD_CMD="$BUILD_CMD --swu"
+
 exec "$ENGINE" run --rm \
 	--user "$(id -u):$(id -g)" \
 	-e HOME=/tmp \
@@ -120,4 +151,4 @@ exec "$ENGINE" run --rm \
 	-v "$SCRIPT_DIR:/workspace/NebulaOS-firmware" \
 	-w "$ROSETTEOS_REPO_ROOT" \
 	"$IMAGE_REF" \
-	"sh scripts/build/build-qualified-baseline.sh"
+	"$BUILD_CMD"

@@ -281,6 +281,51 @@ else
     fail "package-swu.sh failed to generate custom changelog package"
 fi
 
+echo "=== Test 8: build.sh & build-qualified-baseline.sh --swu CLI Flags ==="
+
+BUILD_SH="$REPO_ROOT/build.sh"
+BASELINE_SH="$REPO_ROOT/scripts/build/build-qualified-baseline.sh"
+
+if [ -x "$BUILD_SH" ]; then
+    pass "build.sh is executable"
+else
+    fail "build.sh is not executable"
+fi
+
+if sh "$BUILD_SH" --help > "$WORK/build_help.txt" 2>&1; then
+    pass "build.sh --help exits cleanly"
+    if grep -q -- "--swu" "$WORK/build_help.txt"; then
+        pass "build.sh --help documents --swu flag"
+    else
+        fail "build.sh --help does not document --swu flag"
+    fi
+else
+    fail "build.sh --help failed"
+fi
+
+if sh "$BUILD_SH" --invalid-flag >/dev/null 2>&1; then
+    fail "build.sh --invalid-flag unexpectedly succeeded"
+else
+    pass "build.sh rejects unknown options with non-zero exit"
+fi
+
+if sh "$BASELINE_SH" --help > "$WORK/baseline_help.txt" 2>&1; then
+    pass "build-qualified-baseline.sh --help exits cleanly"
+    if grep -q -- "--swu" "$WORK/baseline_help.txt"; then
+        pass "build-qualified-baseline.sh --help documents --swu flag"
+    else
+        fail "build-qualified-baseline.sh --help does not document --swu flag"
+    fi
+else
+    fail "build-qualified-baseline.sh --help failed"
+fi
+
+if sh "$BASELINE_SH" --invalid-flag >/dev/null 2>&1; then
+    fail "build-qualified-baseline.sh --invalid-flag unexpectedly succeeded"
+else
+    pass "build-qualified-baseline.sh rejects unknown options with non-zero exit"
+fi
+
 echo ""
 echo "=========================================="
 echo "SWUpdate Tests: $PASS passed, $FAIL failed"

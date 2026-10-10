@@ -28,7 +28,7 @@
 # will happily reuse an already-present vendor/ directory if one exists,
 # which is convenient for iteration but not what this script is for).
 #
-# Usage: sh scripts/build/build-qualified-baseline.sh
+# Usage: sh scripts/build/build-qualified-baseline.sh [--swu]
 #
 # Exits non-zero if any pin fails to resolve, any variant fails to apply,
 # either assertion fails, or any build stage fails.
@@ -36,6 +36,29 @@
 set -e
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+
+BUILD_SWU=0
+for arg in "$@"; do
+	case "$arg" in
+		--swu)
+			BUILD_SWU=1
+			;;
+		-h|--help)
+			echo "Usage: $0 [--swu]"
+			echo ""
+			echo "Options:"
+			echo "  --swu        Package a verified SWUpdate (.swu) archive at the end of the build"
+			echo "  -h, --help   Display this help message and exit"
+			exit 0
+			;;
+		*)
+			echo "FATAL: unknown argument: $arg" >&2
+			echo "Usage: $0 [--swu]" >&2
+			exit 1
+			;;
+	esac
+done
+[ "${ROSETTEOS_BUILD_SWU:-0}" = "1" ] && BUILD_SWU=1
 
 echo "=== build-qualified-baseline: fetching every required source ==="
 sh "$SCRIPT_DIR/00-fetch-vendor-sources.sh"
@@ -58,4 +81,9 @@ echo "=== build-qualified-baseline: post-build assertions (resolved artifacts) =
 sh "$SCRIPT_DIR/assert-baseline-config.sh" post-build
 
 echo "=== build-qualified-baseline: complete and composition-verified ==="
-echo "Package it with: sh scripts/build/package-deployment.sh"
+if [ "$BUILD_SWU" -eq 1 ]; then
+	echo "=== build-qualified-baseline: packaging SWUpdate (.swu) ==="
+	sh "$SCRIPT_DIR/package-swu.sh"
+else
+	echo "Package it with: sh scripts/build/package-deployment.sh or sh scripts/build/package-swu.sh"
+fi
