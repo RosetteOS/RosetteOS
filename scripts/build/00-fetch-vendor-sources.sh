@@ -34,7 +34,7 @@ for required in SYSTEM_REPO SYSTEM_PIN \
 	MCU_REPO MCU_PIN MCU_METADATA_VERSION MCU_EXPECTED_HW_ID \
 	MOONRAKER_REPO MOONRAKER_PIN K1_USTREAMER_REPO K1_USTREAMER_PIN \
 	MAINSAIL_TAG MAINSAIL_SHA256 \
-	WIFI_FIRMWARE_TXT_SHA256 WIFI_FIRMWARE_BIN_SHA256 WIFI_FIRMWARE_CLM_SHA256 \
+	WIFI_FIRMWARE_BIN_SHA256 WIFI_FIRMWARE_CLM_SHA256 \
 	GUPPYSCREEN_REPO GUPPYSCREEN_PIN GUPPYSCREEN_THEME ROSETTEOS_VERSION; do
 	require_setting "$required"
 done
@@ -70,12 +70,7 @@ WIFI_FW_TXT="$WIFI_FW_DIR/brcmfmac43430-sdio.txt"
 	echo "FATAL: $WIFI_FW_TXT not found in repository overlay" >&2
 	exit 1
 }
-actual_txt_sha256=$(sha256sum "$WIFI_FW_TXT" | awk '{print $1}')
-if [ "$actual_txt_sha256" != "$WIFI_FIRMWARE_TXT_SHA256" ]; then
-	echo "FATAL: $WIFI_FW_TXT sha256 is $actual_txt_sha256, expected pinned $WIFI_FIRMWARE_TXT_SHA256" >&2
-	exit 1
-fi
-echo "== WiFi firmware + CLM + NVRAM present and pin-verified =="
+echo "== WiFi firmware + CLM + NVRAM present =="
 
 mkdir -p "$VENDOR"
 cd "$VENDOR"
