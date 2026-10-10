@@ -96,7 +96,7 @@ fi
 mkdir -p "$OUTPUT_DIR"
 OUTPUT_DIR=$(cd "$OUTPUT_DIR" && pwd)
 
-INGENIC_NAME="Ender-3_V3_KE_1.1.0.12-${VERSION}.ingenic"
+INGENIC_NAME="${INGENIC_PACKAGE_NAME:-RosetteOS-${VERSION}.ingenic}"
 OUTPUT_PATH="$OUTPUT_DIR/$INGENIC_NAME"
 
 echo "== Packaging RosetteOS Ingenic Cloner Package (${SLOT}) v${VERSION} =="
