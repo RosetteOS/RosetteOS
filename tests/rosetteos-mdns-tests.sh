@@ -23,12 +23,15 @@ check() {
     fi
 }
 
-echo "=== Test 1: Moonraker [zeroconf] Configuration ==="
+echo "=== Test 1: Moonraker [zeroconf] & [octoprint_compat] Configuration ==="
 [ -f "$MOONRAKER_CONF" ]
 check "moonraker.conf exists" $?
 
 grep -q "^\\[zeroconf\\]" "$MOONRAKER_CONF"
 check "moonraker.conf contains [zeroconf] component" $?
+
+grep -q "^\\[octoprint_compat\\]" "$MOONRAKER_CONF"
+check "moonraker.conf contains [octoprint_compat] component" $?
 
 echo "=== Test 2: mDNS Daemon Script Permissions & Help ==="
 [ -x "$MDNS_DAEMON" ]

@@ -220,6 +220,10 @@ migrate_config_if_needed() {
 			log "moonraker.conf is missing [zeroconf] section - reconciliation needed"
 			moonraker_needs_reconciliation=1
 		fi
+		if ! grep -q "^\s*\[octoprint_compat\]" "$ROSETTEOS_ROOT/printer_data/config/moonraker.conf" 2>/dev/null; then
+			log "moonraker.conf is missing [octoprint_compat] section - reconciliation needed"
+			moonraker_needs_reconciliation=1
+		fi
 	fi
 
 	if [ "$installed_cfg_ver" = "$expected_cfg_ver" ] && [ "$moonraker_needs_reconciliation" -eq 0 ]; then

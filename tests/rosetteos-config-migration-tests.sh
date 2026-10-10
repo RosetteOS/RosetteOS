@@ -516,6 +516,8 @@ klippy_uds_address: /opt/printer_data/comms/klippy.sock
 
 [zeroconf]
 
+[octoprint_compat]
+
 [file_manager]
 enable_object_processing: True
 
@@ -607,6 +609,12 @@ else
 	fail "moonraker.conf migration failed to add [zeroconf]"
 fi
 
+if grep -q "\[octoprint_compat\]" "$t8_out"; then
+	pass "moonraker.conf migration added [octoprint_compat] section"
+else
+	fail "moonraker.conf migration failed to add [octoprint_compat]"
+fi
+
 if grep -q "192.168.1.150" "$t8_out" && grep -q "mycustomdomain.lan" "$t8_out"; then
 	pass "user custom trusted_clients and cors_domains were preserved"
 else
@@ -687,8 +695,8 @@ env S04ROSETTEOS_MIGRATE_NO_AUTORUN=1 \
     GATE_LIB="$GATE_LIB" \
     sh -c ". '$MIGRATE_INIT'; start" > "$WORK/t9.log" 2>&1
 
-if grep -q "\[zeroconf\]" "$t9_root/printer_data/config/moonraker.conf"; then
-	pass "S04rosetteos-migrate reconciled moonraker.conf and added [zeroconf] despite matching generation"
+if grep -q "\[zeroconf\]" "$t9_root/printer_data/config/moonraker.conf" && grep -q "\[octoprint_compat\]" "$t9_root/printer_data/config/moonraker.conf"; then
+	pass "S04rosetteos-migrate reconciled moonraker.conf and added [zeroconf] and [octoprint_compat] despite matching generation"
 else
 	fail "S04rosetteos-migrate failed to reconcile moonraker.conf: $(cat "$WORK/t9.log")"
 fi
