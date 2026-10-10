@@ -4,7 +4,7 @@
 #
 #   git clone https://github.com/RosetteOS/RosetteOS.git
 #   cd RosetteOS
-#   ./build.sh [--swu] [--ingenic]
+#   ./build.sh [--swu] [--ingenic] [--ota]
 #
 # Pass `--swu` to package a verified SWUpdate (.swu) archive at the end
 # of the build:
@@ -13,6 +13,10 @@
 # Pass `--ingenic` to package a verified Ingenic USB Cloner (.ingenic)
 # archive at the end of the build:
 #   ./build.sh --ingenic
+#
+# Pass `--ota` to package stock CrealityOS-compatible OTA (.img) updates
+# at the end of the build:
+#   ./build.sh --ota
 #
 # Fetches every pinned dependency (kernel, Klipper, GuppyScreen, Moonraker,
 # Buildroot, ustreamer, Mainsail, wireless-regdb, WiFi firmware - see
@@ -52,6 +56,7 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 
 BUILD_SWU=0
 BUILD_INGENIC=0
+BUILD_OTA=0
 for arg in "$@"; do
 	case "$arg" in
 		--swu)
@@ -60,24 +65,29 @@ for arg in "$@"; do
 		--ingenic)
 			BUILD_INGENIC=1
 			;;
+		--ota)
+			BUILD_OTA=1
+			;;
 		-h|--help)
-			echo "Usage: $0 [--swu] [--ingenic]"
+			echo "Usage: $0 [--swu] [--ingenic] [--ota]"
 			echo ""
 			echo "Options:"
 			echo "  --swu        Package a verified SWUpdate (.swu) archive at the end of the build"
 			echo "  --ingenic    Package a verified Ingenic USB Cloner (.ingenic) archive at the end of the build"
+			echo "  --ota        Package stock CrealityOS-compatible OTA (.img) updates at the end of the build"
 			echo "  -h, --help   Display this help message and exit"
 			exit 0
 			;;
 		*)
 			echo "FATAL: unknown argument: $arg" >&2
-			echo "Usage: $0 [--swu] [--ingenic]" >&2
+			echo "Usage: $0 [--swu] [--ingenic] [--ota]" >&2
 			exit 1
 			;;
 	esac
 done
 [ "${ROSETTEOS_BUILD_SWU:-0}" = "1" ] && BUILD_SWU=1
 [ "${ROSETTEOS_BUILD_INGENIC:-0}" = "1" ] && BUILD_INGENIC=1
+[ "${ROSETTEOS_BUILD_OTA:-0}" = "1" ] && BUILD_OTA=1
 
 MANIFEST="$SCRIPT_DIR/manifests/dependencies.conf"
 [ -f "$MANIFEST" ] || { echo "FATAL: $MANIFEST not found" >&2; exit 1; }
@@ -151,6 +161,7 @@ CANDIDATE_DEFAULT=0
 BUILD_CMD="sh scripts/build/build-qualified-baseline.sh"
 [ "$BUILD_SWU" -eq 1 ] && BUILD_CMD="$BUILD_CMD --swu"
 [ "$BUILD_INGENIC" -eq 1 ] && BUILD_CMD="$BUILD_CMD --ingenic"
+[ "$BUILD_OTA" -eq 1 ] && BUILD_CMD="$BUILD_CMD --ota"
 
 exec "$ENGINE" run --rm \
 	--user "$(id -u):$(id -g)" \

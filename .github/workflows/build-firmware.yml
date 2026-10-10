@@ -226,6 +226,10 @@ jobs:
           # 3. Generate Ingenic USB cloner package (.ingenic)
           sh scripts/build/package-ingenic.sh "$bundle" "nightly" "slot1"
 
+          # 4. Generate Stock CrealityOS USB OTA packages (.img for KE & Nebula)
+          command -v 7z >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq p7zip-full)
+          sh scripts/build/package-creality-ota.sh "$bundle" "all" "1.1.0.34"
+
           cp "$image_dir/xImage" \
              "$image_dir/rootfs.squashfs" \
              "$image_dir/build-manifest.txt" \
@@ -294,6 +298,12 @@ jobs:
 
           if compgen -G "$bundle/*.ingenic" > /dev/null; then
             for f in "$bundle"/*.ingenic "$bundle"/*.ingenic.sha256; do
+              [[ -f "$f" ]] && release_files+=("$f")
+            done
+          fi
+
+          if compgen -G "$bundle/*.img" > /dev/null; then
+            for f in "$bundle"/*.img "$bundle"/*.img.sha256; do
               [[ -f "$f" ]] && release_files+=("$f")
             done
           fi

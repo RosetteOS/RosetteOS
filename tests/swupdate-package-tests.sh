@@ -13,7 +13,10 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 PACKAGE_SWU_SCRIPT="$REPO_ROOT/scripts/build/package-swu.sh"
 PACKAGE_INGENIC_SCRIPT="$REPO_ROOT/scripts/build/package-ingenic.sh"
+PACKAGE_OTA_SCRIPT="$REPO_ROOT/scripts/build/package-creality-ota.sh"
 REBUILD_INGENIC_SCRIPT="$REPO_ROOT/scripts/build/lib/rebuild_ingenic.py"
+PACK_OTA_PY="$REPO_ROOT/scripts/build/lib/pack_creality_ota.py"
+BUILD_OTA_WRAPPER="$REPO_ROOT/build_rosetteos_image.sh"
 HWREVISION_FILE="$REPO_ROOT/scripts/build/overlay/etc/hwrevision"
 SWUPDATE_CFG_FILE="$REPO_ROOT/scripts/build/overlay/etc/swupdate.cfg"
 
@@ -306,6 +309,11 @@ if sh "$BUILD_SH" --help > "$WORK/build_help.txt" 2>&1; then
     else
         fail "build.sh --help does not document --ingenic flag"
     fi
+    if grep -q -- "--ota" "$WORK/build_help.txt"; then
+        pass "build.sh --help documents --ota flag"
+    else
+        fail "build.sh --help does not document --ota flag"
+    fi
 else
     fail "build.sh --help failed"
 fi
@@ -327,6 +335,11 @@ if sh "$BASELINE_SH" --help > "$WORK/baseline_help.txt" 2>&1; then
         pass "build-qualified-baseline.sh --help documents --ingenic flag"
     else
         fail "build-qualified-baseline.sh --help does not document --ingenic flag"
+    fi
+    if grep -q -- "--ota" "$WORK/baseline_help.txt"; then
+        pass "build-qualified-baseline.sh --help documents --ota flag"
+    else
+        fail "build-qualified-baseline.sh --help does not document --ota flag"
     fi
 else
     fail "build-qualified-baseline.sh --help failed"
@@ -437,6 +450,102 @@ if [ "$VERIFY_RESULT" = "OK" ]; then
     pass "rebuilt .ingenic contains expected rootfs and kernel payloads"
 else
     fail "rebuilt .ingenic payload verification failed: $VERIFY_RESULT"
+fi
+
+echo "=== Test 11: Stock CrealityOS OTA Package Generation with Mock Fixtures ==="
+
+if [ -x "$PACKAGE_OTA_SCRIPT" ]; then
+    pass "package-creality-ota.sh is executable"
+else
+    fail "package-creality-ota.sh is not executable"
+fi
+
+if [ -x "$PACK_OTA_PY" ]; then
+    pass "pack_creality_ota.py is executable"
+else
+    fail "pack_creality_ota.py is not executable"
+fi
+
+if [ -x "$BUILD_OTA_WRAPPER" ]; then
+    pass "build_rosetteos_image.sh is executable"
+else
+    fail "build_rosetteos_image.sh is not executable"
+fi
+
+if python3 "$PACK_OTA_PY" --help >/dev/null 2>&1; then
+    pass "pack_creality_ota.py --help exits cleanly"
+else
+    fail "pack_creality_ota.py --help failed"
+fi
+
+if sh "$BUILD_OTA_WRAPPER" --help >/dev/null 2>&1; then
+    pass "build_rosetteos_image.sh --help exits cleanly"
+else
+    fail "build_rosetteos_image.sh --help failed"
+fi
+
+MOCK_ZERO="$WORK/mock_zero.bin"
+echo "MOCK_ZERO_DATA_54321" > "$MOCK_ZERO"
+MOCK_ZERO_SHA=$(sha256sum "$MOCK_ZERO" | awk '{print $1}')
+OTA_OUT_DIR="$WORK/ota_out"
+
+CREALITY_KE_ZERO_BIN_SHA256="$MOCK_ZERO_SHA" \
+KE_ZERO_BIN="$MOCK_ZERO" \
+KERNEL_IMAGE="$MOCK_KERNEL" ROOTFS_IMAGE="$MOCK_ROOTFS" \
+    sh "$PACKAGE_OTA_SCRIPT" "$OTA_OUT_DIR" "ke" "test-1.1.0.99" > "$WORK/ota_build.log" 2>&1
+
+OTA_IMG="$OTA_OUT_DIR/Ender-3_V3_KE_F005_ota_img_Vtest-1.1.0.99.img"
+OTA_SHA_FILE="${OTA_IMG}.sha256"
+
+if [ -f "$OTA_IMG" ]; then
+    pass "package-creality-ota.sh generated $OTA_IMG"
+else
+    fail "package-creality-ota.sh failed to generate .img package ($(cat "$WORK/ota_build.log"))"
+fi
+
+if [ -f "$OTA_SHA_FILE" ]; then
+    pass "package-creality-ota.sh generated sha256 checksum file"
+    CALC_OTA_SHA=$(sha256sum "$OTA_IMG" | awk '{print $1}')
+    RECORDED_OTA_SHA=$(awk '{print $1}' "$OTA_SHA_FILE")
+    if [ "$CALC_OTA_SHA" = "$RECORDED_OTA_SHA" ]; then
+        pass "ota sha256 checksum file matches image"
+    else
+        fail "ota sha256 checksum mismatch (got $CALC_OTA_SHA, expected $RECORDED_OTA_SHA)"
+    fi
+else
+    fail "package-creality-ota.sh missing sha256 file"
+fi
+
+OTA_VERIFY_RESULT=$(python3 -c "
+import subprocess, tempfile
+from pathlib import Path
+from scripts.build.lib.pack_creality_ota import derive_creality_password
+
+pw = derive_creality_password('F005')
+with tempfile.TemporaryDirectory() as td:
+    res = subprocess.run(['7z', 'x', f'-p{pw}', '$OTA_IMG', f'-o{td}', '-y'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if res.returncode != 0:
+        print(f'EXTRACT_FAILED: {res.stderr}')
+        exit(0)
+    root_folder = Path(td) / 'Ender-3_V3_KE_F005_ota_img_Vtest-1.1.0.99'
+    cfg = root_folder / 'ota_config.in'
+    upd = root_folder / 'ota_vtest-1.1.0.99' / 'ota_update.in'
+    if not cfg.is_file():
+        print('MISSING_OTA_CONFIG')
+        exit(0)
+    if 'current_version=test-1.1.0.99' not in cfg.read_text():
+        print('INVALID_VERSION_IN_CONFIG')
+        exit(0)
+    if not upd.is_file():
+        print('MISSING_OTA_UPDATE')
+        exit(0)
+    print('OK')
+")
+
+if [ "$OTA_VERIFY_RESULT" = "OK" ]; then
+    pass "rebuilt .img decrypted and extracted valid Creality OTA layout"
+else
+    fail "rebuilt .img verification failed: $OTA_VERIFY_RESULT"
 fi
 
 echo ""

@@ -21,6 +21,8 @@ artifacts/buildroot-halley5-v30-image/*.swu.sha256
 artifacts/buildroot-halley5-v30-image/*.swu.changelog.txt
 artifacts/buildroot-halley5-v30-image/*.ingenic
 artifacts/buildroot-halley5-v30-image/*.ingenic.sha256
+artifacts/buildroot-halley5-v30-image/*.img
+artifacts/buildroot-halley5-v30-image/*.img.sha256
 
 # Board NVRAM (Cypress/Broadcom-format calibration data). Redistribution is
 # explicitly authorized (see LICENSES/WIFI-FIRMWARE-NOTICE.md) and
