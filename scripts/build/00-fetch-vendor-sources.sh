@@ -34,7 +34,6 @@ for required in SYSTEM_REPO SYSTEM_PIN \
 	MCU_REPO MCU_PIN MCU_METADATA_VERSION MCU_EXPECTED_HW_ID \
 	MOONRAKER_REPO MOONRAKER_PIN K1_USTREAMER_REPO K1_USTREAMER_PIN \
 	MAINSAIL_TAG MAINSAIL_SHA256 \
-	WIFI_FIRMWARE_RELEASE_TAG WIFI_FIRMWARE_RELEASE_URL WIFI_FIRMWARE_ARCHIVE_SHA256 \
 	WIFI_FIRMWARE_TXT_SHA256 WIFI_FIRMWARE_BIN_SHA256 WIFI_FIRMWARE_CLM_SHA256 \
 	GUPPYSCREEN_REPO GUPPYSCREEN_PIN GUPPYSCREEN_THEME ROSETTEOS_VERSION; do
 	require_setting "$required"
@@ -63,54 +62,14 @@ sh "$SCRIPT_DIR/../firmware/fetch-cyw43430-wifi-firmware.sh"
 
 # Board NVRAM (.txt) - real per-board calibration data extracted from this
 # project's own hardware, redistribution explicitly authorized by the
-# repository owner (see LICENSES/WIFI-FIRMWARE-NOTICE.md), published as a
-# GitHub Release asset on this repo and fetched the same way Mainsail is
-# above: pinned tag + URL + archive sha256, individual file hash checked
-# after extraction. Unrelated to which .bin/CLM firmware is running -
-# stays byte-identical across the 2026-08-09 .125 promotion.
+# repository owner (see LICENSES/WIFI-FIRMWARE-NOTICE.md).
+# Integrated directly into the repository overlay under scripts/build/overlay/lib/firmware/brcm/.
 WIFI_FW_DIR="$REPO_ROOT/scripts/build/overlay/lib/firmware/brcm"
 WIFI_FW_TXT="$WIFI_FW_DIR/brcmfmac43430-sdio.txt"
-mkdir -p "$WIFI_FW_DIR"
-if [ ! -f "$WIFI_FW_TXT" ]; then
-	echo "== downloading WiFi firmware release $WIFI_FIRMWARE_RELEASE_TAG (NVRAM only) =="
-	WIFI_FW_ARCHIVE="$REPO_ROOT/vendor-downloads/nebulaos-wifi-firmware.tar.gz"
-	mkdir -p "$(dirname "$WIFI_FW_ARCHIVE")"
-	curl -sL -o "$WIFI_FW_ARCHIVE" "$WIFI_FIRMWARE_RELEASE_URL"
-	archive_actual_sha256=$(sha256sum "$WIFI_FW_ARCHIVE" | awk '{print $1}')
-	# Clean-Update + Virgin Baseline mission, Phase 8 (2026-08-08): this
-	# repos own visibility is still PRIVATE (a GitHub repo-visibility
-	# change is one of the action categories this projects own tooling
-	# cannot perform itself, confirmed persistently blocked, not a
-	# transient failure). A plain unauthenticated curl against a private
-	# repos release asset 404s regardless of the URL looking like a normal
-	# public download link - confirmed real, first hit during this
-	# missions own attempt at a genuinely fresh clone build. Fall back to
-	# the GitHub CLIs own authenticated release-download flow, which works
-	# against a private repo as long as the invoking environment has gh
-	# authenticated with read access - exactly what every build
-	# environment used by this project actually has. If gh is unavailable
-	# or unauthenticated too, this falls through to the same FATAL check
-	# below, now correctly diagnosing the real cause.
-	if [ "$archive_actual_sha256" != "$WIFI_FIRMWARE_ARCHIVE_SHA256" ] && command -v gh >/dev/null 2>&1; then
-		echo "== plain curl fetch did not match the pinned hash - retrying via gh release download (private repo) =="
-		gh release download "$WIFI_FIRMWARE_RELEASE_TAG" \
-			--repo coreflake1/NebulaOS-firmware \
-			--pattern "$(basename "$WIFI_FIRMWARE_RELEASE_URL")" \
-			--output "$WIFI_FW_ARCHIVE" --clobber \
-			|| echo "WARNING: gh release download also failed - see the FATAL check below for the real error" >&2
-		archive_actual_sha256=$(sha256sum "$WIFI_FW_ARCHIVE" | awk '{print $1}')
-	fi
-	if [ "$archive_actual_sha256" != "$WIFI_FIRMWARE_ARCHIVE_SHA256" ]; then
-		echo "FATAL: $WIFI_FW_ARCHIVE sha256 is $archive_actual_sha256, expected pinned $WIFI_FIRMWARE_ARCHIVE_SHA256" >&2
-		echo "Either the download is corrupt/tampered, gh is missing or unauthenticated and the repo is still" >&2
-		echo "private, or this is a deliberate, reviewed bump - if so, update WIFI_FIRMWARE_ARCHIVE_SHA256 in" >&2
-		echo "$MANIFEST." >&2
-		exit 1
-	fi
-	tar xzf "$WIFI_FW_ARCHIVE" -C "$(dirname "$WIFI_FW_ARCHIVE")"
-	cp "$(dirname "$WIFI_FW_ARCHIVE")"/nebulaos-wifi-firmware-*/brcmfmac43430-sdio.txt "$WIFI_FW_TXT"
-	echo "== WiFi NVRAM extracted from release archive =="
-fi
+[ -f "$WIFI_FW_TXT" ] || {
+	echo "FATAL: $WIFI_FW_TXT not found in repository overlay" >&2
+	exit 1
+}
 actual_txt_sha256=$(sha256sum "$WIFI_FW_TXT" | awk '{print $1}')
 if [ "$actual_txt_sha256" != "$WIFI_FIRMWARE_TXT_SHA256" ]; then
 	echo "FATAL: $WIFI_FW_TXT sha256 is $actual_txt_sha256, expected pinned $WIFI_FIRMWARE_TXT_SHA256" >&2

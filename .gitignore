@@ -24,14 +24,8 @@ artifacts/buildroot-halley5-v30-image/*.ingenic.sha256
 artifacts/buildroot-halley5-v30-image/*.img
 artifacts/buildroot-halley5-v30-image/*.img.sha256
 
-# Board NVRAM (Cypress/Broadcom-format calibration data). Redistribution is
-# explicitly authorized (see LICENSES/WIFI-FIRMWARE-NOTICE.md) and
-# 00-fetch-vendor-sources.sh downloads+verifies it automatically from this
-# repo's own wifi-firmware-v1.0.0 GitHub Release - not committed directly
-# here for the same reason rootfs.ext2/xImage above aren't (real binary
-# build/fetch output, not source; a version bump is a reviewable release,
-# not a git-history binary diff).
-scripts/build/overlay/lib/firmware/brcm/brcmfmac43430-sdio.txt
+# Board NVRAM (Cypress/Broadcom-format calibration data, brcmfmac43430-sdio.txt)
+# is integrated directly into the repository overlay under scripts/build/overlay/lib/firmware/brcm/.
 /vendor-downloads/
 
 # Canonical CYW43430 WiFi firmware + CLM (7.45.98.125, promoted 2026-08-09),

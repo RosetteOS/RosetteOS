@@ -5,7 +5,7 @@ Two independent sources, both fetched and hash-verified automatically by
 binary in this repo.
 
 - `brcmfmac43430-sdio.txt` — board-specific NVRAM/calibration data,
-  published as this repo's own `wifi-firmware-1.0.0` GitHub Release asset.
+  integrated directly into the repository under `scripts/build/overlay/lib/firmware/brcm/`.
 - `brcmfmac43430-sdio.bin` / `brcmfmac43430-sdio.clm_blob` — Cypress/
   Broadcom (now Infineon) CYW43430 firmware image + matching CLM blob,
   fetched directly from Infineon's own public upstream repo at build time.
