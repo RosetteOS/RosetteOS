@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "name": "Rosette App Store Catalog",
-  "updated_at": "2026-10-09T22:49:45Z",
+  "updated_at": "2026-10-10T20:06:42Z",
   "categories": [
     {
       "id": "web_ui",
@@ -137,6 +137,31 @@
       "probe_path": "/usr/data/rosetteos/apps/timelapse/component/timelapse.py",
       "website": "https://github.com/mainsail-crew/moonraker-timelapse",
       "source_url": "https://github.com/mainsail-crew/moonraker-timelapse"
+    },
+    {
+      "id": "klipper-backup",
+      "name": "Klipper-Backup",
+      "category": "tool",
+      "icon": "klipper-backup",
+      "icon_url": "https://raw.githubusercontent.com/RosetteOS/AppStore/main/icons/klipper-backup.png",
+      "description": "Automated git backup of Klipper and printer configuration files to GitHub. Trigger backups manually from Mainsail, Fluidd, or G-Code macros via BACKUP_CFG.",
+      "author": "Staubgeborener",
+      "version": "1.3.6",
+      "type": "tool",
+      "is_builtin": false,
+      "download_url": "https://raw.githubusercontent.com/RosetteOS/AppStore/main/packages/klipper-backup-v1.3.6.zip",
+      "sha256": "3f2858f1fb606d0297967dc50caf96fdd23cb21f9d9c4542e3eb667b5713fd32",
+      "executable": "script.sh",
+      "install_path": "/usr/data/rosetteos/apps/klipper-backup",
+      "config_url": "https://raw.githubusercontent.com/RosetteOS/AppStore/main/configs/klipper-backup.cfg",
+      "config_target": "macros/klipper-backup.cfg",
+      "klipper_include": true,
+      "output_dirs": [
+        "config/macros"
+      ],
+      "probe_path": "/usr/data/rosetteos/apps/klipper-backup/script.sh",
+      "website": "https://github.com/Staubgeborener/klipper-backup",
+      "source_url": "https://github.com/Staubgeborener/klipper-backup"
     },
     {
       "id": "vnc",

@@ -716,6 +716,18 @@ def install_app_config_files(install_path: str, app: dict):
                     installed = True
                     print(f"OK: Downloaded and installed {dest_path}")
 
+            if not installed and install_path:
+                for cand in [os.path.join(install_path, target_rel), os.path.join(install_path, os.path.basename(target_rel))]:
+                    if os.path.isfile(cand):
+                        os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                        try:
+                            shutil.copy2(cand, dest_path)
+                            installed = True
+                            print(f"OK: Installed {dest_path} from package bundle")
+                            break
+                        except Exception as e:
+                            print(f"WARNING: Failed to install {dest_path} from package bundle: {e}", file=sys.stderr)
+
             if not installed and seed_file and os.path.abspath(seed_file) != os.path.abspath(dest_path):
                 os.makedirs(os.path.dirname(dest_path), exist_ok=True)
                 try:
