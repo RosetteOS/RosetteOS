@@ -498,9 +498,211 @@ else
 	fail "S04rosetteos-migrate failed to migrate config: $(cat "$WORK/t7.log")"
 fi
 
+# =========================================================================
+# Test 8: rosetteos_migrate_moonraker_conf (preserves user settings, adds zeroconf, rewrites legacy paths)
+# =========================================================================
+echo "=== Test 8: rosetteos_migrate_moonraker_conf unit migration ==="
+
+t8_old="$WORK/t8_old_moonraker.conf"
+t8_tpl="$WORK/t8_tpl_moonraker.conf"
+t8_out="$WORK/t8_out_moonraker.conf"
+
+cat > "$t8_tpl" <<'EOF'
+# RosetteOS - Moonraker config
+[server]
+host: 0.0.0.0
+port: 7125
+klippy_uds_address: /opt/printer_data/comms/klippy.sock
+
+[zeroconf]
+
+[file_manager]
+enable_object_processing: True
+
+[machine]
+provider: supervisord_cli
+validate_service: False
+validate_config: False
+
+[update_manager]
+enable_auto_refresh: False
+enable_system_updates: False
+
+[update_manager klipper]
+channel: dev
+
+[update_manager moonraker]
+channel: dev
+
+[update_manager mainsail]
+type: web
+channel: beta
+repo: mainsail-crew/mainsail
+path: /usr/data/rosetteos/apps/mainsail
+
+[authorization]
+trusted_clients:
+ 127.0.0.1
+ 192.168.0.0/16
+ 10.0.0.0/8
+cors_domains:
+ http://*.local
+ http://*.lan
+EOF
+
+cat > "$t8_old" <<'EOF'
+# Legacy OpenKE Moonraker config
+[server]
+host: 0.0.0.0
+port: 7125
+klippy_uds_address: /opt/printer_data/comms/klippy.sock
+
+[file_manager]
+enable_object_processing: True
+
+[machine]
+provider: supervisord_cli
+validate_service: False
+validate_config: False
+
+[update_manager]
+enable_auto_refresh: False
+enable_system_updates: False
+
+[update_manager klipper]
+channel: dev
+
+[update_manager moonraker]
+channel: dev
+
+[update_manager mainsail]
+type: web
+channel: beta
+repo: mainsail-crew/mainsail
+path: /usr/data/openke/apps/mainsail
+
+[authorization]
+trusted_clients:
+ 127.0.0.1
+ 192.168.0.0/16
+ 10.0.0.0/8
+ 192.168.1.150
+cors_domains:
+ *.local
+ *.lan
+ mycustomdomain.lan
+
+[timelapse]
+output_path: /opt/printer_data/timelapse/
+
+[spoolman]
+server: http://127.0.0.1:7912
+EOF
+
+rosetteos_migrate_moonraker_conf "$t8_old" "$t8_tpl" "$t8_out"
+
+if grep -q "\[zeroconf\]" "$t8_out"; then
+	pass "moonraker.conf migration added [zeroconf] section"
+else
+	fail "moonraker.conf migration failed to add [zeroconf]"
+fi
+
+if grep -q "192.168.1.150" "$t8_out" && grep -q "mycustomdomain.lan" "$t8_out"; then
+	pass "user custom trusted_clients and cors_domains were preserved"
+else
+	fail "user custom authorization settings were lost"
+fi
+
+if grep -q "\[timelapse\]" "$t8_out" && grep -q "\[spoolman\]" "$t8_out"; then
+	pass "installed app sections [timelapse] and [spoolman] were preserved"
+else
+	fail "installed app sections were lost during moonraker.conf migration"
+fi
+
+if grep -q "path: /usr/data/rosetteos/apps/mainsail" "$t8_out" && ! grep -q "/usr/data/openke" "$t8_out"; then
+	pass "legacy openke path rewritten to rosetteos"
+else
+	fail "legacy path was not rewritten in moonraker.conf"
+fi
+
+# Idempotency check
+t8_out2="$WORK/t8_out2_moonraker.conf"
+rosetteos_migrate_moonraker_conf "$t8_out" "$t8_tpl" "$t8_out2"
+if cmp -s "$t8_out" "$t8_out2"; then
+	pass "moonraker.conf migration is fully idempotent"
+else
+	fail "moonraker.conf migration is not idempotent"
+fi
+
+# =========================================================================
+# Test 9: S04rosetteos-migrate reconciles moonraker.conf when [zeroconf] is missing
+# =========================================================================
+echo "=== Test 9: S04rosetteos-migrate reconciles moonraker.conf when [zeroconf] is missing ==="
+
+t9_seeds="$WORK/t9_seeds"
+t9_root="$WORK/t9_root"
+mkdir -p "$t9_seeds/printer_data-config"
+mkdir -p "$t9_root/printer_data/config" "$t9_root/system" "$t9_root/apps/klipper"
+
+cat > "$t9_seeds/seed-manifest.json" <<EOF
+{
+  "migration_version": "gen-v1",
+  "config_version": "cfg-v1"
+}
+EOF
+
+cp "$t8_tpl" "$t9_seeds/printer_data-config/moonraker.conf"
+cat > "$t9_seeds/printer_data-config/printer.cfg" <<'EOF'
+[printer]
+kinematics: cartesian
+EOF
+
+cat > "$t9_root/system/app-generation.json" <<EOF
+{
+  "migration_version": "gen-v1"
+}
+EOF
+
+# Simulate a post-SWUpdate state where config-generation.json ALREADY matches image cfg-v1,
+# but moonraker.conf is still the pre-update version missing [zeroconf]
+cat > "$t9_root/system/config-generation.json" <<EOF
+{
+  "config_version": "cfg-v1"
+}
+EOF
+
+cat > "$t9_root/printer_data/config/printer.cfg" <<'EOF'
+[printer]
+kinematics: cartesian
+EOF
+
+# Pre-update moonraker.conf without [zeroconf]
+cp "$t8_old" "$t9_root/printer_data/config/moonraker.conf"
+
+env S04ROSETTEOS_MIGRATE_NO_AUTORUN=1 \
+    SEEDS="$t9_seeds" \
+    ROSETTEOS_ROOT="$t9_root" \
+    SYSTEM="$t9_root/system" \
+    CONFIG_MIGRATE_LIB="$CONFIG_LIB" \
+    GATE_LIB="$GATE_LIB" \
+    sh -c ". '$MIGRATE_INIT'; start" > "$WORK/t9.log" 2>&1
+
+if grep -q "\[zeroconf\]" "$t9_root/printer_data/config/moonraker.conf"; then
+	pass "S04rosetteos-migrate reconciled moonraker.conf and added [zeroconf] despite matching generation"
+else
+	fail "S04rosetteos-migrate failed to reconcile moonraker.conf: $(cat "$WORK/t9.log")"
+fi
+
+if [ -d "$t9_root/backups/printer_config" ] && [ "$(ls -A "$t9_root/backups/printer_config" 2>/dev/null)" ]; then
+	pass "pre-migration backup directory created for reconciled configuration"
+else
+	fail "pre-migration backup was not created"
+fi
+
 echo ""
 echo "=========================================="
 echo "Config Migration Tests: $PASS passed, $FAIL failed"
 echo "=========================================="
 [ "$FAIL" -eq 0 ]
+
 

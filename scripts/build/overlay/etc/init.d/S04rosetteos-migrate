@@ -214,17 +214,25 @@ migrate_config_if_needed() {
 	installed_cfg_ver=""
 	[ -f "$CONFIG_GENERATION_FILE" ] && installed_cfg_ver=$(json_get "$CONFIG_GENERATION_FILE" config_version)
 
-	if [ "$installed_cfg_ver" = "$expected_cfg_ver" ]; then
+	moonraker_needs_reconciliation=0
+	if [ -f "$ROSETTEOS_ROOT/printer_data/config/moonraker.conf" ]; then
+		if ! grep -q "^\s*\[zeroconf\]" "$ROSETTEOS_ROOT/printer_data/config/moonraker.conf" 2>/dev/null; then
+			log "moonraker.conf is missing [zeroconf] section - reconciliation needed"
+			moonraker_needs_reconciliation=1
+		fi
+	fi
+
+	if [ "$installed_cfg_ver" = "$expected_cfg_ver" ] && [ "$moonraker_needs_reconciliation" -eq 0 ]; then
 		log "installed config generation ($installed_cfg_ver) already matches this image - nothing to do"
 		return 0
 	fi
 
-	if [ ! -f "$ROSETTEOS_ROOT/printer_data/config/printer.cfg" ]; then
+	if [ ! -f "$ROSETTEOS_ROOT/printer_data/config/printer.cfg" ] && [ ! -f "$ROSETTEOS_ROOT/printer_data/config/moonraker.conf" ]; then
 		record_config_generation "$expected_cfg_ver"
 		return 0
 	fi
 
-	log "config generation mismatch: installed='$installed_cfg_ver' expected='$expected_cfg_ver' - config migration needed"
+	log "config migration needed: installed='$installed_cfg_ver' expected='$expected_cfg_ver' (reconcile_moonraker=$moonraker_needs_reconciliation)"
 	if [ -f "$CONFIG_MIGRATE_LIB" ]; then
 		# shellcheck disable=SC1090
 		. "$CONFIG_MIGRATE_LIB"

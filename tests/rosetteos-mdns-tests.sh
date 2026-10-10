@@ -115,10 +115,10 @@ s_moon = ServiceInfo(
 )
 assert s_moon.port == 7125
 
-zc.register_service(s_http)
-zc.register_service(s_ssh)
-zc.register_service(s_octo)
-zc.register_service(s_moon)
+zc.register_service(s_http, allow_name_change=True)
+zc.register_service(s_ssh, allow_name_change=True)
+zc.register_service(s_octo, allow_name_change=True)
+zc.register_service(s_moon, allow_name_change=True)
 
 zc.unregister_service(s_http)
 zc.unregister_service(s_ssh)

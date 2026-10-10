@@ -118,6 +118,241 @@ rosetteos_migrate_printer_cfg() {
 	return 0
 }
 
+# Core function: Migrate moonraker.conf by reconciling template sections (such as [zeroconf]),
+# preserving all user-added sections (apps, timelapse, spoolman), rewriting legacy paths,
+# and safely ensuring required local network and mDNS CORS authorization.
+#
+# Usage: rosetteos_migrate_moonraker_conf <old_conf> <template_conf> <out_conf>
+rosetteos_migrate_moonraker_conf() {
+	old_file="$1"
+	template_file="$2"
+	out_file="$3"
+
+	if [ ! -f "$template_file" ]; then
+		echo "ERROR: template file not found: $template_file" >&2
+		return 1
+	fi
+
+	if [ ! -f "$old_file" ]; then
+		cp -a "$template_file" "$out_file"
+		return 0
+	fi
+
+	py_bin=""
+	for cand in python3 /usr/bin/python3 /usr/data/rosetteos/envs/moonraker/bin/python3 /usr/data/rosetteos/envs/klipper/bin/python3; do
+		if command -v "$cand" >/dev/null 2>&1; then
+			py_bin="$cand"
+			break
+		elif [ -x "$cand" ]; then
+			py_bin="$cand"
+			break
+		fi
+	done
+
+	if [ -n "$py_bin" ]; then
+		"$py_bin" - "$old_file" "$template_file" "$out_file" <<'PYEOF'
+import sys
+import re
+
+old_path = sys.argv[1]
+tpl_path = sys.argv[2]
+out_path = sys.argv[3]
+
+with open(old_path, 'r', encoding='utf-8', errors='replace') as f:
+    old_content = f.read()
+
+with open(tpl_path, 'r', encoding='utf-8', errors='replace') as f:
+    template_content = f.read()
+
+old_content = old_content.replace('\r\n', '\n')
+template_content = template_content.replace('\r\n', '\n')
+
+old_content = old_content.replace('/usr/data/nebulaos', '/usr/data/rosetteos')
+old_content = old_content.replace('/usr/data/openke', '/usr/data/rosetteos')
+
+def parse_sections(text):
+    sections = []
+    curr = {'header': None, 'name': None, 'lines': []}
+    for line in text.splitlines(keepends=True):
+        m = re.match(r'^\s*\[\s*([^]]+)\s*\]', line)
+        if m:
+            if curr['name'] is not None or curr['lines']:
+                sections.append(curr)
+            curr = {'header': line, 'name': m.group(1).strip(), 'lines': []}
+        else:
+            curr['lines'].append(line)
+    if curr['name'] is not None or curr['lines']:
+        sections.append(curr)
+    return sections
+
+old_secs = parse_sections(old_content)
+tpl_secs = parse_sections(template_content)
+
+old_sec_names = {}
+for s in old_secs:
+    if s['name']:
+        old_sec_names[s['name'].strip().lower()] = s
+
+for idx, t_sec in enumerate(tpl_secs):
+    if not t_sec['name']:
+        continue
+    t_name = t_sec['name'].strip().lower()
+    if t_name not in old_sec_names:
+        inserted = False
+        for prev_idx in range(idx - 1, -1, -1):
+            prev_name = tpl_secs[prev_idx]['name']
+            if prev_name and prev_name.strip().lower() in old_sec_names:
+                for o_idx, o_sec in enumerate(old_secs):
+                    if o_sec['name'] and o_sec['name'].strip().lower() == prev_name.strip().lower():
+                        new_sec = {
+                            'header': t_sec['header'],
+                            'name': t_sec['name'],
+                            'lines': list(t_sec['lines'])
+                        }
+                        if o_sec['lines'] and not o_sec['lines'][-1].endswith('\n'):
+                            o_sec['lines'][-1] += '\n'
+                        if not o_sec['lines'] or o_sec['lines'][-1].strip() != '':
+                            o_sec['lines'].append('\n')
+                        old_secs.insert(o_idx + 1, new_sec)
+                        old_sec_names[t_name] = new_sec
+                        inserted = True
+                        break
+                if inserted:
+                    break
+        if not inserted:
+            auth_idx = None
+            for o_idx, o_sec in enumerate(old_secs):
+                if o_sec['name'] and o_sec['name'].strip().lower() == 'authorization':
+                    auth_idx = o_idx
+                    break
+            new_sec = {
+                'header': t_sec['header'],
+                'name': t_sec['name'],
+                'lines': list(t_sec['lines'])
+            }
+            if auth_idx is not None:
+                old_secs.insert(auth_idx, new_sec)
+            else:
+                old_secs.append(new_sec)
+            old_sec_names[t_name] = new_sec
+
+if 'server' in old_sec_names:
+    sec = old_sec_names['server']
+    sec_text = ''.join(sec['lines'])
+    if not re.search(r'^\s*klippy_uds_address\s*:', sec_text, re.MULTILINE):
+        sec['lines'].append('klippy_uds_address: /opt/printer_data/comms/klippy.sock\n')
+
+if 'machine' in old_sec_names:
+    sec = old_sec_names['machine']
+    new_lines = []
+    has_provider = False
+    for l in sec['lines']:
+        if re.match(r'^\s*provider\s*:', l):
+            new_lines.append('provider: supervisord_cli\n')
+            has_provider = True
+        else:
+            new_lines.append(l)
+    if not has_provider:
+        new_lines.append('provider: supervisord_cli\n')
+    sec_text = ''.join(new_lines)
+    if not re.search(r'^\s*validate_service\s*:', sec_text, re.MULTILINE):
+        new_lines.append('validate_service: False\n')
+    if not re.search(r'^\s*validate_config\s*:', sec_text, re.MULTILINE):
+        new_lines.append('validate_config: False\n')
+    sec['lines'] = new_lines
+
+if 'file_manager' in old_sec_names:
+    sec = old_sec_names['file_manager']
+    sec_text = ''.join(sec['lines'])
+    if not re.search(r'^\s*enable_object_processing\s*:', sec_text, re.MULTILINE):
+        sec['lines'].append('enable_object_processing: True\n')
+
+if 'update_manager' in old_sec_names:
+    sec = old_sec_names['update_manager']
+    sec_text = ''.join(sec['lines'])
+    if not re.search(r'^\s*enable_auto_refresh\s*:', sec_text, re.MULTILINE):
+        sec['lines'].append('enable_auto_refresh: False\n')
+    if not re.search(r'^\s*enable_system_updates\s*:', sec_text, re.MULTILINE):
+        sec['lines'].append('enable_system_updates: False\n')
+
+if 'update_manager mainsail' in old_sec_names:
+    sec = old_sec_names['update_manager mainsail']
+    sec_text = ''.join(sec['lines'])
+    if not re.search(r'^\s*path\s*:', sec_text, re.MULTILINE):
+        sec['lines'].append('path: /usr/data/rosetteos/apps/mainsail\n')
+
+if 'authorization' in old_sec_names:
+    sec = old_sec_names['authorization']
+    lines = sec['lines']
+    new_lines = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if re.match(r'^\s*trusted_clients\s*:', line):
+            new_lines.append(line)
+            i += 1
+            clients = []
+            while i < len(lines) and (lines[i].startswith(' ') or lines[i].startswith('\t') or lines[i].strip() == '' or lines[i].strip().startswith('#')):
+                stripped = lines[i].strip()
+                if stripped and not stripped.startswith('#'):
+                    clients.append(stripped)
+                new_lines.append(lines[i])
+                i += 1
+            for rc in ['127.0.0.1', '192.168.0.0/16', '10.0.0.0/8']:
+                if rc not in clients:
+                    new_lines.append(f' {rc}\n')
+            continue
+        elif re.match(r'^\s*cors_domains\s*:', line):
+            new_lines.append(line)
+            i += 1
+            domains = []
+            while i < len(lines) and (lines[i].startswith(' ') or lines[i].startswith('\t') or lines[i].strip() == '' or lines[i].strip().startswith('#')):
+                stripped = lines[i].strip()
+                if stripped and not stripped.startswith('#'):
+                    domains.append(stripped)
+                new_lines.append(lines[i])
+                i += 1
+            for rd in ['http://*.local', 'http://*.lan']:
+                if rd not in domains:
+                    new_lines.append(f' {rd}\n')
+            continue
+        else:
+            new_lines.append(line)
+            i += 1
+    sec['lines'] = new_lines
+
+output = []
+for s in old_secs:
+    if s['header']:
+        output.append(s['header'])
+    output.extend(s['lines'])
+
+res = ''.join(output)
+res = re.sub(r'\n{3,}', '\n\n', res)
+
+with open(out_path, 'w', encoding='utf-8') as f:
+    f.write(res)
+PYEOF
+		rc=$?
+		if [ $rc -ne 0 ]; then
+			echo "rosetteos-config-migrate: ERROR running python moonraker migration" >&2
+			return $rc
+		fi
+	else
+		sed -e 's|/usr/data/nebulaos|/usr/data/rosetteos|g' \
+		    -e 's|/usr/data/openke|/usr/data/rosetteos|g' "$old_file" > "$out_file"
+		if ! grep -q "^\s*\[zeroconf\]" "$out_file"; then
+			if grep -q "^\s*\[server\]" "$out_file"; then
+				awk '/^\[server\]/{print; print "\n[zeroconf]"; next}1' "$out_file" > "$out_file.tmp" && mv "$out_file.tmp" "$out_file"
+			else
+				printf "\n[zeroconf]\n" >> "$out_file"
+			fi
+		fi
+	fi
+
+	return 0
+}
+
 # Full tree migration: Migrates the active config tree from immutable seeds
 # $1=ROSETTEOS_ROOT $2=SEEDS_DIR $3=BACKUP_DIR
 rosetteos_migrate_config_tree() {
@@ -127,7 +362,7 @@ rosetteos_migrate_config_tree() {
 	seed_config_dir="$seeds_dir/printer_data-config"
 	backup_dir="${3:-$rosetteos_root/backups/printer_config/pre-migration-$(date -u +%Y%m%dT%H%M%SZ)}"
 
-	if [ ! -d "$config_dir" ] || [ ! -f "$config_dir/printer.cfg" ]; then
+	if [ ! -d "$config_dir" ]; then
 		# Nothing to migrate
 		return 0
 	fi
@@ -180,17 +415,33 @@ rosetteos_migrate_config_tree() {
 	fi
 
 	# 5. Migrate printer.cfg with SAVE_CONFIG block transplantation
-	temp_migrated="$config_dir/printer.cfg.migrated.$$"
-	if rosetteos_migrate_printer_cfg "$config_dir/printer.cfg" "$template_cfg" "$temp_migrated"; then
-		mv "$temp_migrated" "$config_dir/printer.cfg"
-		echo "rosetteos-config-migrate: successfully migrated printer.cfg (active profile: $active_profile)"
-	else
-		rm -f "$temp_migrated"
-		echo "rosetteos-config-migrate: ERROR migrating printer.cfg - preserving existing file" >&2
-		return 1
+	if [ -f "$config_dir/printer.cfg" ] && [ -f "$template_cfg" ]; then
+		temp_migrated="$config_dir/printer.cfg.migrated.$$"
+		if rosetteos_migrate_printer_cfg "$config_dir/printer.cfg" "$template_cfg" "$temp_migrated"; then
+			mv "$temp_migrated" "$config_dir/printer.cfg"
+			echo "rosetteos-config-migrate: successfully migrated printer.cfg (active profile: $active_profile)"
+		else
+			rm -f "$temp_migrated"
+			echo "rosetteos-config-migrate: ERROR migrating printer.cfg - preserving existing file" >&2
+			return 1
+		fi
 	fi
 
-	# 6. Ensure printer_profiles symlink exists
+	# 6. Migrate moonraker.conf
+	template_moonraker="$seed_config_dir/moonraker.conf"
+	if [ -f "$template_moonraker" ]; then
+		temp_migrated_mr="$config_dir/moonraker.conf.migrated.$$"
+		if rosetteos_migrate_moonraker_conf "$config_dir/moonraker.conf" "$template_moonraker" "$temp_migrated_mr"; then
+			mv "$temp_migrated_mr" "$config_dir/moonraker.conf"
+			echo "rosetteos-config-migrate: successfully migrated moonraker.conf"
+		else
+			rm -f "$temp_migrated_mr"
+			echo "rosetteos-config-migrate: ERROR migrating moonraker.conf - preserving existing file" >&2
+			return 1
+		fi
+	fi
+
+	# 7. Ensure printer_profiles symlink exists
 	[ -e "$config_dir/printer_profiles" ] || ln -sfn "$rosetteos_root/printer_profiles" "$config_dir/printer_profiles"
 
 	return 0
