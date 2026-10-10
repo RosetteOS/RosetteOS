@@ -223,6 +223,9 @@ jobs:
             --channel "nightly" \
             --tag "nightly"
 
+          # 3. Generate Ingenic USB cloner package (.ingenic)
+          sh scripts/build/package-ingenic.sh "$bundle" "nightly" "slot1"
+
           cp "$image_dir/xImage" \
              "$image_dir/rootfs.squashfs" \
              "$image_dir/build-manifest.txt" \
@@ -287,6 +290,12 @@ jobs:
           fi
           if [[ -f "$bundle/images/Ender3V2Neo_klipper.bin" ]]; then
             release_files+=("$bundle/images/Ender3V2Neo_klipper.bin")
+          fi
+
+          if compgen -G "$bundle/*.ingenic" > /dev/null; then
+            for f in "$bundle"/*.ingenic "$bundle"/*.ingenic.sha256; do
+              [[ -f "$f" ]] && release_files+=("$f")
+            done
           fi
 
           if gh release view "$TAG" >/dev/null 2>&1; then

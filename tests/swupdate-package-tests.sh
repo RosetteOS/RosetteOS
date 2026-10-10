@@ -12,6 +12,8 @@ set -u
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 PACKAGE_SWU_SCRIPT="$REPO_ROOT/scripts/build/package-swu.sh"
+PACKAGE_INGENIC_SCRIPT="$REPO_ROOT/scripts/build/package-ingenic.sh"
+REBUILD_INGENIC_SCRIPT="$REPO_ROOT/scripts/build/lib/rebuild_ingenic.py"
 HWREVISION_FILE="$REPO_ROOT/scripts/build/overlay/etc/hwrevision"
 SWUPDATE_CFG_FILE="$REPO_ROOT/scripts/build/overlay/etc/swupdate.cfg"
 
@@ -281,7 +283,7 @@ else
     fail "package-swu.sh failed to generate custom changelog package"
 fi
 
-echo "=== Test 8: build.sh & build-qualified-baseline.sh --swu CLI Flags ==="
+echo "=== Test 8: build.sh & build-qualified-baseline.sh --swu & --ingenic CLI Flags ==="
 
 BUILD_SH="$REPO_ROOT/build.sh"
 BASELINE_SH="$REPO_ROOT/scripts/build/build-qualified-baseline.sh"
@@ -299,6 +301,11 @@ if sh "$BUILD_SH" --help > "$WORK/build_help.txt" 2>&1; then
     else
         fail "build.sh --help does not document --swu flag"
     fi
+    if grep -q -- "--ingenic" "$WORK/build_help.txt"; then
+        pass "build.sh --help documents --ingenic flag"
+    else
+        fail "build.sh --help does not document --ingenic flag"
+    fi
 else
     fail "build.sh --help failed"
 fi
@@ -315,6 +322,11 @@ if sh "$BASELINE_SH" --help > "$WORK/baseline_help.txt" 2>&1; then
         pass "build-qualified-baseline.sh --help documents --swu flag"
     else
         fail "build-qualified-baseline.sh --help does not document --swu flag"
+    fi
+    if grep -q -- "--ingenic" "$WORK/baseline_help.txt"; then
+        pass "build-qualified-baseline.sh --help documents --ingenic flag"
+    else
+        fail "build-qualified-baseline.sh --help does not document --ingenic flag"
     fi
 else
     fail "build-qualified-baseline.sh --help failed"
@@ -353,9 +365,83 @@ else
     fail "generate-changelog.sh failed execution"
 fi
 
+echo "=== Test 10: Ingenic Package Generation with Mock Fixtures ==="
+
+if [ -x "$PACKAGE_INGENIC_SCRIPT" ]; then
+    pass "package-ingenic.sh is executable"
+else
+    fail "package-ingenic.sh is not executable"
+fi
+
+if [ -x "$REBUILD_INGENIC_SCRIPT" ]; then
+    pass "rebuild_ingenic.py is executable"
+else
+    fail "rebuild_ingenic.py is not executable"
+fi
+
+if python3 "$REBUILD_INGENIC_SCRIPT" --help >/dev/null 2>&1; then
+    pass "rebuild_ingenic.py --help exits cleanly"
+else
+    fail "rebuild_ingenic.py --help failed"
+fi
+
+MOCK_TEMPLATE="$WORK/mock_template.ingenic"
+python3 -c "
+import zipfile
+with zipfile.ZipFile('$MOCK_TEMPLATE', 'w') as zf:
+    zf.writestr('images/rootfs.squashfs', b'STOCK_ROOTFS_PAYLOAD')
+    zf.writestr('images/xImage', b'STOCK_KERNEL_PAYLOAD')
+"
+
+MOCK_TEMPLATE_SHA=$(sha256sum "$MOCK_TEMPLATE" | awk '{print $1}')
+INGENIC_OUT_DIR="$WORK/ingenic_out"
+
+INGENIC_TEMPLATE_SHA256="$MOCK_TEMPLATE_SHA" \
+KERNEL_IMAGE="$MOCK_KERNEL" ROOTFS_IMAGE="$MOCK_ROOTFS" \
+    sh "$PACKAGE_INGENIC_SCRIPT" "$INGENIC_OUT_DIR" "test-1.2.3" "slot1" "$MOCK_TEMPLATE" > "$WORK/ingenic_build.log" 2>&1
+
+INGENIC_FILE="$INGENIC_OUT_DIR/Ender-3_V3_KE_1.1.0.12-test-1.2.3.ingenic"
+INGENIC_SHA_FILE="${INGENIC_FILE}.sha256"
+
+if [ -f "$INGENIC_FILE" ]; then
+    pass "package-ingenic.sh generated $INGENIC_FILE"
+else
+    fail "package-ingenic.sh failed to generate .ingenic package ($(cat "$WORK/ingenic_build.log"))"
+fi
+
+if [ -f "$INGENIC_SHA_FILE" ]; then
+    pass "package-ingenic.sh generated sha256 checksum file"
+    CALC_SHA=$(sha256sum "$INGENIC_FILE" | awk '{print $1}')
+    RECORDED_SHA=$(awk '{print $1}' "$INGENIC_SHA_FILE")
+    if [ "$CALC_SHA" = "$RECORDED_SHA" ]; then
+        pass "ingenic sha256 checksum file matches archive"
+    else
+        fail "ingenic sha256 checksum mismatch (got $CALC_SHA, expected $RECORDED_SHA)"
+    fi
+else
+    fail "package-ingenic.sh missing sha256 file"
+fi
+
+VERIFY_RESULT=$(python3 -c "
+import zipfile, sys
+with zipfile.ZipFile('$INGENIC_FILE', 'r') as zf:
+    r = zf.read('images/rootfs.squashfs').decode('utf-8', errors='ignore').strip()
+    k = zf.read('images/xImage').decode('utf-8', errors='ignore').strip()
+    if r == 'MOCK_ROOTFS_DATA_67890' and k == 'MOCK_KERNEL_DATA_12345':
+        print('OK')
+    else:
+        print(f'MISMATCH: rootfs={r}, kernel={k}')
+")
+
+if [ "$VERIFY_RESULT" = "OK" ]; then
+    pass "rebuilt .ingenic contains expected rootfs and kernel payloads"
+else
+    fail "rebuilt .ingenic payload verification failed: $VERIFY_RESULT"
+fi
+
 echo ""
 echo "=========================================="
-echo "SWUpdate Tests: $PASS passed, $FAIL failed"
+echo "Package Tests: $PASS passed, $FAIL failed"
 echo "=========================================="
 
 if [ "$FAIL" -gt 0 ]; then

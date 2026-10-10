@@ -4,11 +4,15 @@
 #
 #   git clone https://github.com/RosetteOS/RosetteOS.git
 #   cd RosetteOS
-#   ./build.sh [--swu]
+#   ./build.sh [--swu] [--ingenic]
 #
 # Pass `--swu` to package a verified SWUpdate (.swu) archive at the end
 # of the build:
 #   ./build.sh --swu
+#
+# Pass `--ingenic` to package a verified Ingenic USB Cloner (.ingenic)
+# archive at the end of the build:
+#   ./build.sh --ingenic
 #
 # Fetches every pinned dependency (kernel, Klipper, GuppyScreen, Moonraker,
 # Buildroot, ustreamer, Mainsail, wireless-regdb, WiFi firmware - see
@@ -47,27 +51,33 @@ set -e
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 
 BUILD_SWU=0
+BUILD_INGENIC=0
 for arg in "$@"; do
 	case "$arg" in
 		--swu)
 			BUILD_SWU=1
 			;;
+		--ingenic)
+			BUILD_INGENIC=1
+			;;
 		-h|--help)
-			echo "Usage: $0 [--swu]"
+			echo "Usage: $0 [--swu] [--ingenic]"
 			echo ""
 			echo "Options:"
 			echo "  --swu        Package a verified SWUpdate (.swu) archive at the end of the build"
+			echo "  --ingenic    Package a verified Ingenic USB Cloner (.ingenic) archive at the end of the build"
 			echo "  -h, --help   Display this help message and exit"
 			exit 0
 			;;
 		*)
 			echo "FATAL: unknown argument: $arg" >&2
-			echo "Usage: $0 [--swu]" >&2
+			echo "Usage: $0 [--swu] [--ingenic]" >&2
 			exit 1
 			;;
 	esac
 done
 [ "${ROSETTEOS_BUILD_SWU:-0}" = "1" ] && BUILD_SWU=1
+[ "${ROSETTEOS_BUILD_INGENIC:-0}" = "1" ] && BUILD_INGENIC=1
 
 MANIFEST="$SCRIPT_DIR/manifests/dependencies.conf"
 [ -f "$MANIFEST" ] || { echo "FATAL: $MANIFEST not found" >&2; exit 1; }
@@ -140,6 +150,7 @@ CANDIDATE_DEFAULT=0
 
 BUILD_CMD="sh scripts/build/build-qualified-baseline.sh"
 [ "$BUILD_SWU" -eq 1 ] && BUILD_CMD="$BUILD_CMD --swu"
+[ "$BUILD_INGENIC" -eq 1 ] && BUILD_CMD="$BUILD_CMD --ingenic"
 
 exec "$ENGINE" run --rm \
 	--user "$(id -u):$(id -g)" \
