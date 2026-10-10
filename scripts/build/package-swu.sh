@@ -59,6 +59,8 @@ elif [ -n "$CHANGELOG_ARG" ]; then
 	printf "%s\n" "$CHANGELOG_ARG" > "$WORK_DIR/changelog.txt"
 elif [ -f "$REPO_ROOT/CHANGELOG.md" ]; then
 	cp "$REPO_ROOT/CHANGELOG.md" "$WORK_DIR/changelog.txt"
+elif [ -f "$SCRIPT_DIR/lib/generate-changelog.sh" ]; then
+	sh "$SCRIPT_DIR/lib/generate-changelog.sh" "$WORK_DIR/changelog.txt"
 else
 	{
 		echo "[ RosetteOS System ]"

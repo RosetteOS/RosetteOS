@@ -326,6 +326,33 @@ else
     pass "build-qualified-baseline.sh rejects unknown options with non-zero exit"
 fi
 
+echo "=== Test 9: Unified Changelog Generation (RosetteOS + GuppyScreen) ==="
+
+GEN_CL="$REPO_ROOT/scripts/build/lib/generate-changelog.sh"
+if [ -x "$GEN_CL" ]; then
+    pass "generate-changelog.sh is executable"
+else
+    fail "generate-changelog.sh is not executable"
+fi
+
+CL_OUT="$WORK/test_combined_cl.txt"
+if sh "$GEN_CL" "$CL_OUT" 5 5 >/dev/null 2>&1; then
+    pass "generate-changelog.sh executes cleanly"
+    if grep -q "### RosetteOS System" "$CL_OUT"; then
+        pass "combined changelog contains RosetteOS System section"
+    else
+        fail "combined changelog missing RosetteOS System section"
+    fi
+
+    if grep -q "### GuppyScreen UI" "$CL_OUT"; then
+        pass "combined changelog contains GuppyScreen UI section"
+    else
+        fail "combined changelog missing GuppyScreen UI section"
+    fi
+else
+    fail "generate-changelog.sh failed execution"
+fi
+
 echo ""
 echo "=========================================="
 echo "SWUpdate Tests: $PASS passed, $FAIL failed"

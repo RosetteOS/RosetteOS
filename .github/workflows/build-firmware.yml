@@ -201,6 +201,8 @@ jobs:
           retention-days: 14
 
       - name: Assemble artifact bundle
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
@@ -210,7 +212,7 @@ jobs:
           mkdir -p "$bundle/images" "$bundle/guppyscreen"
 
           # 1. Generate changelog and build SWUpdate (.swu) package
-          git log -n 15 --pretty=format:"• %s" > "$bundle/changelog.txt"
+          sh scripts/build/lib/generate-changelog.sh "$bundle/changelog.txt" 15 15
           sh scripts/build/package-swu.sh "$bundle" "nightly" "$bundle/changelog.txt"
 
           # 2. Generate GuppyScreen-compatible release manifest
