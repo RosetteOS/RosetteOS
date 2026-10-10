@@ -5,9 +5,11 @@ on:
   push:
     branches:
       - main
+      - rosetteos-rebrand
   pull_request:
     branches:
       - main
+      - rosetteos-rebrand
 
 permissions:
   contents: write
@@ -256,7 +258,7 @@ jobs:
           compression-level: 0
 
       - name: Publish Nightly Release
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/rosetteos-rebrand')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
