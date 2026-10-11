@@ -1134,7 +1134,6 @@ check /opt/rosetteos-seeds/printer_profiles/creality-ender3-v3-ke/profile.json
 check /opt/rosetteos-seeds/printer_profiles/creality-ender3-v3-ke/printer.cfg
 check /opt/rosetteos-seeds/printer_profiles/creality-ender3-v3-se/profile.json
 check /opt/rosetteos-seeds/printer_profiles/creality-ender3-v2-neo/profile.json
-check /opt/rosetteos-seeds/apps.json
 check /usr/bin/rosetteos-app
 check /usr/sbin/ntpd
 check /etc/init.d/S40rosetteos-ntpsync

@@ -25,18 +25,36 @@ import zipfile
 
 DEFAULT_CATALOG_PATHS = [
     "/usr/data/rosetteos/apps.json",
-    "/usr/data/rosetteos-seeds/apps.json",
-    "/opt/rosetteos-seeds/apps.json",
-    # Development repository fallbacks
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../../manifests/apps.json")),
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../manifests/apps.json")),
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../manifests/apps.json")),
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "../../manifests/apps.json")),
+]
+
+BUILTIN_FALLBACK_APPS = [
+    {
+        "id": "mainsail",
+        "name": "Mainsail",
+        "category": "web_ui",
+        "version": "2.17.1",
+        "author": "Mainsail Crew",
+        "description": "Lightweight and responsive web interface for Klipper (Built-in default).",
+        "is_builtin": True,
+        "builtin_path": "/usr/share/mainsail",
+        "klipper_include": "macros/mainsail.cfg",
+        "config_target": "macros/mainsail.cfg",
+        "moonraker_config": "[update_manager mainsail]\ntype: web\nchannel: beta\nrepo: mainsail-crew/mainsail\npath: /usr/data/rosetteos/apps/mainsail",
+    },
+    {
+        "id": "guppyscreen",
+        "name": "GuppyScreen",
+        "category": "touch_ui",
+        "version": "1.0.0",
+        "author": "RosetteOS / ballaswag",
+        "description": "Native LVGL touchscreen interface for Klipper (Built-in default).",
+        "is_builtin": True,
+        "builtin_path": "/opt/guppyscreen/guppyscreen",
+        "probe_path": "/opt/guppyscreen/guppyscreen",
+    },
 ]
 
 DEFAULT_CATALOG_URLS = [
-    "http://192.168.1.88:8000/apps.json",
-    "http://192.168.1.88:8000/dist/apps.json",
     "https://raw.githubusercontent.com/RosetteOS/AppStore/main/dist/apps.json",
     "https://raw.githubusercontent.com/RosetteOS/AppStore/main/apps.json",
     "https://rosetteos.github.io/AppStore/apps.json",
@@ -58,24 +76,33 @@ def get_services_dir() -> str:
 
 def get_catalog_file() -> str:
     override = os.environ.get("ROSETTEOS_CATALOG_FILE")
-    if override and os.path.isfile(override):
-        return override
+    if override is not None:
+        return override if (override and os.path.isfile(override)) else ""
+    state_cat = os.path.join(STATE_DIR, "apps.json")
+    if os.path.isfile(state_cat):
+        return state_cat
     for p in DEFAULT_CATALOG_PATHS:
         if os.path.isfile(p):
             return p
     return ""
 
 
+def ensure_catalog_fetched(quiet: bool = False):
+    if get_catalog_file() or os.environ.get("ROSETTEOS_CATALOG_FILE") is not None:
+        return
+    cmd_update(argparse.Namespace(url=None), quiet=quiet)
+
+
 def load_catalog() -> dict:
     cat_path = get_catalog_file()
     if not cat_path:
-        return {"version": "1.0", "apps": []}
+        return {"version": "1.0", "apps": [dict(a) for a in BUILTIN_FALLBACK_APPS]}
     try:
         with open(cat_path, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
         print(f"ERROR: Failed to load catalog from {cat_path}: {e}", file=sys.stderr)
-        return {"version": "1.0", "apps": []}
+        return {"version": "1.0", "apps": [dict(a) for a in BUILTIN_FALLBACK_APPS]}
 
 
 def get_active_web_ui() -> str:
@@ -1441,6 +1468,8 @@ def get_apps_resource_usage(app_list: list, sample_cpu: bool = True, sample_inte
 
 
 def cmd_list(args):
+    if not getattr(args, "json", False):
+        ensure_catalog_fetched()
     catalog = load_catalog()
     apps = catalog.get("apps", [])
     active_web = get_active_web_ui()
@@ -1543,6 +1572,7 @@ def cmd_list(args):
 
 
 def cmd_changelog(args):
+    ensure_catalog_fetched(quiet=getattr(args, "json", False))
     catalog = load_catalog()
     apps = catalog.get("apps", [])
     target_id = getattr(args, "app_id", None)
@@ -1600,6 +1630,7 @@ def cmd_changelog(args):
 
 
 def cmd_install(args):
+    ensure_catalog_fetched()
     app_id = args.app_id.lower()
     catalog = load_catalog()
     app = next((a for a in catalog.get("apps", []) if a.get("id") == app_id), None)
@@ -2471,7 +2502,8 @@ def sync_app_icons(apps: list, only_id: str = None):
             break
 
 
-def cmd_update(args):
+def cmd_update(args, quiet: bool = False):
+    out_stream = sys.stderr if quiet else sys.stdout
     urls = []
     if getattr(args, "url", None):
         urls.append(args.url)
@@ -2489,7 +2521,7 @@ def cmd_update(args):
         if url.startswith("http://") or url.startswith("https://"):
             sep = "&" if "?" in url else "?"
             fetch_url = f"{url}{sep}t={int(time.time())}"
-        print(f"Checking for catalog updates from {url}...")
+        print(f"Checking for catalog updates from {url}...", file=out_stream)
         try:
             req = urllib.request.Request(
                 fetch_url,
@@ -2510,11 +2542,11 @@ def cmd_update(args):
                         with open(tmp_target, "w", encoding="utf-8") as f:
                             json.dump(data, f, indent=2)
                         os.replace(tmp_target, target)
-                        print(f"OK: Updated catalog ({len(data['apps'])} apps) from {url}")
+                        print(f"OK: Updated catalog ({len(data['apps'])} apps) from {url}", file=out_stream)
                         success = True
                         break
         except Exception as e:
-            print(f"NOTE: Could not fetch from {url} ({e})")
+            print(f"NOTE: Could not fetch from {url} ({e})", file=out_stream)
 
     if success:
         sync_app_icons(load_catalog().get("apps", []))
@@ -2523,6 +2555,7 @@ def cmd_update(args):
 
 
 def cmd_upgrade(args):
+    ensure_catalog_fetched()
     catalog = load_catalog()
     apps = catalog.get("apps", [])
 

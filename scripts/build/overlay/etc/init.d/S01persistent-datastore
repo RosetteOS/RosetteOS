@@ -130,11 +130,6 @@ start() {
 
 	# Initialize RosetteOS custom apps storage, dynamic services, Moonraker components, and dynamic web root
 	mkdir -p "$DATA_ROOT/apps" "$DATA_ROOT/services.d" "$DATA_ROOT/installed" "$DATA_ROOT/components"
-	if [ -f /opt/rosetteos-seeds/apps.json ]; then
-		if [ ! -f "$DATA_ROOT/apps.json" ] || [ /opt/rosetteos-seeds/apps.json -nt "$DATA_ROOT/apps.json" ]; then
-			cp -a /opt/rosetteos-seeds/apps.json "$DATA_ROOT/apps.json"
-		fi
-	fi
 	[ -x /usr/bin/rosetteos-app ] && /usr/bin/rosetteos-app sync >/dev/null 2>&1 || true
 	active_web="mainsail"
 	[ -f "$DATA_ROOT/active_web_ui" ] && active_web=$(cat "$DATA_ROOT/active_web_ui" 2>/dev/null | tr -d ' \r\n')

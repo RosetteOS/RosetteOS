@@ -1036,9 +1036,6 @@ cat > "$OVERLAY/opt/rosetteos-seeds/seed-manifest.json" <<EOF
   }
 }
 EOF
-if [ -f "$REPO_ROOT/manifests/apps.json" ]; then
-	cp -a "$REPO_ROOT/manifests/apps.json" "$OVERLAY/opt/rosetteos-seeds/apps.json"
-fi
 echo "== factory seeds created: $(ls -la "$OVERLAY/opt/rosetteos-seeds/") =="
 
 # Clean-Update + Virgin Baseline mission, Phase 6 (2026-08-08): a single,

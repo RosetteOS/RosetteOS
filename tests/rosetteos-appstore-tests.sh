@@ -11,7 +11,10 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 OVERLAY="$REPO_ROOT/scripts/build/overlay"
 ROSETTEOS_APP="$OVERLAY/usr/bin/rosetteos-app"
-MANIFEST="$REPO_ROOT/manifests/apps.json"
+MANIFEST="$REPO_ROOT/../AppStore/dist/apps.json"
+if [ ! -f "$MANIFEST" ]; then
+	MANIFEST="$REPO_ROOT/../AppStore/apps.json"
+fi
 S01="$OVERLAY/etc/init.d/S01persistent-datastore"
 S58="$OVERLAY/etc/init.d/S58guppyscreen"
 NGINX_CONF="$OVERLAY/etc/nginx/nginx.conf"
@@ -78,7 +81,7 @@ with open(sys.argv[1]) as f:
     data = json.load(f)
 assert "apps" in data, "manifest missing apps list"
 apps = data["apps"]
-assert len(apps) == 9, f"expected exactly 9 apps, got {len(apps)}"
+assert len(apps) >= 9, f"expected at least 9 apps, got {len(apps)}"
 categories = {a["category"] for a in data["apps"]}
 assert {"web_ui", "touch_ui", "plugin"}.issubset(categories), f"missing core categories in {categories}"
 
@@ -490,13 +493,13 @@ fi
 
 # 3. Initially has_update should be false
 json_out=$(python3 "$ROSETTEOS_APP" list --json)
-python3 -c "
+python3 -c '
 import json, sys
-data = json.loads('''$json_out''')
-fluidd = next(a for a in data if a['id'] == 'fluidd')
-assert fluidd['installed_version'] == '1.37.6', f'Unexpected installed_version: {fluidd}'
-assert fluidd['has_update'] is False, f'Expected has_update False, got: {fluidd}'
-" && pass "has_update is false when installed version matches catalog" || fail "has_update check failed"
+data = json.loads(sys.argv[1])
+fluidd = next(a for a in data if a["id"] == "fluidd")
+assert fluidd["installed_version"] == "1.37.6", f"Unexpected installed_version: {fluidd}"
+assert fluidd["has_update"] is False, f"Expected has_update False, got: {fluidd}"
+' "$json_out" && pass "has_update is false when installed version matches catalog" || fail "has_update check failed"
 
 # 4. Simulate a newer catalog version available (1.38.0)
 mock_fluidd_zip_v2="$TEST_SANDBOX/fluidd-pkg-v2.zip"
@@ -522,14 +525,14 @@ with open('$mock_catalog', 'w') as f:
 
 # 5. Check has_update becomes true
 json_out_v2=$(python3 "$ROSETTEOS_APP" list --json)
-python3 -c "
+python3 -c '
 import json, sys
-data = json.loads('''$json_out_v2''')
-fluidd = next(a for a in data if a['id'] == 'fluidd')
-assert fluidd['installed_version'] == '1.37.6', f'Unexpected installed_version: {fluidd}'
-assert fluidd['version'] == '1.38.0', f'Unexpected catalog version: {fluidd}'
-assert fluidd['has_update'] is True, f'Expected has_update True, got: {fluidd}'
-" && pass "has_update is true when catalog version is newer than installed version" || fail "has_update detection failed"
+data = json.loads(sys.argv[1])
+fluidd = next(a for a in data if a["id"] == "fluidd")
+assert fluidd["installed_version"] == "1.37.6", f"Unexpected installed_version: {fluidd}"
+assert fluidd["version"] == "1.38.0", f"Unexpected catalog version: {fluidd}"
+assert fluidd["has_update"] is True, f"Expected has_update True, got: {fluidd}"
+' "$json_out_v2" && pass "has_update is true when catalog version is newer than installed version" || fail "has_update detection failed"
 
 # 6. Run rosetteos-app upgrade fluidd
 upgrade_out=$(python3 "$ROSETTEOS_APP" upgrade fluidd)
@@ -541,13 +544,13 @@ fi
 
 # 7. Check has_update is false again after upgrade
 json_out_v3=$(python3 "$ROSETTEOS_APP" list --json)
-python3 -c "
+python3 -c '
 import json, sys
-data = json.loads('''$json_out_v3''')
-fluidd = next(a for a in data if a['id'] == 'fluidd')
-assert fluidd['installed_version'] == '1.38.0', f'Unexpected installed_version: {fluidd}'
-assert fluidd['has_update'] is False, f'Expected has_update False, got: {fluidd}'
-" && pass "has_update resets to false after successful upgrade" || fail "has_update reset check failed"
+data = json.loads(sys.argv[1])
+fluidd = next(a for a in data if a["id"] == "fluidd")
+assert fluidd["installed_version"] == "1.38.0", f"Unexpected installed_version: {fluidd}"
+assert fluidd["has_update"] is False, f"Expected has_update False, got: {fluidd}"
+' "$json_out_v3" && pass "has_update resets to false after successful upgrade" || fail "has_update reset check failed"
 
 echo "=== Test 9: G-code Macro Definitions & Inclusion Verification ==="
 APPS_CFG="$OVERLAY/opt/printer_data/config/macros/apps.cfg"
@@ -1067,14 +1070,14 @@ python3 "$ROSETTEOS_APP" install timelapse >/dev/null 2>&1
 python3 "$ROSETTEOS_APP" install mobileraker >/dev/null 2>&1
 
 list_pre_swu=$(python3 "$ROSETTEOS_APP" list --json)
-python3 -c "
-import json
-data = json.loads('''$list_pre_swu''')
-tl = next(a for a in data if a['id'] == 'timelapse')
-mr = next(a for a in data if a['id'] == 'mobileraker')
-assert tl['is_installed'] is True, f'timelapse should be installed: {tl}'
-assert mr['is_installed'] is True, f'mobileraker should be installed: {mr}'
-" && pass "apps installed and tracked prior to SWUpdate" || fail "pre-SWUpdate tracking failed"
+python3 -c '
+import json, sys
+data = json.loads(sys.argv[1])
+tl = next(a for a in data if a["id"] == "timelapse")
+mr = next(a for a in data if a["id"] == "mobileraker")
+assert tl["is_installed"] is True, f"timelapse should be installed: {tl}"
+assert mr["is_installed"] is True, f"mobileraker should be installed: {mr}"
+' "$list_pre_swu" && pass "apps installed and tracked prior to SWUpdate" || fail "pre-SWUpdate tracking failed"
 
 # 2. Simulate SWUpdate: wipe Moonraker components directory (representing fresh rootfs)
 rm -rf "$MOCK_MOONRAKER_COMPS"/*
@@ -1101,18 +1104,37 @@ fi
 
 # 5. Verify list --json maintains installed tracking
 list_post_swu=$(python3 "$ROSETTEOS_APP" list --json)
-python3 -c "
-import json
-data = json.loads('''$list_post_swu''')
-tl = next(a for a in data if a['id'] == 'timelapse')
-mr = next(a for a in data if a['id'] == 'mobileraker')
-assert tl['is_installed'] is True, f'timelapse must remain installed after sync: {tl}'
-assert mr['is_installed'] is True, f'mobileraker must remain installed after sync: {mr}'
-" && pass "rosetteos-app list maintains installed tracking across SWUpdate" || fail "post-SWUpdate tracking failed"
+python3 -c '
+import json, sys
+data = json.loads(sys.argv[1])
+tl = next(a for a in data if a["id"] == "timelapse")
+mr = next(a for a in data if a["id"] == "mobileraker")
+assert tl["is_installed"] is True, f"timelapse must remain installed after sync: {tl}"
+assert mr["is_installed"] is True, f"mobileraker must remain installed after sync: {mr}"
+' "$list_post_swu" && pass "rosetteos-app list maintains installed tracking across SWUpdate" || fail "post-SWUpdate tracking failed"
 
 # Clean up
 python3 "$ROSETTEOS_APP" remove timelapse >/dev/null 2>&1 || true
 python3 "$ROSETTEOS_APP" remove mobileraker >/dev/null 2>&1 || true
+
+echo "=== Test 18: Seedless Offline Built-in Fallback & Auto-Fetch on First Open ==="
+rm -f "$ROSETTEOS_STATE_DIR/apps.json"
+ROSETTEOS_CATALOG_FILE="" list_offline_json=$(ROSETTEOS_CATALOG_FILE="" python3 "$ROSETTEOS_APP" list --json)
+python3 -c '
+import json, sys
+data = json.loads(sys.argv[1])
+ids = {a["id"] for a in data}
+assert ids == {"mainsail", "guppyscreen"}, f"Expected built-in fallback apps, got {ids}"
+' "$list_offline_json" && pass "seedless offline fallback provides built-in mainsail and guppyscreen" || fail "seedless offline fallback failed"
+
+unset ROSETTEOS_CATALOG_FILE
+export ROSETTEOS_CATALOG_URL="file://$MANIFEST"
+auto_fetch_out=$(python3 "$ROSETTEOS_APP" list)
+if [ -f "$ROSETTEOS_STATE_DIR/apps.json" ] && echo "$auto_fetch_out" | grep -q "fluidd"; then
+	pass "rosetteos-app automatically fetches and saves apps.json when missing"
+else
+	fail "rosetteos-app failed to auto-fetch missing catalog"
+fi
 
 echo ""
 echo "=========================================="
