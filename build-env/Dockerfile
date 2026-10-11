@@ -120,6 +120,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 		qemu-user-static \
 		openssh-client \
 		coreutils \
+		p7zip-full \
 	&& rm -rf /var/lib/apt/lists/*
 
 # --- Migration A: GuppyScreen's exact current toolchain, preserved --------
