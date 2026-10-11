@@ -12,6 +12,18 @@ IMAGES="$REPO_ROOT/vendor/system/buildroot/output/images"
 KERNEL_CONFIG="$REPO_ROOT/vendor/system/buildroot/output/build/linux-custom/.config"
 MANIFEST_FILE="$REPO_ROOT/artifacts/buildroot-halley5-v30-image/build-manifest.txt"
 
+LOG_FAIL_FILE=$(mktemp "/tmp/rosetteos-verify-fails.XXXXXX")
+trap 'rm -f "$LOG_FAIL_FILE"' EXIT INT TERM
+
+echo() {
+	case "$1" in
+		MISS*|FAIL*)
+			printf '%s\n' "$*" >> "$LOG_FAIL_FILE"
+			;;
+	esac
+	command echo "$@"
+}
+
 # 2026-08-07: source the same manifests/dependencies.conf every other pin-
 # aware script reads, instead of a second, independently-hardcoded copy of
 # each SHA - real bug found by this mission's own clean-room test: the
@@ -1204,7 +1216,10 @@ fi
 # grep can't tell historical record from stale current claim, and got this
 # wrong on a first pass (flagged docs/HISTORY.md's legitimate history as a
 # MISS). That distinction needs a human read, which is how scripts/build/
-# README.md's real stale reference was actually found and fixed
-# (2026-08-14/15) - not something to re-attempt here.
+if [ -s "$LOG_FAIL_FILE" ]; then
+	FAIL_COUNT=$(wc -l < "$LOG_FAIL_FILE" | tr -d ' ')
+	echo "FATAL: verification FAILED with $FAIL_COUNT issue(s) - review MISS/FAIL lines above" >&2
+	exit 1
+fi
 
-echo "== verification complete - review any MISS lines above =="
+echo "== verification complete - all checks passed =="
