@@ -202,21 +202,14 @@ post-build)
 	if ! git -C "$REPO_ROOT" rev-parse --verify -q "$BASELINE_REF" >/dev/null; then
 		git -C "$REPO_ROOT" fetch --tags origin 2>/dev/null || true
 	fi
-	if ! git -C "$REPO_ROOT" rev-parse --verify -q "$BASELINE_REF" >/dev/null; then
-		if [ "$BASELINE_REF" = "nebulaos-canonical-baseline-2026-08-28-sftp-qualified" ] && git -C "$REPO_ROOT" rev-parse --verify -q "4490de6ee6b7e6e0bd036b9a05a436a37705f4b2" >/dev/null; then
-			git -C "$REPO_ROOT" tag "$BASELINE_REF" 4490de6ee6b7e6e0bd036b9a05a436a37705f4b2 2>/dev/null || true
-		elif [ "$BASELINE_REF" = "rosetteos-canonical-baseline-2026-09-29-opkg-qualified" ] && git -C "$REPO_ROOT" rev-parse --verify -q "openke-canonical-baseline-2026-09-29-opkg-qualified" >/dev/null; then
-			git -C "$REPO_ROOT" tag "$BASELINE_REF" "openke-canonical-baseline-2026-09-29-opkg-qualified" 2>/dev/null || true
-		fi
-	fi
 	git -C "$REPO_ROOT" rev-parse --verify -q "$BASELINE_REF" >/dev/null || {
 		echo "FATAL: QUALIFIED_BASELINE_TAG='$BASELINE_REF' (from $DEPS_MANIFEST) does not exist in this checkout - fetch tags with 'git fetch --tags' first, or correct the manifest." >&2
 		exit 1
 	}
 	echo "  == qualified baseline in use: $BASELINE_REF (from $DEPS_MANIFEST) =="
 
-	# The Phase 11 unified build environment deliberately uses one stable
-	# internal checkout path (/workspace/NebulaOS-firmware). Older qualified
+	# The unified build environment deliberately uses one stable
+	# internal checkout path (/workspace/RosetteOS). Older qualified
 	# baseline artifacts were produced by the former nested container at /src,
 	# so CONFIG_EXTRA_FIRMWARE_DIR is an environment path, not a functional
 	# kernel setting. Normalize that one known path-bearing field before the
@@ -232,12 +225,12 @@ post-build)
 		case "$file" in
 			kernel.config)
 				sed -E \
-					-e 's#^(CONFIG_EXTRA_FIRMWARE_DIR=)"[^"]*"$#\1"/__NEBULAOS_CANONICAL_FIRMWARE_DIR__"#' \
-					-e 's#^(CONFIG_CC_VERSION_TEXT="[^"]*[(]Buildroot )[^)]*([)].*)$#\1__NEBULAOS_BUILDER_VERSION__\2#'
+					-e 's#^(CONFIG_EXTRA_FIRMWARE_DIR=)"[^"]*"$#\1"/__ROSETTEOS_CANONICAL_FIRMWARE_DIR__"#' \
+					-e 's#^(CONFIG_CC_VERSION_TEXT="[^"]*[(]Buildroot )[^)]*([)].*)$#\1__ROSETTEOS_BUILDER_VERSION__\2#'
 				;;
 			buildroot.config)
 				sed -E \
-					-e 's|^# Buildroot .* Configuration$|# Buildroot __NEBULAOS_BUILDER_VERSION__ Configuration|' \
+					-e 's|^# Buildroot .* Configuration$|# Buildroot __ROSETTEOS_BUILDER_VERSION__ Configuration|' \
 					-e '/^BR2_TARGET_ROOTFS_EXT2_(SIZE|INODES|RESBLKS)=/d' \
 					-e '/^(# )?BR2_HOST_GCC_AT_LEAST_[0-9]+(=y| is not set)$/d'
 				;;
