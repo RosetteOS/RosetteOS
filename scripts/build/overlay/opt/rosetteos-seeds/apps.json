@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "name": "Rosette App Store Catalog",
-  "updated_at": "2026-10-11T15:52:02Z",
+  "updated_at": "2026-10-11T16:02:09Z",
   "categories": [
     {
       "id": "web_ui",
@@ -53,7 +53,17 @@
       },
       "probe_path": "/usr/data/rosetteos/apps/mobileraker/mobileraker.py",
       "website": "https://github.com/Clon1998/mobileraker",
-      "source_url": "https://github.com/Clon1998/mobileraker_companion"
+      "source_url": "https://github.com/Clon1998/mobileraker_companion",
+      "changelog": [
+        {
+          "version": "0.5.0",
+          "date": "2026-09-25",
+          "changes": [
+            "Package Mobileraker Companion v0.5.0 with automatic mobileraker.conf deployment",
+            "Add managed background service with low-memory Python optimizations"
+          ]
+        }
+      ]
     },
     {
       "id": "octoapp",
@@ -83,7 +93,24 @@
       },
       "probe_path": "/usr/data/rosetteos/apps/octoapp/server.py",
       "website": "https://octoapp.eu",
-      "source_url": "https://github.com/crysxd/OctoApp-Plugin"
+      "source_url": "https://github.com/crysxd/OctoApp-Plugin",
+      "changelog": [
+        {
+          "version": "3.2.4-rosetteos.2",
+          "date": "2026-10-08",
+          "changes": [
+            "Clean up octoapp.conf and octoapp-moonraker.cfg on app removal",
+            "Optimize Python runtime memory footprint for Ingenic X2000"
+          ]
+        },
+        {
+          "version": "3.2.4",
+          "date": "2026-09-25",
+          "changes": [
+            "Initial OctoApp Companion package for RosetteOS"
+          ]
+        }
+      ]
     },
     {
       "id": "spoolman",
@@ -110,7 +137,17 @@
       },
       "probe_path": "/usr/data/rosetteos/apps/spoolman/server.py",
       "website": "https://github.com/Donkie/Spoolman",
-      "source_url": "https://github.com/Donkie/Spoolman"
+      "source_url": "https://github.com/Donkie/Spoolman",
+      "changelog": [
+        {
+          "version": "0.18.0",
+          "date": "2026-09-25",
+          "changes": [
+            "Initial Spoolman filament management service (port 7912) for RosetteOS",
+            "Automatic [spoolman] section injection into moonraker.conf"
+          ]
+        }
+      ]
     },
     {
       "id": "timelapse",
@@ -136,7 +173,17 @@
       "moonraker_config": "[timelapse]\noutput_path: /opt/printer_data/timelapse/\nframe_path: /tmp/timelapse/printer_data\nffmpeg_binary_path: /usr/bin/ffmpeg",
       "probe_path": "/usr/data/rosetteos/apps/timelapse/component/timelapse.py",
       "website": "https://github.com/mainsail-crew/moonraker-timelapse",
-      "source_url": "https://github.com/mainsail-crew/moonraker-timelapse"
+      "source_url": "https://github.com/mainsail-crew/moonraker-timelapse",
+      "changelog": [
+        {
+          "version": "0.0.12",
+          "date": "2026-09-20",
+          "changes": [
+            "Initial Moonraker Timelapse plugin package with hardware-accelerated FFmpeg configuration",
+            "Automatic macros/timelapse.cfg and [timelapse] moonraker.conf integration"
+          ]
+        }
+      ]
     },
     {
       "id": "klipper-backup",
@@ -177,7 +224,19 @@
       ],
       "probe_path": "/usr/data/rosetteos/apps/klipper-backup/script.sh",
       "website": "https://github.com/Staubgeborener/klipper-backup",
-      "source_url": "https://github.com/Staubgeborener/klipper-backup"
+      "source_url": "https://github.com/Staubgeborener/klipper-backup",
+      "changelog": [
+        {
+          "version": "1.3.6",
+          "date": "2026-10-11",
+          "changes": [
+            "Include all printer profiles (printer_profiles/*) in default backup paths and watch loop",
+            "Rewrite script.sh and utilities in POSIX /bin/sh for native BusyBox ash compatibility",
+            "Deploy editable klipper-backup.env template in /usr/data/printer_data/config on installation",
+            "Add automated background service for startup and file-change GitHub backups"
+          ]
+        }
+      ]
     },
     {
       "id": "tailscale",
@@ -207,7 +266,19 @@
       ],
       "probe_path": "/usr/data/rosetteos/apps/tailscale/tailscale",
       "website": "https://tailscale.com",
-      "source_url": "https://github.com/tailscale/tailscale"
+      "source_url": "https://github.com/tailscale/tailscale",
+      "changelog": [
+        {
+          "version": "1.104.1",
+          "date": "2026-10-11",
+          "changes": [
+            "Use userspace-networking mode when kernel CONFIG_TUN is absent so tailscaled starts cleanly without kernel TUN or iptables",
+            "Configure writable cache and state directories under /usr/data/rosetteos/tailscale",
+            "Remove ASCII QR code output from TAILSCALE_UP macro in favor of a clean clickable authentication URL",
+            "Initial MIPS32EL static build of Tailscale v1.104.1 for RosetteOS"
+          ]
+        }
+      ]
     },
     {
       "id": "vnc",
@@ -231,7 +302,17 @@
       },
       "probe_path": "/usr/data/rosetteos/apps/vnc/rosetteos-vnc",
       "website": "https://github.com/RosetteOS/AppStore",
-      "source_url": "https://github.com/RosetteOS/AppStore/tree/main/tools/rosetteos-vnc"
+      "source_url": "https://github.com/RosetteOS/AppStore/tree/main/tools/rosetteos-vnc",
+      "changelog": [
+        {
+          "version": "1.0.0",
+          "date": "2026-10-09",
+          "changes": [
+            "Initial release of Remote VNC Display server (port 5900) and HTML5 web client (port 5800)",
+            "Support hardware touchscreen injection and real-time framebuffer streaming on Ingenic X2000"
+          ]
+        }
+      ]
     },
     {
       "id": "guppyscreen",
@@ -246,7 +327,17 @@
       "is_builtin": true,
       "builtin_path": "/opt/guppyscreen/guppyscreen",
       "probe_path": "/opt/guppyscreen/guppyscreen",
-      "source_url": "https://github.com/RosetteOS/GuppyScreen"
+      "source_url": "https://github.com/RosetteOS/GuppyScreen",
+      "changelog": [
+        {
+          "version": "1.0.0",
+          "date": "2026-10-08",
+          "changes": [
+            "Built-in native LVGL touchscreen UI optimized for Ingenic X2000 MIPS",
+            "Integrated App Store panel, multi-printer profile switcher, and live resource monitoring"
+          ]
+        }
+      ]
     },
     {
       "id": "helixscreen",
@@ -265,7 +356,17 @@
       "executable": "bin/helix-screen",
       "probe_path": "/usr/data/rosetteos/apps/helixscreen/bin/helix-screen",
       "website": "https://helixscreen.org",
-      "source_url": "https://github.com/prestonbrown/helixscreen"
+      "source_url": "https://github.com/prestonbrown/helixscreen",
+      "changelog": [
+        {
+          "version": "1.0.2",
+          "date": "2026-09-20",
+          "changes": [
+            "Initial MIPS32EL build of HelixScreen v1.0.2 for RosetteOS",
+            "Support dynamic Touch UI switching with thermal and active print safety interlocks"
+          ]
+        }
+      ]
     },
     {
       "id": "fluidd",
@@ -290,7 +391,24 @@
       },
       "probe_path": "/usr/data/rosetteos/apps/fluidd/index.html",
       "website": "https://fluidd.xyz",
-      "source_url": "https://github.com/fluidd-core/fluidd"
+      "source_url": "https://github.com/fluidd-core/fluidd",
+      "changelog": [
+        {
+          "version": "1.37.6",
+          "date": "2026-10-08",
+          "changes": [
+            "Update Fluidd web interface bundle to upstream v1.37.6",
+            "Add automatic client macro management (PAUSE, RESUME, CANCEL_PRINT) when switching active Web UI"
+          ]
+        },
+        {
+          "version": "1.30.0",
+          "date": "2026-09-15",
+          "changes": [
+            "Initial Fluidd Web UI package for RosetteOS"
+          ]
+        }
+      ]
     },
     {
       "id": "mainsail",
@@ -307,7 +425,17 @@
       "config_target": "macros/mainsail.cfg",
       "probe_path": "/usr/share/mainsail/index.html",
       "website": "https://mainsail.xyz",
-      "source_url": "https://github.com/mainsail-crew/mainsail"
+      "source_url": "https://github.com/mainsail-crew/mainsail",
+      "changelog": [
+        {
+          "version": "2.12.0",
+          "date": "2026-09-01",
+          "changes": [
+            "Built-in Mainsail web interface included in RosetteOS firmware",
+            "Pre-configured with camera streaming, macro controls, and G-code viewer"
+          ]
+        }
+      ]
     }
   ]
 }

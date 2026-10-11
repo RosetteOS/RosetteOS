@@ -1484,6 +1484,20 @@ def cmd_list(args):
         service_enabled = is_app_service_enabled(app_id) if installed and svc_script else (True if has_service else False)
         service_status = "running" if is_proc_running else (get_app_service_status(app_id) if installed and svc_script else ("stopped" if installed and has_service else ""))
 
+        raw_changelog = app.get("changelog", [])
+        latest_changes = []
+        if isinstance(raw_changelog, list) and raw_changelog:
+            first_entry = raw_changelog[0]
+            if isinstance(first_entry, dict):
+                ch = first_entry.get("changes", [])
+                latest_changes = ch if isinstance(ch, list) else ([ch] if ch else [])
+            elif isinstance(first_entry, str):
+                latest_changes = [first_entry]
+        elif isinstance(raw_changelog, str) and raw_changelog.strip():
+            latest_changes = [raw_changelog.strip()]
+
+        latest_changelog_str = "\n".join(f"• {c}" for c in latest_changes) if latest_changes else ""
+
         item = {
             "id": app_id,
             "name": app.get("name", app_id),
@@ -1494,6 +1508,8 @@ def cmd_list(args):
             "has_update": has_update,
             "author": app.get("author", ""),
             "description": app.get("description", ""),
+            "changelog": raw_changelog,
+            "latest_changelog": latest_changelog_str,
             "is_builtin": app.get("is_builtin", False),
             "is_installed": installed,
             "is_active": is_active,
@@ -1524,6 +1540,63 @@ def cmd_list(args):
             badge += " (UPDATE)"
         inst_str = item.get("installed_version") or "-"
         print(f"{item['id']:<15} {item['name'][:23]:<24} {item['category']:<12} {item['version']:<10} {inst_str:<10} {badge}")
+
+
+def cmd_changelog(args):
+    catalog = load_catalog()
+    apps = catalog.get("apps", [])
+    target_id = getattr(args, "app_id", None)
+
+    if target_id:
+        target_id = target_id.lower()
+        apps = [a for a in apps if a.get("id") == target_id]
+        if not apps:
+            print(f"FATAL: App '{target_id}' not found in catalog.", file=sys.stderr)
+            sys.exit(1)
+
+    if getattr(args, "json", False):
+        out = [
+            {
+                "id": a.get("id"),
+                "name": a.get("name", a.get("id")),
+                "version": a.get("version", ""),
+                "installed_version": get_installed_version(a) if is_app_installed(a) else "",
+                "changelog": a.get("changelog", [])
+            }
+            for a in apps
+        ]
+        print(json.dumps(out[0] if target_id else out, indent=2))
+        return
+
+    for idx, app in enumerate(apps):
+        if idx > 0:
+            print()
+        app_id = app.get("id", "")
+        name = app.get("name", app_id)
+        ver = app.get("version", "")
+        inst_ver = get_installed_version(app) if is_app_installed(app) else ""
+        ver_info = f"v{ver}" + (f" (installed: v{inst_ver})" if inst_ver else "")
+        print(f"== {name} ({app_id}) — {ver_info} ==")
+        cl = app.get("changelog", [])
+        if not cl:
+            print("  No changelog entries recorded.")
+            continue
+        if isinstance(cl, str):
+            print(f"  {cl}")
+            continue
+        for entry in cl:
+            if isinstance(entry, str):
+                print(f"  • {entry}")
+                continue
+            ever = entry.get("version", ver)
+            edate = entry.get("date", "")
+            hdr = f"  [v{ever}]" + (f" ({edate})" if edate else "")
+            print(hdr)
+            changes = entry.get("changes", [])
+            if isinstance(changes, str):
+                changes = [changes]
+            for c in changes:
+                print(f"    - {c}")
 
 
 def cmd_install(args):
@@ -2796,6 +2869,12 @@ def main():
     p_list.add_argument("--json", action="store_true", help="Output JSON format")
     p_list.add_argument("--category", help="Filter by category (web_ui, touch_ui, plugin, tool)")
     p_list.set_defaults(func=cmd_list)
+
+    # changelog
+    p_cl = subparsers.add_parser("changelog", help="Show release history and changelog for an app (or all apps)")
+    p_cl.add_argument("app_id", nargs="?", help="App ID to view changelog for (shows all apps if omitted)")
+    p_cl.add_argument("--json", action="store_true", help="Output JSON format")
+    p_cl.set_defaults(func=cmd_changelog)
 
     # top / stats / ps
     p_top = subparsers.add_parser("top", help="Display live RAM and CPU resource usage for active apps")
