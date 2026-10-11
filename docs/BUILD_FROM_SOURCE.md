@@ -5,10 +5,25 @@ If you're just trying to build the whole OS, this is all you need:
 ```sh
 git clone https://github.com/RosetteOS/RosetteOS.git
 cd RosetteOS
+
+# Standard build (kernel, squashfs rootfs):
 ./build.sh
+
+# Complete release build (.swu, .ingenic, and stock Creality .img OTA):
+./build.sh --all
+
+# Individual package targets:
+./build.sh --swu
+./build.sh --ingenic
+./build.sh --ota --ota-target all
+./build.sh --ota --creality-ota-version 1.1.0.34
+
+# Test suites:
+./build.sh --test               # Run inside build container
+tests/run-all.sh                # Run directly on host
 ```
 
-This command, from a fresh clone of the repository still named RosetteOS, reproduces the verified baseline. RosetteOS builds on the foundation and bring-up work originally developed under NebulaOS.
+This command, from a fresh clone of the repository, reproduces the verified baseline. RosetteOS builds on the foundation and bring-up work originally developed under NebulaOS.
 
 ## What it's doing
 

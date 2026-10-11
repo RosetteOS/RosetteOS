@@ -32,12 +32,30 @@ remaining moving checkout, and does not use unrelated local clones sitting next 
 ```sh
 git clone https://github.com/RosetteOS/RosetteOS.git
 cd RosetteOS
+
+# Build core kernel and rootfs images:
 ./build.sh
+
+# Build and package all deployment formats (.swu, .ingenic, and Stock Creality .img OTA):
+./build.sh --all
+
+# Package specific release formats:
+./build.sh --swu                         # SWUpdate streaming archive (.swu)
+./build.sh --ingenic                     # Ingenic USB Cloner package (.ingenic)
+./build.sh --ota --ota-target all        # Stock Creality OTA images for KE and Nebula Pad
+./build.sh --ota --creality-ota-version 1.1.0.34
+
+# Run test suites inside the build container:
+./build.sh --test
+./build.sh --test config                 # Run test suites matching a filter
+
+# Or run tests directly on host:
+tests/run-all.sh
 ```
 
 That's genuinely it. `build.sh` pulls one build container
 (`ghcr.io/rosetteos/rosetteos-build`, digest-pinned) and runs the whole pipeline inside it —
-fetches every dependency, applies the 8 accepted kernel variants, builds the kernel/rootfs/app
+fetches every dependency, applies the accepted kernel variants, builds the kernel/rootfs/app
 stack, and checks the result actually looks right. You need Docker or Podman and not much else —
 no `apt-get install` beforehand, no nested containers, nothing weird.
 
