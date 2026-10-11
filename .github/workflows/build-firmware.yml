@@ -253,9 +253,9 @@ jobs:
           # 3. Generate Ingenic USB cloner package (.ingenic)
           sh scripts/build/package-ingenic.sh "$bundle" "$PKG_VERSION" "slot1"
 
-          # 4. Generate Stock CrealityOS USB OTA packages (.img for KE & Nebula)
+          # 4. Generate Stock CrealityOS USB OTA packages (.img for KE & Nebula; uses CREALITY_OTA_VERSION from dependencies.conf)
           command -v 7z >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq p7zip-full)
-          sh scripts/build/package-creality-ota.sh "$bundle" "$OTA_TARGET" "$PKG_VERSION"
+          sh scripts/build/package-creality-ota.sh "$bundle" "$OTA_TARGET"
 
           cp "$image_dir/xImage" \
              "$image_dir/rootfs.squashfs" \

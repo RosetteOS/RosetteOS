@@ -32,15 +32,6 @@ fi
 
 if [ -z "$VERSION" ]; then
 	VERSION="${CREALITY_OTA_VERSION:-1.1.0.34}"
-else
-	# Creality's local_ota_update.sh requires a dotted numeric version (e.g. 1.1.0.34).
-	# If a channel/tag name like "nightly" is passed via --version, preserve CREALITY_OTA_VERSION.
-	case "$VERSION" in
-		*[!0-9.]*|.*|*.|*..*|[0-9])
-			echo "== Note: '$VERSION' is not a Creality dotted version; using ${CREALITY_OTA_VERSION:-1.1.0.34} for stock OTA .img envelope =="
-			VERSION="${CREALITY_OTA_VERSION:-1.1.0.34}"
-			;;
-	esac
 fi
 
 KERNEL_IMAGE="${KERNEL_IMAGE:-$ARTIFACT_DIR/xImage}"

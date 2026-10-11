@@ -41,19 +41,21 @@ BUILD_SWU=0
 BUILD_INGENIC=0
 BUILD_OTA=0
 OTA_TARGET="${ROSETTEOS_OTA_TARGET:-all}"
+CREALITY_OTA_VER_ARG=""
 PACKAGE_VERSION="${ROSETTEOS_PACKAGE_VERSION:-}"
 
 usage() {
 	echo "Usage: $0 [OPTIONS]"
 	echo ""
 	echo "Options:"
-	echo "  --swu                      Package a verified SWUpdate (.swu) archive at the end of the build"
-	echo "  --ingenic                  Package a verified Ingenic USB Cloner (.ingenic) archive at the end of the build"
-	echo "  --ota                      Package stock CrealityOS-compatible OTA (.img) updates at the end of the build"
-	echo "  --ota-target <target>      Target profile for --ota: ke, nebula, or all (default: all; implies --ota)"
-	echo "  --all, --release           Package all deployment formats (.swu, .ingenic, and .img OTA)"
-	echo "  --version <ver>            Override package version string for generated deployment archives"
-	echo "  -h, --help                 Display this help message and exit"
+	echo "  --swu                           Package a verified SWUpdate (.swu) archive at the end of the build"
+	echo "  --ingenic                       Package a verified Ingenic USB Cloner (.ingenic) archive at the end of the build"
+	echo "  --ota                           Package stock CrealityOS-compatible OTA (.img) updates at the end of the build"
+	echo "  --ota-target <target>           Target profile for --ota: ke, nebula, or all (default: all; implies --ota)"
+	echo "  --creality-ota-version <ver>    Override Creality OTA envelope version (requires --ota, --ota-target, or --all)"
+	echo "  --all, --release                Package all deployment formats (.swu, .ingenic, and .img OTA)"
+	echo "  --version <ver>                 Override RosetteOS package version string (.swu and .ingenic)"
+	echo "  -h, --help                      Display this help message and exit"
 }
 
 while [ $# -gt 0 ]; do
@@ -79,6 +81,15 @@ while [ $# -gt 0 ]; do
 		--ota-target=*)
 			OTA_TARGET="${1#*=}"
 			BUILD_OTA=1
+			shift
+			;;
+		--creality-ota-version)
+			[ $# -ge 2 ] || { echo "FATAL: --creality-ota-version requires a value (e.g. 1.1.0.34)" >&2; exit 1; }
+			CREALITY_OTA_VER_ARG="$2"
+			shift 2
+			;;
+		--creality-ota-version=*)
+			CREALITY_OTA_VER_ARG="${1#*=}"
 			shift
 			;;
 		--all|--release)
@@ -114,6 +125,11 @@ if [ "${ROSETTEOS_BUILD_ALL:-0}" = "1" ]; then
 	BUILD_SWU=1
 	BUILD_INGENIC=1
 	BUILD_OTA=1
+fi
+
+if [ -n "$CREALITY_OTA_VER_ARG" ] && [ "$BUILD_OTA" -ne 1 ]; then
+	echo "FATAL: --creality-ota-version is only accepted when building a Creality OTA image (--ota, --ota-target, or --all)" >&2
+	exit 1
 fi
 
 case "$OTA_TARGET" in
@@ -246,7 +262,7 @@ fi
 
 if [ "$BUILD_OTA" -eq 1 ]; then
 	run_stage "package - Stock CrealityOS OTA (.img, target: $OTA_TARGET)" \
-		sh "$SCRIPT_DIR/package-creality-ota.sh" "" "$OTA_TARGET" "$PACKAGE_VERSION"
+		sh "$SCRIPT_DIR/package-creality-ota.sh" "" "$OTA_TARGET" "${CREALITY_OTA_VER_ARG:-${CREALITY_OTA_VERSION:-}}"
 fi
 
 print_build_summary

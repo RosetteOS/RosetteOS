@@ -58,6 +58,7 @@ BUILD_SWU=0
 BUILD_INGENIC=0
 BUILD_OTA=0
 OTA_TARGET="${ROSETTEOS_OTA_TARGET:-all}"
+CREALITY_OTA_VER_ARG=""
 PACKAGE_VERSION="${ROSETTEOS_PACKAGE_VERSION:-}"
 FORCE_PULL=0
 
@@ -65,14 +66,15 @@ usage() {
 	echo "Usage: $0 [OPTIONS]"
 	echo ""
 	echo "Options:"
-	echo "  --swu                      Package a verified SWUpdate (.swu) archive at the end of the build"
-	echo "  --ingenic                  Package a verified Ingenic USB Cloner (.ingenic) archive at the end of the build"
-	echo "  --ota                      Package stock CrealityOS-compatible OTA (.img) updates at the end of the build"
-	echo "  --ota-target <target>      Target profile for --ota: ke, nebula, or all (default: all; implies --ota)"
-	echo "  --all, --release           Package all deployment formats (.swu, .ingenic, and .img OTA)"
-	echo "  --version <ver>            Override package version string for generated deployment archives"
-	echo "  --pull                     Force pulling the build environment container image even if cached locally"
-	echo "  -h, --help                 Display this help message and exit"
+	echo "  --swu                           Package a verified SWUpdate (.swu) archive at the end of the build"
+	echo "  --ingenic                       Package a verified Ingenic USB Cloner (.ingenic) archive at the end of the build"
+	echo "  --ota                           Package stock CrealityOS-compatible OTA (.img) updates at the end of the build"
+	echo "  --ota-target <target>           Target profile for --ota: ke, nebula, or all (default: all; implies --ota)"
+	echo "  --creality-ota-version <ver>    Override Creality OTA envelope version (requires --ota, --ota-target, or --all)"
+	echo "  --all, --release                Package all deployment formats (.swu, .ingenic, and .img OTA)"
+	echo "  --version <ver>                 Override RosetteOS package version string (.swu and .ingenic)"
+	echo "  --pull                          Force pulling the build environment container image even if cached locally"
+	echo "  -h, --help                      Display this help message and exit"
 }
 
 while [ $# -gt 0 ]; do
@@ -98,6 +100,15 @@ while [ $# -gt 0 ]; do
 		--ota-target=*)
 			OTA_TARGET="${1#*=}"
 			BUILD_OTA=1
+			shift
+			;;
+		--creality-ota-version)
+			[ $# -ge 2 ] || { echo "FATAL: --creality-ota-version requires a value (e.g. 1.1.0.34)" >&2; exit 1; }
+			CREALITY_OTA_VER_ARG="$2"
+			shift 2
+			;;
+		--creality-ota-version=*)
+			CREALITY_OTA_VER_ARG="${1#*=}"
 			shift
 			;;
 		--all|--release)
@@ -140,6 +151,11 @@ if [ "${ROSETTEOS_BUILD_ALL:-0}" = "1" ]; then
 fi
 [ "${ROSETTEOS_PULL:-0}" = "1" ] && FORCE_PULL=1
 
+if [ -n "$CREALITY_OTA_VER_ARG" ] && [ "$BUILD_OTA" -ne 1 ]; then
+	echo "FATAL: --creality-ota-version is only accepted when building a Creality OTA image (--ota, --ota-target, or --all)" >&2
+	exit 1
+fi
+
 case "$OTA_TARGET" in
 	ke|nebula|all) ;;
 	*)
@@ -151,6 +167,7 @@ esac
 MANIFEST="$SCRIPT_DIR/manifests/dependencies.conf"
 [ -f "$MANIFEST" ] || { echo "FATAL: $MANIFEST not found" >&2; exit 1; }
 . "$MANIFEST"
+[ -n "$CREALITY_OTA_VER_ARG" ] && CREALITY_OTA_VERSION="$CREALITY_OTA_VER_ARG"
 
 : "${BUILD_IMAGE_REPO:?FATAL: BUILD_IMAGE_REPO not set in $MANIFEST}"
 : "${BUILD_IMAGE_DIGEST:?FATAL: BUILD_IMAGE_DIGEST not set in $MANIFEST}"
@@ -226,6 +243,7 @@ BUILD_CMD="sh scripts/build/build-qualified-baseline.sh"
 [ "$BUILD_INGENIC" -eq 1 ] && BUILD_CMD="$BUILD_CMD --ingenic"
 if [ "$BUILD_OTA" -eq 1 ]; then
 	BUILD_CMD="$BUILD_CMD --ota --ota-target $OTA_TARGET"
+	[ -n "$CREALITY_OTA_VER_ARG" ] && BUILD_CMD="$BUILD_CMD --creality-ota-version $CREALITY_OTA_VER_ARG"
 fi
 if [ -n "$PACKAGE_VERSION" ]; then
 	BUILD_CMD="$BUILD_CMD --version $PACKAGE_VERSION"
@@ -237,6 +255,7 @@ exec "$ENGINE" run --rm \
 	-e ROSETTEOS_REPO_ROOT="$ROSETTEOS_REPO_ROOT" \
 	-e ROSETTEOS_CANDIDATE_BUILD="${ROSETTEOS_CANDIDATE_BUILD:-$CANDIDATE_DEFAULT}" \
 	-e ROSETTEOS_OTA_TARGET="$OTA_TARGET" \
+	-e CREALITY_OTA_VERSION="${CREALITY_OTA_VERSION:-}" \
 	-e ROSETTEOS_PACKAGE_VERSION="$PACKAGE_VERSION" \
 	-e FORCE_UNSAFE_CONFIGURE=1 \
 	-v "$SCRIPT_DIR:$ROSETTEOS_REPO_ROOT" \
