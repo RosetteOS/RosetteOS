@@ -32,6 +32,15 @@ fi
 
 if [ -z "$VERSION" ]; then
 	VERSION="${CREALITY_OTA_VERSION:-1.1.0.34}"
+else
+	# Creality's local_ota_update.sh requires a dotted numeric version (e.g. 1.1.0.34).
+	# If a channel/tag name like "nightly" is passed via --version, preserve CREALITY_OTA_VERSION.
+	case "$VERSION" in
+		*[!0-9.]*|.*|*.|*..*|[0-9])
+			echo "== Note: '$VERSION' is not a Creality dotted version; using ${CREALITY_OTA_VERSION:-1.1.0.34} for stock OTA .img envelope =="
+			VERSION="${CREALITY_OTA_VERSION:-1.1.0.34}"
+			;;
+	esac
 fi
 
 KERNEL_IMAGE="${KERNEL_IMAGE:-$ARTIFACT_DIR/xImage}"
@@ -50,11 +59,12 @@ fi
 # Ensure 7z or py7zr is available
 if ! command -v 7z >/dev/null 2>&1; then
 	if ! python3 -c "import py7zr" >/dev/null 2>&1; then
-		if command -v apt-get >/dev/null 2>&1; then
+		if [ "$(id -u)" -eq 0 ] && command -v apt-get >/dev/null 2>&1; then
 			echo "Installing p7zip-full for OTA packaging..."
 			apt-get update -qq && apt-get install -y -qq p7zip-full
-		elif command -v pip3 >/dev/null 2>&1; then
-			pip3 install --quiet py7zr || true
+		elif command -v python3 >/dev/null 2>&1; then
+			echo "Installing py7zr (user site) for OTA packaging..."
+			python3 -m pip install --user --no-warn-script-location --quiet py7zr || pip3 install --quiet py7zr || true
 		fi
 	fi
 fi

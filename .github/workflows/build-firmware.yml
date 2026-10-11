@@ -1,7 +1,22 @@
 name: Build firmware
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Package version string for SWU / Ingenic archives"
+        required: false
+        default: "nightly"
+        type: string
+      ota_target:
+        description: "Target hardware profile for Stock CrealityOS OTA (.img)"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - all
+          - ke
+          - nebula
   push:
     branches:
       - main
@@ -73,6 +88,11 @@ jobs:
           if [[ -d .cache/rosetteos/vendor-downloads ]]; then
             mkdir -p vendor-downloads
             rsync -a .cache/rosetteos/vendor-downloads/ vendor-downloads/
+          fi
+
+          if [[ -d .cache/rosetteos/assets ]]; then
+            mkdir -p assets
+            rsync -a .cache/rosetteos/assets/ assets/
           fi
 
           if [[ -d .cache/rosetteos/build-work ]]; then
@@ -147,6 +167,11 @@ jobs:
             rsync -a vendor-downloads/ .cache/rosetteos/vendor-downloads/
           fi
 
+          if [[ -d assets ]]; then
+            mkdir -p .cache/rosetteos/assets
+            rsync -a --include='*.bin' --exclude='*' assets/ .cache/rosetteos/assets/
+          fi
+
           if [[ -d build-work ]]; then
             mkdir -p .cache/rosetteos/build-work
             rsync -a build-work/ .cache/rosetteos/build-work/
@@ -203,6 +228,8 @@ jobs:
       - name: Assemble artifact bundle
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PKG_VERSION: ${{ inputs.version || 'nightly' }}
+          OTA_TARGET: ${{ inputs.ota_target || 'all' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -213,22 +240,22 @@ jobs:
 
           # 1. Generate changelog and build SWUpdate (.swu) package
           sh scripts/build/lib/generate-changelog.sh "$bundle/changelog.txt" 15 15
-          sh scripts/build/package-swu.sh "$bundle" "nightly" "$bundle/changelog.txt"
+          sh scripts/build/package-swu.sh "$bundle" "$PKG_VERSION" "$bundle/changelog.txt"
 
           # 2. Generate GuppyScreen-compatible release manifest
           python3 scripts/build/lib/generate-release-manifest.py \
-            --swu "$bundle/rosetteos-update-nightly.swu" \
+            --swu "$bundle/rosetteos-update-${PKG_VERSION}.swu" \
             --output "$bundle/releases.json" \
             --changelog "$bundle/changelog.txt" \
-            --channel "nightly" \
-            --tag "nightly"
+            --channel "$PKG_VERSION" \
+            --tag "$PKG_VERSION"
 
           # 3. Generate Ingenic USB cloner package (.ingenic)
-          sh scripts/build/package-ingenic.sh "$bundle" "nightly" "slot1"
+          sh scripts/build/package-ingenic.sh "$bundle" "$PKG_VERSION" "slot1"
 
           # 4. Generate Stock CrealityOS USB OTA packages (.img for KE & Nebula)
           command -v 7z >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq p7zip-full)
-          sh scripts/build/package-creality-ota.sh "$bundle" "all" "1.1.0.34"
+          sh scripts/build/package-creality-ota.sh "$bundle" "$OTA_TARGET" "$PKG_VERSION"
 
           cp "$image_dir/xImage" \
              "$image_dir/rootfs.squashfs" \
@@ -257,6 +284,20 @@ jobs:
               | xargs -0 sha256sum
           ) > "$bundle/SHA256SUMS"
 
+          {
+            echo "## RosetteOS Firmware Build Summary"
+            echo ""
+            echo "| Artifact | Size | SHA256 |"
+            echo "| :--- | ---: | :--- |"
+            for f in "$bundle/images/xImage" "$bundle/images/rootfs.squashfs" "$bundle"/*.swu "$bundle"/*.ingenic "$bundle"/*.img; do
+              [[ -f "$f" ]] || continue
+              name=$(basename "$f")
+              size=$(du -h "$f" | awk '{print $1}')
+              sha=$(sha256sum "$f" | awk '{print $1}')
+              echo "| \`$name\` | $size | \`$sha\` |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -270,17 +311,21 @@ jobs:
         if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/rosetteos-rebrand')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PKG_VERSION: ${{ inputs.version || 'nightly' }}
         shell: bash
         run: |
           set -euo pipefail
 
           bundle=ci-artifacts
-          TAG="nightly"
+          TAG="$PKG_VERSION"
           TITLE="Nightly"
+          if [[ "$TAG" != "nightly" ]]; then
+            TITLE="RosetteOS ${TAG}"
+          fi
 
           release_files=(
-            "$bundle/rosetteos-update-nightly.swu"
-            "$bundle/rosetteos-update-nightly.swu.sha256"
+            "$bundle/rosetteos-update-${PKG_VERSION}.swu"
+            "$bundle/rosetteos-update-${PKG_VERSION}.swu.sha256"
             "$bundle/releases.json"
             "$bundle/changelog.txt"
             "$bundle/SHA256SUMS"
@@ -309,11 +354,11 @@ jobs:
           fi
 
           if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "== Updating existing Nightly release =="
+            echo "== Updating existing ${TAG} release =="
             gh release edit "$TAG" --title "$TITLE" --notes-file "$bundle/changelog.txt" --prerelease --target "${{ github.sha }}"
             gh release upload "$TAG" "${release_files[@]}" --clobber
           else
-            echo "== Creating new Nightly release =="
+            echo "== Creating new ${TAG} release =="
             gh release create "$TAG" \
               --title "$TITLE" \
               --notes-file "$bundle/changelog.txt" \
