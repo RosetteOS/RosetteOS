@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "name": "Rosette App Store Catalog",
-  "updated_at": "2026-10-11T01:23:32Z",
+  "updated_at": "2026-10-11T15:52:02Z",
   "categories": [
     {
       "id": "web_ui",
@@ -191,7 +191,7 @@
       "type": "tool",
       "is_builtin": false,
       "download_url": "https://raw.githubusercontent.com/RosetteOS/AppStore/main/packages/tailscale-v1.104.1.zip",
-      "sha256": "31f26ead6458478760d62c0ca1cd6010d5686217ec232b8e4e59b096710cafff",
+      "sha256": "a545b63174aa5a355a277b6a248354eacf7953b1881bf5837d121fbdda4cd21d",
       "executable": "tailscale",
       "install_path": "/usr/data/rosetteos/apps/tailscale",
       "service": {
