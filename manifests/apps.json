@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "name": "Rosette App Store Catalog",
-  "updated_at": "2026-10-10T20:06:42Z",
+  "updated_at": "2026-10-11T00:08:55Z",
   "categories": [
     {
       "id": "web_ui",
@@ -144,17 +144,33 @@
       "category": "tool",
       "icon": "klipper-backup",
       "icon_url": "https://raw.githubusercontent.com/RosetteOS/AppStore/main/icons/klipper-backup.png",
-      "description": "Automated git backup of Klipper and printer configuration files to GitHub. Trigger backups manually from Mainsail, Fluidd, or G-Code macros via BACKUP_CFG.",
+      "description": "Automated git backup of Klipper and printer configuration files to GitHub. Backs up automatically in the background on boot and file changes, or manually via BACKUP_CFG.",
       "author": "Staubgeborener",
       "version": "1.3.6",
       "type": "tool",
       "is_builtin": false,
       "download_url": "https://raw.githubusercontent.com/RosetteOS/AppStore/main/packages/klipper-backup-v1.3.6.zip",
-      "sha256": "3f2858f1fb606d0297967dc50caf96fdd23cb21f9d9c4542e3eb667b5713fd32",
+      "sha256": "dc6a5f1f745bb913f081fa3b13abe0038af9b31a1b5d81d6ef4a57e5896a9bd0",
       "executable": "script.sh",
       "install_path": "/usr/data/rosetteos/apps/klipper-backup",
+      "service": {
+        "exec": "/usr/data/rosetteos/apps/klipper-backup/klipper-backup-service.sh",
+        "priority": 60,
+        "oom_score_adj": -200
+      },
       "config_url": "https://raw.githubusercontent.com/RosetteOS/AppStore/main/configs/klipper-backup.cfg",
       "config_target": "macros/klipper-backup.cfg",
+      "config_urls": {
+        "macros/klipper-backup.cfg": "https://raw.githubusercontent.com/RosetteOS/AppStore/main/configs/klipper-backup.cfg",
+        "klipper-backup.env": "https://raw.githubusercontent.com/RosetteOS/AppStore/main/configs/klipper-backup.env"
+      },
+      "config_targets": [
+        "macros/klipper-backup.cfg",
+        "klipper-backup.env"
+      ],
+      "cleanup_config_files": [
+        "klipper-backup.env"
+      ],
       "klipper_include": true,
       "output_dirs": [
         "config/macros"
@@ -162,6 +178,36 @@
       "probe_path": "/usr/data/rosetteos/apps/klipper-backup/script.sh",
       "website": "https://github.com/Staubgeborener/klipper-backup",
       "source_url": "https://github.com/Staubgeborener/klipper-backup"
+    },
+    {
+      "id": "tailscale",
+      "name": "Tailscale VPN",
+      "category": "tool",
+      "icon": "tailscale",
+      "icon_url": "https://raw.githubusercontent.com/RosetteOS/AppStore/main/icons/tailscale.png",
+      "description": "Secure zero-config mesh VPN (WireGuard) enabling encrypted remote access to your 3D printer from any phone, tablet, or PC on your Tailnet without port forwarding.",
+      "author": "Tailscale Inc.",
+      "version": "1.104.1",
+      "type": "tool",
+      "is_builtin": false,
+      "download_url": "https://raw.githubusercontent.com/RosetteOS/AppStore/main/packages/tailscale-v1.104.1.zip",
+      "sha256": "13f7435cb9f3347e3b28f1e29bc339a8fef2d8c96f81587e50e4c873b7e69ddc",
+      "executable": "tailscale",
+      "install_path": "/usr/data/rosetteos/apps/tailscale",
+      "service": {
+        "exec": "/usr/data/rosetteos/apps/tailscale/tailscaled-runner.sh",
+        "priority": 60,
+        "oom_score_adj": -200
+      },
+      "config_url": "https://raw.githubusercontent.com/RosetteOS/AppStore/main/configs/tailscale.cfg",
+      "config_target": "macros/tailscale.cfg",
+      "klipper_include": true,
+      "output_dirs": [
+        "config/macros"
+      ],
+      "probe_path": "/usr/data/rosetteos/apps/tailscale/tailscale",
+      "website": "https://tailscale.com",
+      "source_url": "https://github.com/tailscale/tailscale"
     },
     {
       "id": "vnc",

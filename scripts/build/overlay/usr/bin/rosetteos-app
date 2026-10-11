@@ -694,31 +694,64 @@ def remove_app_moonraker_components(install_path: str, app: dict):
                     print(f"WARNING: Failed removing {dest_comp}: {e}", file=sys.stderr)
 
 
+def get_app_config_specs(app: dict) -> list:
+    """
+    Returns a list of dicts: [{'target': target_path, 'url': download_url}, ...]
+    extracted generically from app metadata without hardcoded app logic.
+    """
+    specs = []
+    seen = set()
+
+    # 1. Structured config_files array: [{"target": "...", "url": "..."}, ...]
+    for cf in app.get("config_files", []):
+        if isinstance(cf, dict) and cf.get("target"):
+            t = cf["target"]
+            if t not in seen:
+                seen.add(t)
+                specs.append({"target": t, "url": cf.get("url", "")})
+        elif isinstance(cf, str) and cf:
+            if cf not in seen:
+                seen.add(cf)
+                specs.append({"target": cf, "url": ""})
+
+    # 2. Dictionary of config_urls: {"path/to/target": "https://...", ...}
+    cfg_urls = app.get("config_urls", {})
+    if isinstance(cfg_urls, dict):
+        for t, u in cfg_urls.items():
+            if t and t not in seen:
+                seen.add(t)
+                specs.append({"target": t, "url": u or ""})
+
+    # 3. List of config_targets: ["target1", "target2"]
+    for t in app.get("config_targets", []):
+        if isinstance(t, str) and t and t not in seen:
+            seen.add(t)
+            url = app.get("config_url", "") if t == app.get("config_target") else ""
+            specs.append({"target": t, "url": url})
+
+    # 4. Standard single config_target / config_url
+    single_target = app.get("config_target")
+    if isinstance(single_target, str) and single_target and single_target not in seen:
+        seen.add(single_target)
+        specs.append({"target": single_target, "url": app.get("config_url", "")})
+
+    return specs
+
+
 def install_app_config_files(install_path: str, app: dict):
     """
-    Downloads or copies configuration / macro files declared in app['config_targets'] / app['config_target'].
+    Downloads or copies configuration / macro files declared in app metadata.
     """
-    raw_targets = app.get("config_targets") or app.get("config_target")
-    if not raw_targets:
+    specs = get_app_config_specs(app)
+    if not specs:
         return
 
-    if isinstance(raw_targets, str):
-        targets = [raw_targets]
-    elif isinstance(raw_targets, list):
-        targets = [t for t in raw_targets if isinstance(t, str) and t]
-    else:
-        return
-
-    config_urls = app.get("config_urls", {})
     cfg_dirs = get_config_dirs()
 
-    for target_rel in targets:
+    for spec in specs:
+        target_rel = spec["target"]
+        config_url = spec.get("url", "")
         seed_file = get_seed_config(target_rel)
-        config_url = app.get("config_url") if target_rel == app.get("config_target") else ""
-        if not config_url and isinstance(config_urls, dict):
-            config_url = config_urls.get(target_rel, "")
-        if not config_url and target_rel == "klipper-backup.env":
-            config_url = "https://raw.githubusercontent.com/RosetteOS/AppStore/main/configs/klipper-backup.env"
 
         for cfg_dir in cfg_dirs:
             dest_path = os.path.join(cfg_dir, target_rel)
@@ -752,17 +785,12 @@ def install_app_config_files(install_path: str, app: dict):
 
 
 def remove_app_config_files(app: dict):
-    raw_targets = app.get("config_targets") or app.get("config_target")
+    specs = get_app_config_specs(app)
     cleanup_targets = app.get("cleanup_config_files", [])
     if isinstance(cleanup_targets, str):
         cleanup_targets = [cleanup_targets]
 
-    targets = []
-    if isinstance(raw_targets, str):
-        targets.append(raw_targets)
-    elif isinstance(raw_targets, list):
-        targets.extend(t for t in raw_targets if isinstance(t, str) and t)
-
+    targets = [s["target"] for s in specs]
     targets.extend(path for path in cleanup_targets if isinstance(path, str) and path)
     if not targets:
         return
