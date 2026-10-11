@@ -61,6 +61,8 @@ OTA_TARGET="${ROSETTEOS_OTA_TARGET:-all}"
 CREALITY_OTA_VER_ARG=""
 PACKAGE_VERSION="${ROSETTEOS_PACKAGE_VERSION:-}"
 FORCE_PULL=0
+RUN_TESTS_ONLY=0
+RUN_TESTS_FILTER=""
 
 usage() {
 	echo "Usage: $0 [OPTIONS]"
@@ -73,6 +75,7 @@ usage() {
 	echo "  --creality-ota-version <ver>    Override Creality OTA envelope version (requires --ota, --ota-target, or --all)"
 	echo "  --all, --release                Package all deployment formats (.swu, .ingenic, and .img OTA)"
 	echo "  --version <ver>                 Override RosetteOS package version string (.swu and .ingenic)"
+	echo "  --test [filter]                 Run offline test suites inside the build container and exit"
 	echo "  --pull                          Force pulling the build environment container image even if cached locally"
 	echo "  -h, --help                      Display this help message and exit"
 }
@@ -128,6 +131,19 @@ while [ $# -gt 0 ]; do
 			;;
 		--pull)
 			FORCE_PULL=1
+			shift
+			;;
+		--test)
+			RUN_TESTS_ONLY=1
+			shift
+			if [ $# -gt 0 ] && [ "${1#-}" = "$1" ]; then
+				RUN_TESTS_FILTER="$1"
+				shift
+			fi
+			;;
+		--test=*)
+			RUN_TESTS_ONLY=1
+			RUN_TESTS_FILTER="${1#*=}"
 			shift
 			;;
 		-h|--help)
@@ -235,15 +251,20 @@ ROSETTEOS_REPO_ROOT=/workspace/RosetteOS
 CANDIDATE_DEFAULT=0
 [ -n "$BUILD_IMAGE_CANDIDATE_TAG" ] && CANDIDATE_DEFAULT=1
 
-BUILD_CMD="sh scripts/build/build-qualified-baseline.sh"
-[ "$BUILD_SWU" -eq 1 ] && BUILD_CMD="$BUILD_CMD --swu"
-[ "$BUILD_INGENIC" -eq 1 ] && BUILD_CMD="$BUILD_CMD --ingenic"
-if [ "$BUILD_OTA" -eq 1 ]; then
-	BUILD_CMD="$BUILD_CMD --ota --ota-target $OTA_TARGET"
-	[ -n "$CREALITY_OTA_VER_ARG" ] && BUILD_CMD="$BUILD_CMD --creality-ota-version $CREALITY_OTA_VER_ARG"
-fi
-if [ -n "$PACKAGE_VERSION" ]; then
-	BUILD_CMD="$BUILD_CMD --version $PACKAGE_VERSION"
+if [ "$RUN_TESTS_ONLY" -eq 1 ]; then
+	BUILD_CMD="sh tests/run-all.sh"
+	[ -n "$RUN_TESTS_FILTER" ] && BUILD_CMD="$BUILD_CMD $RUN_TESTS_FILTER"
+else
+	BUILD_CMD="sh scripts/build/build-qualified-baseline.sh"
+	[ "$BUILD_SWU" -eq 1 ] && BUILD_CMD="$BUILD_CMD --swu"
+	[ "$BUILD_INGENIC" -eq 1 ] && BUILD_CMD="$BUILD_CMD --ingenic"
+	if [ "$BUILD_OTA" -eq 1 ]; then
+		BUILD_CMD="$BUILD_CMD --ota --ota-target $OTA_TARGET"
+		[ -n "$CREALITY_OTA_VER_ARG" ] && BUILD_CMD="$BUILD_CMD --creality-ota-version $CREALITY_OTA_VER_ARG"
+	fi
+	if [ -n "$PACKAGE_VERSION" ]; then
+		BUILD_CMD="$BUILD_CMD --version $PACKAGE_VERSION"
+	fi
 fi
 
 exec "$ENGINE" run --rm \
