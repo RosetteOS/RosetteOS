@@ -148,6 +148,11 @@ start() {
 	fi
 	touch "$MARKER"
 
+	if ! ndq_validate "$NDQ_CONFIG_FILE" >/dev/null 2>&1; then
+		log "no qualified display configuration present ($NDQ_CONFIG_FILE) - skipping health poll, both drivers remain at their own safe boot defaults"
+		exit 0
+	fi
+
 	if ! wait_for_health; then
 		log "printer stack (Klipper/Moonraker), GuppyScreen, networking, or the display itself never confirmed healthy after $((HEALTH_RETRIES * HEALTH_DELAY))s - doing nothing, both drivers remain at their own safe boot defaults"
 		exit 0

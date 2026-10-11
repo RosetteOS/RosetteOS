@@ -861,6 +861,24 @@ rc=$?
 [ ! -s "$NDQ_TOUCH_MODE_FILE" ] && [ ! -s "$NDQ_BACKLIGHT_CMD_FILE" ] && pass \
 	|| fail "S97 mutated a debugfs file even though the display's own backlight status file was never confirmed readable"
 
+# --- fast-skip path: when display-qualified.conf does not exist (standard
+# install default), S97 must exit 0 immediately without polling health gates. ---
+reset_fake_kernel
+MARKER_NOCONFIG="$WORK/marker-noconfig"
+OUT_NOCONFIG=$(
+	NDQ_LIB="$LIB" NDQ_HEALTHCHECK_LIB="$HEALTHCHECK_LIB" \
+	MARKER="$MARKER_NOCONFIG" GUPPYSCREEN_PIDFILE="/nonexistent/pid" \
+	HEALTH_RETRIES=5 HEALTH_DELAY=10 \
+	NDQ_CONFIG_FILE="$WORK/nonexistent-display-qualified.conf" \
+	NDQ_TOUCH_MODE_FILE="$NDQ_TOUCH_MODE_FILE" NDQ_TOUCH_STATUS_FILE="$NDQ_TOUCH_STATUS_FILE" \
+	NDQ_BACKLIGHT_CMD_FILE="$NDQ_BACKLIGHT_CMD_FILE" NDQ_BACKLIGHT_STATUS_FILE="$NDQ_BACKLIGHT_STATUS_FILE" \
+	sh "$APPLY_SCRIPT" start
+)
+rc=$?
+[ "$rc" -eq 0 ] && pass || fail "S97 start (missing config fast-skip) exited $rc, expected 0"
+echo "$OUT_NOCONFIG" | grep -q "skipping health poll" && pass \
+	|| fail "S97 start with missing config did not skip health poll: $OUT_NOCONFIG"
+
 # --- regression test (Pinctrl/Display Baseline Closeout Mission,
 # 2026-08-03): the REAL default value of NDQ_BACKLIGHT_CMD_FILE/
 # NDQ_BACKLIGHT_STATUS_FILE - with NO override, exactly as a real boot
