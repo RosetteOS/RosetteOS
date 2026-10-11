@@ -696,56 +696,73 @@ def remove_app_moonraker_components(install_path: str, app: dict):
 
 def install_app_config_files(install_path: str, app: dict):
     """
-    Downloads or copies configuration / macro files declared in app['config_target'] / app['config_url'].
+    Downloads or copies configuration / macro files declared in app['config_targets'] / app['config_target'].
     """
-    target_rel = app.get("config_target")
-    if not target_rel:
+    raw_targets = app.get("config_targets") or app.get("config_target")
+    if not raw_targets:
         return
 
-    config_url = app.get("config_url")
+    if isinstance(raw_targets, str):
+        targets = [raw_targets]
+    elif isinstance(raw_targets, list):
+        targets = [t for t in raw_targets if isinstance(t, str) and t]
+    else:
+        return
+
+    config_urls = app.get("config_urls", {})
     cfg_dirs = get_config_dirs()
-    seed_file = get_seed_config(target_rel)
 
-    for cfg_dir in cfg_dirs:
-        dest_path = os.path.join(cfg_dir, target_rel)
-        if not os.path.isfile(dest_path):
-            installed = False
-            if config_url:
-                print(f"Downloading {target_rel} from {config_url}...")
-                if download_file(config_url, dest_path):
-                    installed = True
-                    print(f"OK: Downloaded and installed {dest_path}")
+    for target_rel in targets:
+        seed_file = get_seed_config(target_rel)
+        config_url = app.get("config_url") if target_rel == app.get("config_target") else ""
+        if not config_url and isinstance(config_urls, dict):
+            config_url = config_urls.get(target_rel, "")
+        if not config_url and target_rel == "klipper-backup.env":
+            config_url = "https://raw.githubusercontent.com/RosetteOS/AppStore/main/configs/klipper-backup.env"
 
-            if not installed and install_path:
-                for cand in [os.path.join(install_path, target_rel), os.path.join(install_path, os.path.basename(target_rel))]:
-                    if os.path.isfile(cand):
-                        os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-                        try:
-                            shutil.copy2(cand, dest_path)
-                            installed = True
-                            print(f"OK: Installed {dest_path} from package bundle")
-                            break
-                        except Exception as e:
-                            print(f"WARNING: Failed to install {dest_path} from package bundle: {e}", file=sys.stderr)
+        for cfg_dir in cfg_dirs:
+            dest_path = os.path.join(cfg_dir, target_rel)
+            if not os.path.isfile(dest_path):
+                installed = False
+                if config_url:
+                    print(f"Downloading {target_rel} from {config_url}...")
+                    if download_file(config_url, dest_path):
+                        installed = True
+                        print(f"OK: Downloaded and installed {dest_path}")
 
-            if not installed and seed_file and os.path.abspath(seed_file) != os.path.abspath(dest_path):
-                os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-                try:
-                    shutil.copy2(seed_file, dest_path)
-                    print(f"OK: Installed {dest_path} from local seed")
-                except Exception as e:
-                    print(f"WARNING: Failed to install {dest_path}: {e}", file=sys.stderr)
+                if not installed and install_path:
+                    for cand in [os.path.join(install_path, target_rel), os.path.join(install_path, os.path.basename(target_rel))]:
+                        if os.path.isfile(cand):
+                            os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                            try:
+                                shutil.copy2(cand, dest_path)
+                                installed = True
+                                print(f"OK: Installed {dest_path} from package bundle")
+                                break
+                            except Exception as e:
+                                print(f"WARNING: Failed to install {dest_path} from package bundle: {e}", file=sys.stderr)
+
+                if not installed and seed_file and os.path.abspath(seed_file) != os.path.abspath(dest_path):
+                    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                    try:
+                        shutil.copy2(seed_file, dest_path)
+                        print(f"OK: Installed {dest_path} from local seed")
+                    except Exception as e:
+                        print(f"WARNING: Failed to install {dest_path}: {e}", file=sys.stderr)
 
 
 def remove_app_config_files(app: dict):
-    target_rel = app.get("config_target")
+    raw_targets = app.get("config_targets") or app.get("config_target")
     cleanup_targets = app.get("cleanup_config_files", [])
     if isinstance(cleanup_targets, str):
         cleanup_targets = [cleanup_targets]
 
     targets = []
-    if target_rel:
-        targets.append(target_rel)
+    if isinstance(raw_targets, str):
+        targets.append(raw_targets)
+    elif isinstance(raw_targets, list):
+        targets.extend(t for t in raw_targets if isinstance(t, str) and t)
+
     targets.extend(path for path in cleanup_targets if isinstance(path, str) and path)
     if not targets:
         return
@@ -955,7 +972,9 @@ def install_app_printer_cfg(install_path: str, app: dict):
     """
     If app has klipper_include: true, ensures [include <config_target>] is in printer.cfg.
     """
-    target_rel = app.get("config_target")
+    target_rel = app.get("klipper_include_target") or app.get("config_target")
+    if not target_rel and isinstance(app.get("config_targets"), list):
+        target_rel = next((t for t in app["config_targets"] if t.endswith(".cfg")), "")
     if not target_rel:
         return
 
@@ -992,7 +1011,9 @@ def remove_app_printer_cfg(app: dict):
     """
     Removes [include <config_target>] from printer.cfg.
     """
-    target_rel = app.get("config_target")
+    target_rel = app.get("klipper_include_target") or app.get("config_target")
+    if not target_rel and isinstance(app.get("config_targets"), list):
+        target_rel = next((t for t in app["config_targets"] if t.endswith(".cfg")), "")
     if not target_rel:
         return
 
