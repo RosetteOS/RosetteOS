@@ -581,7 +581,7 @@ channel: dev
 type: web
 channel: beta
 repo: mainsail-crew/mainsail
-path: /usr/data/openke/apps/mainsail
+path: /usr/data/rosetteos/apps/mainsail
 
 [authorization]
 trusted_clients:
@@ -627,10 +627,10 @@ else
 	fail "installed app sections were lost during moonraker.conf migration"
 fi
 
-if grep -q "path: /usr/data/rosetteos/apps/mainsail" "$t8_out" && ! grep -q "/usr/data/openke" "$t8_out"; then
-	pass "legacy openke path rewritten to rosetteos"
+if grep -q "path: /usr/data/rosetteos/apps/mainsail" "$t8_out"; then
+	pass "installed app custom path was preserved in moonraker.conf"
 else
-	fail "legacy path was not rewritten in moonraker.conf"
+	fail "custom path was not preserved in moonraker.conf"
 fi
 
 # Idempotency check

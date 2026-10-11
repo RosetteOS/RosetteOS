@@ -13,7 +13,7 @@
 MCU_DIR=/opt/rosetteos/mcu
 TOOLS="$MCU_DIR/tools"
 PORT=/dev/ttyS1
-ROSETTEOS_ROOT="${ROSETTEOS_ROOT:-${NEBULAOS_ROOT:-/usr/data/rosetteos}}"
+ROSETTEOS_ROOT="${ROSETTEOS_ROOT:-/usr/data/rosetteos}"
 STATE_DIR="$ROSETTEOS_ROOT/system"
 STATE_FILE="$STATE_DIR/mcu-upgrade.state"
 LOG_FILE="$ROSETTEOS_ROOT/maintenance/logs/mcu-upgrade.log"

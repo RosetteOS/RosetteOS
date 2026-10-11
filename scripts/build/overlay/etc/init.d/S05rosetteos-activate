@@ -152,7 +152,7 @@ start() {
 		log "/usr/data is not mounted - cannot activate anything, staying fully immutable"
 		return 0
 	fi
-	testfile="/usr/data/.nebulaos-rw-test-$$"
+	testfile="/usr/data/.rosetteos-rw-test-$$"
 	if ! ( : > "$testfile" ) 2>/dev/null; then
 		log "/usr/data is not writable - cannot activate anything, staying fully immutable"
 		return 0

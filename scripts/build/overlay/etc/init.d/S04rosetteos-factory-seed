@@ -32,8 +32,7 @@
 # Overridable via env for tests/factory-seed-git-tests.sh (same
 # fixture-path convention as scripts/flash-spare-slot.sh's DEV_PREFIX) -
 # real boot never sets these, so ":=" always resolves to the real paths.
-ROSETTEOS_ROOT="${ROSETTEOS_ROOT:-${NEBULAOS_ROOT:-/usr/data/rosetteos}}"
-NEBULAOS_ROOT="$ROSETTEOS_ROOT"
+ROSETTEOS_ROOT="${ROSETTEOS_ROOT:-/usr/data/rosetteos}"
 SEEDS="${SEEDS:-/opt/rosetteos-seeds}"
 APPS="${APPS:-$ROSETTEOS_ROOT/apps}"
 SYSTEM="${SYSTEM:-$ROSETTEOS_ROOT/system}"
@@ -570,11 +569,11 @@ EOF
 	log "recorded initial app generation ($version) immediately after fresh seed"
 }
 
-# S04ROSETTEOS_FACTORY_SEED_NO_AUTORUN=1 (or S04NEBULAOS_FACTORY_SEED_NO_AUTORUN=1)
+# S04ROSETTEOS_FACTORY_SEED_NO_AUTORUN=1
 # lets tests/factory-seed-git-tests.sh source this script (same convention as
 # scripts/flash-spare-slot.sh's FLASH_SPARE_SLOT_NO_AUTORUN) to call seed_git_app()
 # directly against fixture archives, without also running the init-script dispatch below.
-if [ -z "${S04ROSETTEOS_FACTORY_SEED_NO_AUTORUN:-${S04NEBULAOS_FACTORY_SEED_NO_AUTORUN:-}}" ]; then
+if [ -z "${S04ROSETTEOS_FACTORY_SEED_NO_AUTORUN:-}" ]; then
 	case "$1" in
 		start)
 			start

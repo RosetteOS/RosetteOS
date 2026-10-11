@@ -38,8 +38,7 @@
 #                  source pin, and change far less often; a future mission
 #                  can extend this the same way if that ever needs it.
 #
-ROSETTEOS_ROOT="${ROSETTEOS_ROOT:-${NEBULAOS_ROOT:-/usr/data/rosetteos}}"
-NEBULAOS_ROOT="$ROSETTEOS_ROOT"
+ROSETTEOS_ROOT="${ROSETTEOS_ROOT:-/usr/data/rosetteos}"
 SEEDS="${SEEDS:-/opt/rosetteos-seeds}"
 APPS="${APPS:-$ROSETTEOS_ROOT/apps}"
 SYSTEM="${SYSTEM:-$ROSETTEOS_ROOT/system}"
@@ -282,7 +281,7 @@ EOF
 	log "recorded generation $version to $GENERATION_FILE"
 }
 
-if [ -z "${S04ROSETTEOS_MIGRATE_NO_AUTORUN:-${S04NEBULAOS_MIGRATE_NO_AUTORUN:-}}" ]; then
+if [ -z "${S04ROSETTEOS_MIGRATE_NO_AUTORUN:-}" ]; then
 	case "$1" in
 		start)
 			start

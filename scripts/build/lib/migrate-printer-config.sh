@@ -167,9 +167,6 @@ with open(tpl_path, 'r', encoding='utf-8', errors='replace') as f:
 old_content = old_content.replace('\r\n', '\n')
 template_content = template_content.replace('\r\n', '\n')
 
-old_content = old_content.replace('/usr/data/nebulaos', '/usr/data/rosetteos')
-old_content = old_content.replace('/usr/data/openke', '/usr/data/rosetteos')
-
 def parse_sections(text):
     sections = []
     curr = {'header': None, 'name': None, 'lines': []}
@@ -339,8 +336,7 @@ PYEOF
 			return $rc
 		fi
 	else
-		sed -e 's|/usr/data/nebulaos|/usr/data/rosetteos|g' \
-		    -e 's|/usr/data/openke|/usr/data/rosetteos|g' "$old_file" > "$out_file"
+		cp -a "$old_file" "$out_file"
 		if ! grep -q "^\s*\[zeroconf\]" "$out_file"; then
 			if grep -q "^\s*\[server\]" "$out_file"; then
 				awk '/^\[server\]/{print; print "\n[zeroconf]"; next}1' "$out_file" > "$out_file.tmp" && mv "$out_file.tmp" "$out_file"

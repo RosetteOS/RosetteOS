@@ -248,7 +248,7 @@ touch -d "@2000000000" "$chelper_dir/c_helper.so" 2>/dev/null || true
 # Publish the platform proof consumed by nebulaos_compat. Keep it staged
 # outside the Klipper checkout so the upstream source remains clean; it is
 # copied into the immutable runtime and injected into the factory seed later.
-CHELPER_VERDICT="$WORK/nebulaos-chelper-verdict.json"
+CHELPER_VERDICT="$WORK/klipper-chelper-verdict.json"
 cat > "$CHELPER_VERDICT" <<EOF
 {
   "status": "ok",

@@ -231,9 +231,6 @@ ROSETTEOS_REPO_ROOT=/workspace/RosetteOS
 # without `-t` would still block waiting on stdin in a backgrounded/piped
 # invocation with none available - dropping both is correct for a batch
 # build, not just a workaround.
-# Also mount at /workspace/NebulaOS-firmware for backward compatibility with
-# pre-existing or cached Buildroot host tools whose RPATH/RUNPATH or shebangs
-# reference the heritage path.
 # Default to candidate build mode when building against a candidate container tag
 CANDIDATE_DEFAULT=0
 [ -n "$BUILD_IMAGE_CANDIDATE_TAG" ] && CANDIDATE_DEFAULT=1
@@ -259,7 +256,6 @@ exec "$ENGINE" run --rm \
 	-e ROSETTEOS_PACKAGE_VERSION="$PACKAGE_VERSION" \
 	-e FORCE_UNSAFE_CONFIGURE=1 \
 	-v "$SCRIPT_DIR:$ROSETTEOS_REPO_ROOT" \
-	-v "$SCRIPT_DIR:/workspace/NebulaOS-firmware" \
 	-w "$ROSETTEOS_REPO_ROOT" \
 	"$IMAGE_REF" \
 	"$BUILD_CMD"
