@@ -40,30 +40,69 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 BUILD_SWU=0
 BUILD_INGENIC=0
 BUILD_OTA=0
-for arg in "$@"; do
-	case "$arg" in
+OTA_TARGET="${ROSETTEOS_OTA_TARGET:-all}"
+PACKAGE_VERSION="${ROSETTEOS_PACKAGE_VERSION:-}"
+
+usage() {
+	echo "Usage: $0 [OPTIONS]"
+	echo ""
+	echo "Options:"
+	echo "  --swu                      Package a verified SWUpdate (.swu) archive at the end of the build"
+	echo "  --ingenic                  Package a verified Ingenic USB Cloner (.ingenic) archive at the end of the build"
+	echo "  --ota                      Package stock CrealityOS-compatible OTA (.img) updates at the end of the build"
+	echo "  --ota-target <target>      Target profile for --ota: ke, nebula, or all (default: all; implies --ota)"
+	echo "  --all, --release           Package all deployment formats (.swu, .ingenic, and .img OTA)"
+	echo "  --version <ver>            Override package version string for generated deployment archives"
+	echo "  -h, --help                 Display this help message and exit"
+}
+
+while [ $# -gt 0 ]; do
+	case "$1" in
 		--swu)
 			BUILD_SWU=1
+			shift
 			;;
 		--ingenic)
 			BUILD_INGENIC=1
+			shift
 			;;
 		--ota)
 			BUILD_OTA=1
+			shift
+			;;
+		--ota-target)
+			[ $# -ge 2 ] || { echo "FATAL: --ota-target requires a value (ke, nebula, or all)" >&2; exit 1; }
+			OTA_TARGET="$2"
+			BUILD_OTA=1
+			shift 2
+			;;
+		--ota-target=*)
+			OTA_TARGET="${1#*=}"
+			BUILD_OTA=1
+			shift
+			;;
+		--all|--release)
+			BUILD_SWU=1
+			BUILD_INGENIC=1
+			BUILD_OTA=1
+			shift
+			;;
+		--version)
+			[ $# -ge 2 ] || { echo "FATAL: --version requires a value" >&2; exit 1; }
+			PACKAGE_VERSION="$2"
+			shift 2
+			;;
+		--version=*)
+			PACKAGE_VERSION="${1#*=}"
+			shift
 			;;
 		-h|--help)
-			echo "Usage: $0 [--swu] [--ingenic] [--ota]"
-			echo ""
-			echo "Options:"
-			echo "  --swu        Package a verified SWUpdate (.swu) archive at the end of the build"
-			echo "  --ingenic    Package a verified Ingenic USB Cloner (.ingenic) archive at the end of the build"
-			echo "  --ota        Package stock CrealityOS-compatible OTA (.img) updates at the end of the build"
-			echo "  -h, --help   Display this help message and exit"
+			usage
 			exit 0
 			;;
 		*)
-			echo "FATAL: unknown argument: $arg" >&2
-			echo "Usage: $0 [--swu] [--ingenic] [--ota]" >&2
+			echo "FATAL: unknown argument: $1" >&2
+			usage >&2
 			exit 1
 			;;
 	esac
@@ -71,6 +110,19 @@ done
 [ "${ROSETTEOS_BUILD_SWU:-0}" = "1" ] && BUILD_SWU=1
 [ "${ROSETTEOS_BUILD_INGENIC:-0}" = "1" ] && BUILD_INGENIC=1
 [ "${ROSETTEOS_BUILD_OTA:-0}" = "1" ] && BUILD_OTA=1
+if [ "${ROSETTEOS_BUILD_ALL:-0}" = "1" ]; then
+	BUILD_SWU=1
+	BUILD_INGENIC=1
+	BUILD_OTA=1
+fi
+
+case "$OTA_TARGET" in
+	ke|nebula|all) ;;
+	*)
+		echo "FATAL: invalid --ota-target '$OTA_TARGET' (expected: ke, nebula, or all)" >&2
+		exit 1
+		;;
+esac
 
 echo "=== build-qualified-baseline: fetching every required source ==="
 sh "$SCRIPT_DIR/00-fetch-vendor-sources.sh"
@@ -95,17 +147,17 @@ sh "$SCRIPT_DIR/assert-baseline-config.sh" post-build
 echo "=== build-qualified-baseline: complete and composition-verified ==="
 if [ "$BUILD_SWU" -eq 1 ]; then
 	echo "=== build-qualified-baseline: packaging SWUpdate (.swu) ==="
-	sh "$SCRIPT_DIR/package-swu.sh"
+	sh "$SCRIPT_DIR/package-swu.sh" "" "$PACKAGE_VERSION"
 fi
 
 if [ "$BUILD_INGENIC" -eq 1 ]; then
 	echo "=== build-qualified-baseline: packaging Ingenic cloner (.ingenic) ==="
-	sh "$SCRIPT_DIR/package-ingenic.sh"
+	sh "$SCRIPT_DIR/package-ingenic.sh" "" "$PACKAGE_VERSION"
 fi
 
 if [ "$BUILD_OTA" -eq 1 ]; then
-	echo "=== build-qualified-baseline: packaging Stock CrealityOS OTA (.img) ==="
-	sh "$SCRIPT_DIR/package-creality-ota.sh"
+	echo "=== build-qualified-baseline: packaging Stock CrealityOS OTA (.img, target: $OTA_TARGET) ==="
+	sh "$SCRIPT_DIR/package-creality-ota.sh" "" "$OTA_TARGET" "$PACKAGE_VERSION"
 fi
 
 if [ "$BUILD_SWU" -eq 0 ] && [ "$BUILD_INGENIC" -eq 0 ] && [ "$BUILD_OTA" -eq 0 ]; then

@@ -57,35 +57,75 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 BUILD_SWU=0
 BUILD_INGENIC=0
 BUILD_OTA=0
+OTA_TARGET="${ROSETTEOS_OTA_TARGET:-all}"
+PACKAGE_VERSION="${ROSETTEOS_PACKAGE_VERSION:-}"
 FORCE_PULL=0
-for arg in "$@"; do
-	case "$arg" in
+
+usage() {
+	echo "Usage: $0 [OPTIONS]"
+	echo ""
+	echo "Options:"
+	echo "  --swu                      Package a verified SWUpdate (.swu) archive at the end of the build"
+	echo "  --ingenic                  Package a verified Ingenic USB Cloner (.ingenic) archive at the end of the build"
+	echo "  --ota                      Package stock CrealityOS-compatible OTA (.img) updates at the end of the build"
+	echo "  --ota-target <target>      Target profile for --ota: ke, nebula, or all (default: all; implies --ota)"
+	echo "  --all, --release           Package all deployment formats (.swu, .ingenic, and .img OTA)"
+	echo "  --version <ver>            Override package version string for generated deployment archives"
+	echo "  --pull                     Force pulling the build environment container image even if cached locally"
+	echo "  -h, --help                 Display this help message and exit"
+}
+
+while [ $# -gt 0 ]; do
+	case "$1" in
 		--swu)
 			BUILD_SWU=1
+			shift
 			;;
 		--ingenic)
 			BUILD_INGENIC=1
+			shift
 			;;
 		--ota)
 			BUILD_OTA=1
+			shift
+			;;
+		--ota-target)
+			[ $# -ge 2 ] || { echo "FATAL: --ota-target requires a value (ke, nebula, or all)" >&2; exit 1; }
+			OTA_TARGET="$2"
+			BUILD_OTA=1
+			shift 2
+			;;
+		--ota-target=*)
+			OTA_TARGET="${1#*=}"
+			BUILD_OTA=1
+			shift
+			;;
+		--all|--release)
+			BUILD_SWU=1
+			BUILD_INGENIC=1
+			BUILD_OTA=1
+			shift
+			;;
+		--version)
+			[ $# -ge 2 ] || { echo "FATAL: --version requires a value" >&2; exit 1; }
+			PACKAGE_VERSION="$2"
+			shift 2
+			;;
+		--version=*)
+			PACKAGE_VERSION="${1#*=}"
+			shift
 			;;
 		--pull)
 			FORCE_PULL=1
+			shift
 			;;
 		-h|--help)
-			echo "Usage: $0 [--swu] [--ingenic] [--ota] [--pull]"
-			echo ""
-			echo "Options:"
-			echo "  --swu        Package a verified SWUpdate (.swu) archive at the end of the build"
-			echo "  --ingenic    Package a verified Ingenic USB Cloner (.ingenic) archive at the end of the build"
-			echo "  --ota        Package stock CrealityOS-compatible OTA (.img) updates at the end of the build"
-			echo "  --pull       Force pulling the build environment container image even if cached locally"
-			echo "  -h, --help   Display this help message and exit"
+			usage
 			exit 0
 			;;
 		*)
-			echo "FATAL: unknown argument: $arg" >&2
-			echo "Usage: $0 [--swu] [--ingenic] [--ota] [--pull]" >&2
+			echo "FATAL: unknown argument: $1" >&2
+			usage >&2
 			exit 1
 			;;
 	esac
@@ -93,7 +133,20 @@ done
 [ "${ROSETTEOS_BUILD_SWU:-0}" = "1" ] && BUILD_SWU=1
 [ "${ROSETTEOS_BUILD_INGENIC:-0}" = "1" ] && BUILD_INGENIC=1
 [ "${ROSETTEOS_BUILD_OTA:-0}" = "1" ] && BUILD_OTA=1
+if [ "${ROSETTEOS_BUILD_ALL:-0}" = "1" ]; then
+	BUILD_SWU=1
+	BUILD_INGENIC=1
+	BUILD_OTA=1
+fi
 [ "${ROSETTEOS_PULL:-0}" = "1" ] && FORCE_PULL=1
+
+case "$OTA_TARGET" in
+	ke|nebula|all) ;;
+	*)
+		echo "FATAL: invalid --ota-target '$OTA_TARGET' (expected: ke, nebula, or all)" >&2
+		exit 1
+		;;
+esac
 
 MANIFEST="$SCRIPT_DIR/manifests/dependencies.conf"
 [ -f "$MANIFEST" ] || { echo "FATAL: $MANIFEST not found" >&2; exit 1; }
@@ -171,13 +224,20 @@ CANDIDATE_DEFAULT=0
 BUILD_CMD="sh scripts/build/build-qualified-baseline.sh"
 [ "$BUILD_SWU" -eq 1 ] && BUILD_CMD="$BUILD_CMD --swu"
 [ "$BUILD_INGENIC" -eq 1 ] && BUILD_CMD="$BUILD_CMD --ingenic"
-[ "$BUILD_OTA" -eq 1 ] && BUILD_CMD="$BUILD_CMD --ota"
+if [ "$BUILD_OTA" -eq 1 ]; then
+	BUILD_CMD="$BUILD_CMD --ota --ota-target $OTA_TARGET"
+fi
+if [ -n "$PACKAGE_VERSION" ]; then
+	BUILD_CMD="$BUILD_CMD --version $PACKAGE_VERSION"
+fi
 
 exec "$ENGINE" run --rm \
 	--user "$(id -u):$(id -g)" \
 	-e HOME=/tmp \
 	-e ROSETTEOS_REPO_ROOT="$ROSETTEOS_REPO_ROOT" \
 	-e ROSETTEOS_CANDIDATE_BUILD="${ROSETTEOS_CANDIDATE_BUILD:-$CANDIDATE_DEFAULT}" \
+	-e ROSETTEOS_OTA_TARGET="$OTA_TARGET" \
+	-e ROSETTEOS_PACKAGE_VERSION="$PACKAGE_VERSION" \
 	-e FORCE_UNSAFE_CONFIGURE=1 \
 	-v "$SCRIPT_DIR:$ROSETTEOS_REPO_ROOT" \
 	-v "$SCRIPT_DIR:/workspace/NebulaOS-firmware" \
