@@ -124,42 +124,133 @@ case "$OTA_TARGET" in
 		;;
 esac
 
-echo "=== build-qualified-baseline: fetching every required source ==="
-sh "$SCRIPT_DIR/00-fetch-vendor-sources.sh"
+REPO_ROOT=$(cd "$SCRIPT_DIR/../.." && pwd)
+ARTIFACT_DIR="$REPO_ROOT/artifacts/buildroot-halley5-v30-image"
+BUILD_START_TS=$(date +%s)
+STAGE_TIMINGS=""
 
-echo "=== build-qualified-baseline: composing all 9 accepted kernel variants ==="
-sh "$SCRIPT_DIR/apply-qualified-baseline.sh"
+format_duration() {
+	_secs="$1"
+	_mins=$((_secs / 60))
+	_rem=$((_secs % 60))
+	if [ "$_mins" -gt 0 ]; then
+		printf "%dm %02ds" "$_mins" "$_rem"
+	else
+		printf "%ds" "$_rem"
+	fi
+}
 
-echo "=== build-qualified-baseline: pre-build assertions (source-level) ==="
-sh "$SCRIPT_DIR/assert-baseline-config.sh" pre-build
+run_stage() {
+	_label="$1"
+	shift
+	echo "=== build-qualified-baseline: $_label ==="
+	_stage_start=$(date +%s)
+	"$@"
+	_stage_end=$(date +%s)
+	_stage_elapsed=$((_stage_end - _stage_start))
+	_stage_fmt=$(format_duration "$_stage_elapsed")
+	echo "=== [done in $_stage_fmt] $_label ==="
+	STAGE_TIMINGS="${STAGE_TIMINGS}${_label}|${_stage_fmt}
+"
+}
 
-echo "=== build-qualified-baseline: running the build pipeline ==="
-sh "$SCRIPT_DIR/01-apply-kernel-patches.sh"
-sh "$SCRIPT_DIR/02-configure-buildroot.sh"
-sh "$SCRIPT_DIR/03-build-kernel-and-rootfs.sh"
-sh "$SCRIPT_DIR/04-cross-compile-app-stack.sh"
-sh "$SCRIPT_DIR/05-final-build.sh"
-sh "$SCRIPT_DIR/06-verify.sh"
+print_artifact_row() {
+	_file="$1"
+	[ -f "$_file" ] || return 0
+	_name=$(basename "$_file")
+	_size=$(du -h "$_file" 2>/dev/null | awk '{print $1}')
+	_sha=$(sha256sum "$_file" 2>/dev/null | awk '{print $1}')
+	printf "  %-38s  %8s  %s\n" "$_name" "$_size" "$_sha"
+}
 
-echo "=== build-qualified-baseline: post-build assertions (resolved artifacts) ==="
-sh "$SCRIPT_DIR/assert-baseline-config.sh" post-build
+print_build_summary() {
+	_total_end=$(date +%s)
+	_total_elapsed=$((_total_end - BUILD_START_TS))
+	_total_fmt=$(format_duration "$_total_elapsed")
+
+	echo ""
+	echo "================================================================================"
+	echo "                      ROSETTEOS BUILD SUMMARY"
+	echo "================================================================================"
+	echo "Stage Timings:"
+	printf "%s" "$STAGE_TIMINGS" | while IFS='|' read -r _s_label _s_time; do
+		[ -n "$_s_label" ] || continue
+		printf "  %-58s %10s\n" "$_s_label" "$_s_time"
+	done
+	echo "  ----------------------------------------------------------------------"
+	printf "  %-58s %10s\n" "Total Build Time" "$_total_fmt"
+	echo ""
+	echo "Artifacts ($ARTIFACT_DIR):"
+	printf "  %-38s  %8s  %s\n" "FILE" "SIZE" "SHA256"
+	echo "  ------------------------------------------------------------------------------"
+	print_artifact_row "$ARTIFACT_DIR/xImage"
+	print_artifact_row "$ARTIFACT_DIR/rootfs.squashfs"
+	if [ "$BUILD_SWU" -eq 1 ]; then
+		for _f in "$ARTIFACT_DIR"/*.swu; do
+			[ -f "$_f" ] && print_artifact_row "$_f"
+		done
+	fi
+	if [ "$BUILD_INGENIC" -eq 1 ]; then
+		for _f in "$ARTIFACT_DIR"/*.ingenic; do
+			[ -f "$_f" ] && print_artifact_row "$_f"
+		done
+	fi
+	if [ "$BUILD_OTA" -eq 1 ]; then
+		for _f in "$ARTIFACT_DIR"/*.img; do
+			[ -f "$_f" ] && print_artifact_row "$_f"
+		done
+	fi
+	echo "================================================================================"
+}
+
+run_stage "00 - fetching required vendor sources" \
+	sh "$SCRIPT_DIR/00-fetch-vendor-sources.sh"
+
+run_stage "baseline - composing all 9 accepted kernel variants" \
+	sh "$SCRIPT_DIR/apply-qualified-baseline.sh"
+
+run_stage "assert - pre-build assertions (source-level)" \
+	sh "$SCRIPT_DIR/assert-baseline-config.sh" pre-build
+
+run_stage "01 - applying kernel patches" \
+	sh "$SCRIPT_DIR/01-apply-kernel-patches.sh"
+
+run_stage "02 - configuring buildroot" \
+	sh "$SCRIPT_DIR/02-configure-buildroot.sh"
+
+run_stage "03 - building kernel and rootfs" \
+	sh "$SCRIPT_DIR/03-build-kernel-and-rootfs.sh"
+
+run_stage "04 - cross-compiling app stack" \
+	sh "$SCRIPT_DIR/04-cross-compile-app-stack.sh"
+
+run_stage "05 - final build assembly" \
+	sh "$SCRIPT_DIR/05-final-build.sh"
+
+run_stage "06 - verifying build output" \
+	sh "$SCRIPT_DIR/06-verify.sh"
+
+run_stage "assert - post-build assertions (resolved artifacts)" \
+	sh "$SCRIPT_DIR/assert-baseline-config.sh" post-build
 
 echo "=== build-qualified-baseline: complete and composition-verified ==="
 if [ "$BUILD_SWU" -eq 1 ]; then
-	echo "=== build-qualified-baseline: packaging SWUpdate (.swu) ==="
-	sh "$SCRIPT_DIR/package-swu.sh" "" "$PACKAGE_VERSION"
+	run_stage "package - SWUpdate (.swu)" \
+		sh "$SCRIPT_DIR/package-swu.sh" "" "$PACKAGE_VERSION"
 fi
 
 if [ "$BUILD_INGENIC" -eq 1 ]; then
-	echo "=== build-qualified-baseline: packaging Ingenic cloner (.ingenic) ==="
-	sh "$SCRIPT_DIR/package-ingenic.sh" "" "$PACKAGE_VERSION"
+	run_stage "package - Ingenic cloner (.ingenic)" \
+		sh "$SCRIPT_DIR/package-ingenic.sh" "" "$PACKAGE_VERSION"
 fi
 
 if [ "$BUILD_OTA" -eq 1 ]; then
-	echo "=== build-qualified-baseline: packaging Stock CrealityOS OTA (.img, target: $OTA_TARGET) ==="
-	sh "$SCRIPT_DIR/package-creality-ota.sh" "" "$OTA_TARGET" "$PACKAGE_VERSION"
+	run_stage "package - Stock CrealityOS OTA (.img, target: $OTA_TARGET)" \
+		sh "$SCRIPT_DIR/package-creality-ota.sh" "" "$OTA_TARGET" "$PACKAGE_VERSION"
 fi
 
+print_build_summary
+
 if [ "$BUILD_SWU" -eq 0 ] && [ "$BUILD_INGENIC" -eq 0 ] && [ "$BUILD_OTA" -eq 0 ]; then
-	echo "Package it with: sh scripts/build/package-deployment.sh, sh scripts/build/package-swu.sh, sh scripts/build/package-ingenic.sh, or sh scripts/build/package-creality-ota.sh"
+	echo "Package it with: ./build.sh --all, ./build.sh --swu, ./build.sh --ingenic, or ./build.sh --ota"
 fi
