@@ -1112,14 +1112,13 @@ check_absent /opt/printer_data/config/print_controls.cfg
 echo "=== SSH/console/recovery (FIRMWARE.md sec 18/21/22/24) ==="
 check /usr/sbin/dropbear
 check /usr/sbin/wpa_cli
-check /etc/init.d/S00revert-safety
+check /etc/init.d/S00mount_mmc_ext4
 check /etc/init.d/S01persistent-datastore
 check /etc/init.d/S01wifi
 check /etc/rosetteos-stable-mac.sh
 check /etc/rosetteos-wifi-power-save.sh
 check /usr/libexec/rosetteos-wifi-power-save
 check /etc/rosetteos-wifi-boot-wait.sh
-check /etc/init.d/S99confirm-good
 check /etc/ota_marker.sh
 check /etc/hwrevision
 check /etc/swupdate.cfg
@@ -1130,7 +1129,7 @@ check /sbin/mkswap
 check /sbin/swapon
 check /sbin/swapoff
 check /usr/bin/free
-check /etc/init.d/S00zram-swap
+check /etc/init.d/S01zram-swap
 check /etc/init.d/S03rosetteos-diskswap
 check /etc/init.d/S02rosetteos-namespace
 check /etc/init.d/S02rosetteos-boot-timing
