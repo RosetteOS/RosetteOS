@@ -105,7 +105,7 @@ build_mcu_target() {
 		cd "$_target_build_dir"
 		python3 lib/kconfiglib/olddefconfig.py src/Kconfig >/dev/null
 		make clean >/dev/null
-		make >/dev/null
+		make -j"$(nproc)" >/dev/null
 		cp out/klipper.elf "$_target_artifact_dir/klipper.elf"
 		cp out/klipper.bin "$_target_artifact_dir/klipper.bin"
 		cp .config "$_target_artifact_dir/klipper.config"

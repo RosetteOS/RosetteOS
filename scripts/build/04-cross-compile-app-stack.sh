@@ -273,39 +273,67 @@ EOF
 ### this target; CROSS_PREFIX is the only variable this Makefile needs to
 ### produce a MIPS binary instead of a host-native one (CC/AS/LD/OBJCOPY all
 ### derive from it - see vendor/klipper/Makefile).
-echo "== cross-compiling Klipper's host MCU (MACH_LINUX / klipper_mcu) =="
-(
-	cd "$VENDOR/klipper"
-	rm -rf out .config .config.old
-	cp test/configs/linuxprocess.config .config
-	export PATH="$BUILDROOT_DIR/output/host/bin:$PATH"
-	make olddefconfig
-	make CROSS_PREFIX=mipsel-buildroot-linux-gnu- || {
-		echo "FATAL: cross-compiling klipper_mcu (MACH_LINUX) failed" >&2
-		exit 1
-	}
-	[ -f out/klipper.elf ] || {
-		echo "FATAL: out/klipper.elf was not produced" >&2
-		exit 1
-	}
-) || exit 1
+KLIPPER_MCU_HOST_CACHE="$WORK/klipper-mcu-host"
+KLIPPER_MCU_HOST_FINGERPRINT_FILE="$KLIPPER_MCU_HOST_CACHE/fingerprint"
+klipper_mcu_host_fingerprint() {
+	{
+		printf 'klipper_pin=%s\n' "$KLIPPER_PIN"
+		printf 'system_pin=%s\n' "$SYSTEM_PIN"
+		sha256sum "$VENDOR/klipper/test/configs/linuxprocess.config"
+		find "$VENDOR/klipper/src" -type f \( -name '*.c' -o -name '*.h' -o -name '*.S' \) -print | sort |
+			while IFS= read -r f; do sha256sum "$f"; done
+		sha256sum \
+			"$TOOLCHAIN_HOST/bin/mipsel-buildroot-linux-gnu-gcc" \
+			"$TOOLCHAIN_HOST/bin/mipsel-buildroot-linux-gnu-strip"
+	} | sha256sum | awk '{print $1}'
+}
+KLIPPER_MCU_HOST_FINGERPRINT=$(klipper_mcu_host_fingerprint)
+KLIPPER_MCU_HOST_REBUILD=1
+if [ -f "$KLIPPER_MCU_HOST_FINGERPRINT_FILE" ] && \
+	[ "$(cat "$KLIPPER_MCU_HOST_FINGERPRINT_FILE")" = "$KLIPPER_MCU_HOST_FINGERPRINT" ] && \
+	[ -s "$KLIPPER_MCU_HOST_CACHE/klipper_mcu" ] && \
+	[ -s "$KLIPPER_MCU_HOST_CACHE/klipper_mcu.debug" ]; then
+	KLIPPER_MCU_HOST_REBUILD=0
+	echo "== klipper_mcu host inputs unchanged ($KLIPPER_MCU_HOST_FINGERPRINT); reusing cached build =="
+fi
 
-# Debug-symbol preservation mirrors c_helper.so/ustreamer/v4l2-ctl above -
-# TARGET_FINALIZE's blanket strip pass never reaches this file since it is
-# copied into the overlay directly by this script, after that pass runs.
-cp "$VENDOR/klipper/out/klipper.elf" "$WORK/debug-symbols/klipper_mcu.debug"
-(
-	cd "$VENDOR/klipper"
-	export PATH="$BUILDROOT_DIR/output/host/bin:$PATH"
-	mipsel-buildroot-linux-gnu-strip --strip-unneeded out/klipper.elf
-)
+if [ "$KLIPPER_MCU_HOST_REBUILD" -eq 1 ]; then
+	echo "== cross-compiling Klipper's host MCU (MACH_LINUX / klipper_mcu) =="
+	(
+		cd "$VENDOR/klipper"
+		rm -rf out .config .config.old
+		cp test/configs/linuxprocess.config .config
+		export PATH="$BUILDROOT_DIR/output/host/bin:$PATH"
+		make olddefconfig
+		make -j"$(nproc)" CROSS_PREFIX=mipsel-buildroot-linux-gnu- || {
+			echo "FATAL: cross-compiling klipper_mcu (MACH_LINUX) failed" >&2
+			exit 1
+		}
+		[ -f out/klipper.elf ] || {
+			echo "FATAL: out/klipper.elf was not produced" >&2
+			exit 1
+		}
+	) || exit 1
+
+	mkdir -p "$WORK/debug-symbols" "$KLIPPER_MCU_HOST_CACHE"
+	cp "$VENDOR/klipper/out/klipper.elf" "$WORK/debug-symbols/klipper_mcu.debug"
+	cp "$VENDOR/klipper/out/klipper.elf" "$KLIPPER_MCU_HOST_CACHE/klipper_mcu.debug"
+	(
+		cd "$VENDOR/klipper"
+		export PATH="$BUILDROOT_DIR/output/host/bin:$PATH"
+		mipsel-buildroot-linux-gnu-strip --strip-unneeded out/klipper.elf
+	)
+	cp "$VENDOR/klipper/out/klipper.elf" "$KLIPPER_MCU_HOST_CACHE/klipper_mcu"
+	printf '%s\n' "$KLIPPER_MCU_HOST_FINGERPRINT" > "$KLIPPER_MCU_HOST_FINGERPRINT_FILE"
+	rm -rf "$VENDOR/klipper/out" "$VENDOR/klipper/.config" "$VENDOR/klipper/.config.old"
+else
+	mkdir -p "$WORK/debug-symbols"
+	cp "$KLIPPER_MCU_HOST_CACHE/klipper_mcu.debug" "$WORK/debug-symbols/klipper_mcu.debug"
+fi
+
 mkdir -p "$OVERLAY/usr/bin"
-cp "$VENDOR/klipper/out/klipper.elf" "$OVERLAY/usr/bin/klipper_mcu"
+cp "$KLIPPER_MCU_HOST_CACHE/klipper_mcu" "$OVERLAY/usr/bin/klipper_mcu"
 chmod 755 "$OVERLAY/usr/bin/klipper_mcu"
-# Leave vendor/klipper's top-level tree exactly as it was before this step -
-# out/.config are build-local scratch state, not shipped inputs, and the
-# klippy/ copy below is taken from the source tree, not this build's out/.
-rm -rf "$VENDOR/klipper/out" "$VENDOR/klipper/.config" "$VENDOR/klipper/.config.old"
 
 mkdir -p "$OVERLAY/opt/klipper"
 rm -rf "$OVERLAY/opt/klipper/klippy"
@@ -710,26 +738,26 @@ if [ "$USTREAMER_REBUILD_REQUIRED" -eq 1 ]; then
 	tar xf ../libevent-2.1.12-stable.tar.gz && cd libevent-2.1.12-stable
 	./configure --host=mipsel-buildroot-linux-gnu --prefix="$BUILD_PREFIX" \
 		--disable-openssl --disable-samples --disable-libevent-regress
-	make && make install
+	make -j"$(nproc)" && make install
 
 	cd "$SRC/build"
 	tar xf ../libmd-1.1.0.tar.xz && cd libmd-1.1.0
 	./configure --host=mipsel-buildroot-linux-gnu --prefix="$BUILD_PREFIX"
-	make && make install
+	make -j"$(nproc)" && make install
 
 	cd "$SRC/build"
 	tar xf ../libbsd-0.11.7.tar.xz && cd libbsd-0.11.7
 	./configure --host=mipsel-buildroot-linux-gnu --prefix="$BUILD_PREFIX"
-	make && make install
+	make -j"$(nproc)" && make install
 
 	cd "$SRC/jpeg-9d"
 	./configure --host=mipsel-buildroot-linux-gnu --build=x86_64-pc-linux-gnu --prefix="$BUILD_PREFIX"
-	make && make install
+	make -j"$(nproc)" && make install
 
 	cd "$SRC/ustreamer"
 	export CFLAGS="$CFLAGS -Os -march=mips32r2 -ffunction-sections -fdata-sections"
 	export LDFLAGS="$LDFLAGS -Wl,--gc-sections -s"
-	make PKG_CONFIG=true WITH_PTHREAD_NP=0 WITH_SETPROCTITLE=0
+	make -j"$(nproc)" PKG_CONFIG=true WITH_PTHREAD_NP=0 WITH_SETPROCTITLE=0
 	mipsel-buildroot-linux-gnu-strip --strip-unneeded src/ustreamer.bin
 )
 mkdir -p "$USTREAMER_LIB_DIR"
@@ -826,9 +854,9 @@ else
 	# cross-compile correctly through this simple CC override, unlike
 	# build-mips.sh below, which cross-compiles libhv/spdlog itself via a
 	# proper CMake toolchain file).
-	make wpaclient
-	make libhv.a
-	make libspdlog.a
+	make -j"$(nproc)" wpaclient
+	make -j"$(nproc)" libhv.a
+	make -j"$(nproc)" libspdlog.a
 	# build-mips.sh defaults CROSS_COMPILE to mipsel-linux- itself when
 	# unset - not overridden here, for the same reason as above. Finds the
 	# Migration-A toolchain via this image's own PATH (build-env/Dockerfile
