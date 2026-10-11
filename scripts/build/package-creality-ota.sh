@@ -68,11 +68,16 @@ ensure_zero_bin() {
 	_expected_sha="$4"
 
 	if [ -f "$_dest_file" ]; then
-		_actual_sha=$(sha256sum "$_dest_file" | awk '{print $1}')
-		if [ -z "$_expected_sha" ] || [ "$_actual_sha" = "$_expected_sha" ]; then
-			return 0
+		if [ "$(wc -c < "$_dest_file")" -lt 1024 ] && { grep -q "git-lfs" "$_dest_file" 2>/dev/null || grep -q "^oid sha256:" "$_dest_file" 2>/dev/null; }; then
+			echo "WARN: $_dest_file is a Git LFS pointer text file; removing and fetching real binary..."
+			rm -f "$_dest_file"
 		else
-			echo "WARN: Checksum mismatch on $_dest_file, re-fetching..."
+			_actual_sha=$(sha256sum "$_dest_file" | awk '{print $1}')
+			if [ -z "$_expected_sha" ] || [ "$_actual_sha" = "$_expected_sha" ]; then
+				return 0
+			else
+				echo "WARN: Checksum mismatch on $_dest_file, re-fetching..."
+			fi
 		fi
 	fi
 
@@ -87,6 +92,11 @@ ensure_zero_bin() {
 import urllib.request
 urllib.request.urlretrieve('$_url', '$_dest_file')
 "
+	fi
+
+	if [ -f "$_dest_file" ] && [ "$(wc -c < "$_dest_file")" -lt 1024 ] && { grep -q "git-lfs" "$_dest_file" 2>/dev/null || grep -q "^oid sha256:" "$_dest_file" 2>/dev/null; }; then
+		echo "FATAL: $_dest_file was fetched as a Git LFS pointer stub instead of binary payload" >&2
+		exit 1
 	fi
 
 	if [ -n "$_expected_sha" ]; then
