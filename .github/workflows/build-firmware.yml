@@ -8,6 +8,11 @@ on:
         required: false
         default: "nightly"
         type: string
+      creality_ota_version:
+        description: "Creality OTA version (e.g. 1.1.0.34) - overrides CREALITY_OTA_VERSION from manifests"
+        required: false
+        default: ""
+        type: string
       ota_target:
         description: "Target hardware profile for Stock CrealityOS OTA (.img)"
         required: false
@@ -49,6 +54,10 @@ jobs:
           # baseline fail before the build starts.
           fetch-depth: 0
           fetch-tags: true
+
+      - name: Run offline test suites
+        shell: bash
+        run: ./tests/run-all.sh
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -230,6 +239,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PKG_VERSION: ${{ inputs.version || 'nightly' }}
           OTA_TARGET: ${{ inputs.ota_target || 'all' }}
+          CREALITY_OTA_VERSION: ${{ inputs.creality_ota_version || '' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -255,7 +265,7 @@ jobs:
 
           # 4. Generate Stock CrealityOS USB OTA packages (.img for KE & Nebula; uses CREALITY_OTA_VERSION from dependencies.conf)
           command -v 7z >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq p7zip-full)
-          sh scripts/build/package-creality-ota.sh "$bundle" "$OTA_TARGET"
+          sh scripts/build/package-creality-ota.sh "$bundle" "$OTA_TARGET" "${CREALITY_OTA_VERSION:-}"
 
           cp "$image_dir/xImage" \
              "$image_dir/rootfs.squashfs" \
