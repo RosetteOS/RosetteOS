@@ -967,15 +967,77 @@ for stale_dir in "$BUILDROOT_DIR/output/target/opt/rosetteos-seeds" \
 	      "$stale_dir/klipper.tar" "$stale_dir/moonraker.tar" 2>/dev/null || true
 done
 klipper_origin="$KLIPPER_REPO"
-klipper_seed_commit=$(make_seed_archive "$VENDOR/klipper" "$KLIPPER_BRANCH" \
-	"$klipper_origin" "$OVERLAY/opt/rosetteos-seeds/klipper.tar.gz" "/lib/" \
-	"$HOST_PYTHON3" "/opt/klipper" "$extra_stage" "$CHELPER_VERDICT")
+SEED_CACHE="$WORK/factory-seeds"
+mkdir -p "$SEED_CACHE"
+
+klipper_seed_fingerprint() {
+	{
+		printf 'klipper_pin=%s\n' "$KLIPPER_PIN"
+		printf 'klipper_branch=%s\n' "$KLIPPER_BRANCH"
+		printf 'klipper_extras_pin=%s\n' "$KLIPPER_EXTRAS_PIN"
+		printf 'script='
+		sha256sum "$SCRIPT_DIR/lib/make-seed-archive.sh"
+		if [ -n "$HOST_PYTHON3" ]; then
+			printf 'python_bin='
+			"$HOST_PYTHON3" --version 2>&1
+			sha256sum "$HOST_PYTHON3"
+		fi
+		printf 'chelper_verdict='
+		sha256sum "$CHELPER_VERDICT"
+		find "$extra_stage" -type l -print | sort | while IFS= read -r l; do
+			printf '%s -> %s\n' "$l" "$(readlink "$l")"
+		done
+	} | sha256sum | awk '{print $1}'
+}
+
+KLIPPER_SEED_FINGERPRINT=$(klipper_seed_fingerprint)
+if [ -f "$SEED_CACHE/klipper.fingerprint" ] && \
+	[ "$(cat "$SEED_CACHE/klipper.fingerprint")" = "$KLIPPER_SEED_FINGERPRINT" ] && \
+	[ -s "$SEED_CACHE/klipper.tar.gz" ] && \
+	[ -s "$SEED_CACHE/klipper.commit" ]; then
+	cp "$SEED_CACHE/klipper.tar.gz" "$OVERLAY/opt/rosetteos-seeds/klipper.tar.gz"
+	klipper_seed_commit=$(cat "$SEED_CACHE/klipper.commit")
+	echo "== klipper factory seed archive inputs unchanged ($KLIPPER_SEED_FINGERPRINT); reusing cached archive =="
+else
+	klipper_seed_commit=$(make_seed_archive "$VENDOR/klipper" "$KLIPPER_BRANCH" \
+		"$klipper_origin" "$OVERLAY/opt/rosetteos-seeds/klipper.tar.gz" "/lib/" \
+		"$HOST_PYTHON3" "/opt/klipper" "$extra_stage" "$CHELPER_VERDICT")
+	cp "$OVERLAY/opt/rosetteos-seeds/klipper.tar.gz" "$SEED_CACHE/klipper.tar.gz"
+	printf '%s\n' "$klipper_seed_commit" > "$SEED_CACHE/klipper.commit"
+	printf '%s\n' "$KLIPPER_SEED_FINGERPRINT" > "$SEED_CACHE/klipper.fingerprint"
+fi
 klipper_is_shallow=$(git -C "$VENDOR/klipper" rev-parse --is-shallow-repository)
 
 moonraker_origin="https://github.com/Arksine/moonraker.git"
-moonraker_seed_commit=$(make_seed_archive "$VENDOR/moonraker" master \
-	"$moonraker_origin" "$OVERLAY/opt/rosetteos-seeds/moonraker.tar.gz" "" \
-	"$HOST_PYTHON3" "/opt/moonraker")
+moonraker_seed_fingerprint() {
+	{
+		printf 'moonraker_pin=%s\n' "$MOONRAKER_PIN"
+		printf 'script='
+		sha256sum "$SCRIPT_DIR/lib/make-seed-archive.sh"
+		if [ -n "$HOST_PYTHON3" ]; then
+			printf 'python_bin='
+			"$HOST_PYTHON3" --version 2>&1
+			sha256sum "$HOST_PYTHON3"
+		fi
+	} | sha256sum | awk '{print $1}'
+}
+
+MOONRAKER_SEED_FINGERPRINT=$(moonraker_seed_fingerprint)
+if [ -f "$SEED_CACHE/moonraker.fingerprint" ] && \
+	[ "$(cat "$SEED_CACHE/moonraker.fingerprint")" = "$MOONRAKER_SEED_FINGERPRINT" ] && \
+	[ -s "$SEED_CACHE/moonraker.tar.gz" ] && \
+	[ -s "$SEED_CACHE/moonraker.commit" ]; then
+	cp "$SEED_CACHE/moonraker.tar.gz" "$OVERLAY/opt/rosetteos-seeds/moonraker.tar.gz"
+	moonraker_seed_commit=$(cat "$SEED_CACHE/moonraker.commit")
+	echo "== moonraker factory seed archive inputs unchanged ($MOONRAKER_SEED_FINGERPRINT); reusing cached archive =="
+else
+	moonraker_seed_commit=$(make_seed_archive "$VENDOR/moonraker" master \
+		"$moonraker_origin" "$OVERLAY/opt/rosetteos-seeds/moonraker.tar.gz" "" \
+		"$HOST_PYTHON3" "/opt/moonraker")
+	cp "$OVERLAY/opt/rosetteos-seeds/moonraker.tar.gz" "$SEED_CACHE/moonraker.tar.gz"
+	printf '%s\n' "$moonraker_seed_commit" > "$SEED_CACHE/moonraker.commit"
+	printf '%s\n' "$MOONRAKER_SEED_FINGERPRINT" > "$SEED_CACHE/moonraker.fingerprint"
+fi
 moonraker_is_shallow=$(git -C "$VENDOR/moonraker" rev-parse --is-shallow-repository)
 mainsail_version=$(cat "$VENDOR/mainsail-dist/dist/.version" 2>/dev/null || echo "unknown")
 build_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)
