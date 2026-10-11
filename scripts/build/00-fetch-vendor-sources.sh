@@ -342,9 +342,17 @@ if [ "$mainsail_actual_sha256" != "$MAINSAIL_SHA256" ]; then
 	exit 1
 fi
 echo "== Mainsail $MAINSAIL_TAG sha256 verified =="
-rm -rf mainsail-dist/dist
-mkdir -p mainsail-dist/dist
-unzip -q mainsail-dist/mainsail.zip -d mainsail-dist/dist
+if [ -f mainsail-dist/.unpacked_sha ] && \
+	[ "$(cat mainsail-dist/.unpacked_sha)" = "$MAINSAIL_SHA256" ] && \
+	[ -f mainsail-dist/dist/index.html ]; then
+	echo "== Mainsail $MAINSAIL_TAG already unpacked =="
+else
+	echo "== unpacking Mainsail $MAINSAIL_TAG =="
+	rm -rf mainsail-dist/dist
+	mkdir -p mainsail-dist/dist
+	unzip -q mainsail-dist/mainsail.zip -d mainsail-dist/dist
+	printf '%s\n' "$MAINSAIL_SHA256" > mainsail-dist/.unpacked_sha
+fi
 
 # mainsail-crew's own installer repo - only used for its real, canonical
 # nginx reverse-proxy config template (already baked into scripts/build/
