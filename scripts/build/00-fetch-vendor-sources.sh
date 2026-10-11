@@ -13,6 +13,7 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/../.." && pwd)
 VENDOR="$REPO_ROOT/vendor"
 MANIFEST="$REPO_ROOT/manifests/dependencies.conf"
+JOBS=$(nproc 2>/dev/null || echo 1)
 
 [ -f "$MANIFEST" ] || {
 	echo "FATAL: $MANIFEST not found - this is the one authoritative dependency pin file, required to build at all" >&2
@@ -261,8 +262,8 @@ clone_pinned moonraker "$MOONRAKER_REPO" "$MOONRAKER_PIN"
 # Camera pipeline - a real GPLv3-licensed uStreamer port for this board
 # family (the vendored ustreamer/LICENSE is the full GPLv3 text - this repo
 # previously, incorrectly, called it MIT-licensed; corrected 2026-07-26).
-clone_pinned k1-ustreamer "$K1_USTREAMER_REPO" "$K1_USTREAMER_PIN" "--recurse-submodules"
-git -C k1-ustreamer submodule update --init --recursive
+clone_pinned k1-ustreamer "$K1_USTREAMER_REPO" "$K1_USTREAMER_PIN" "--recurse-submodules --jobs=$JOBS"
+git -C k1-ustreamer submodule update --init --recursive --jobs="$JOBS"
 
 
 # GuppyScreen (project-specific frontend, consumes the z_compensate
@@ -297,7 +298,7 @@ guppyscreen_actual=$(git -C guppyscreen rev-parse HEAD)
 	echo "FATAL: vendor/guppyscreen did not land on pinned commit $GUPPYSCREEN_PIN" >&2
 	exit 1
 }
-git -C guppyscreen submodule update --init --depth 1
+git -C guppyscreen submodule update --init --depth 1 --jobs="$JOBS"
 
 # Submodule patches (this fork's own documented canonical build procedure,
 # wiki/Building-from-Source.md step 2) - lv_drivers' framebuffer-ioctls fix
