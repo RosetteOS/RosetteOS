@@ -42,6 +42,16 @@ check() {
 	fi
 }
 
+check_cmd() {
+	desc="$1"
+	shift
+	if "$@" >/dev/null 2>&1; then
+		check "$desc" 0
+	else
+		check "$desc" 1
+	fi
+}
+
 case "$MODE" in
 pre-build)
 	echo "== Phase 2 pre-build assertions (source-level) =="
@@ -50,32 +60,30 @@ pre-build)
 	# tree - if a patch failed to apply, the symbol simply won't be defined
 	# anywhere, and later feeding it into a fragment would just be silently
 	# dropped by `make olddefconfig` (exactly the 2026-08-06 regression).
-	grep -rlq "NEBULAOS_BACKLIGHT_FINAL_CONTROLLER" "$SYSTEM_DIR" 2>/dev/null
-	check "backlight-final-controller Kconfig symbol defined in kernel tree" $?
+	check_cmd "backlight-final-controller Kconfig symbol defined in kernel tree" \
+		grep -rlq "NEBULAOS_BACKLIGHT_FINAL_CONTROLLER" "$SYSTEM_DIR"
 
-	grep -rlq "TOUCHSCREEN_NS2009_FINAL_QUALIFICATION" "$SYSTEM_DIR" 2>/dev/null
-	check "touch-final-qualification Kconfig symbol defined in kernel tree" $?
+	check_cmd "touch-final-qualification Kconfig symbol defined in kernel tree" \
+		grep -rlq "TOUCHSCREEN_NS2009_FINAL_QUALIFICATION" "$SYSTEM_DIR"
 
-	grep -rlq "PWM_INGENIC_V2_GET_STATE" "$SYSTEM_DIR" 2>/dev/null
-	check "pwm-state-readback Kconfig symbol defined in kernel tree" $?
+	check_cmd "pwm-state-readback Kconfig symbol defined in kernel tree" \
+		grep -rlq "PWM_INGENIC_V2_GET_STATE" "$SYSTEM_DIR"
 
-	grep -rlq "FB_INGENIC_PAN_VSYNC_GATE" "$SYSTEM_DIR" 2>/dev/null
-	check "display-vsync (DISPLAY-V1) Kconfig symbol defined in kernel tree" $?
+	check_cmd "display-vsync (DISPLAY-V1) Kconfig symbol defined in kernel tree" \
+		grep -rlq "FB_INGENIC_PAN_VSYNC_GATE" "$SYSTEM_DIR"
 
-	[ -f "$SYSTEM_DIR/kernel/kernel-6.6/module_drivers/drivers/misc/nebulaos_backlight_final_controller.c" ]
-	check "nebulaos_backlight_final_controller.c driver file present" $?
+	check_cmd "nebulaos_backlight_final_controller.c driver file present" \
+		test -f "$SYSTEM_DIR/kernel/kernel-6.6/module_drivers/drivers/misc/nebulaos_backlight_final_controller.c"
 
-	[ -f "$SYSTEM_DIR/kernel/kernel-6.6/drivers/input/touchscreen/ns2009_final_qualification.c" ]
-	check "ns2009_final_qualification.c driver file present" $?
+	check_cmd "ns2009_final_qualification.c driver file present" \
+		test -f "$SYSTEM_DIR/kernel/kernel-6.6/drivers/input/touchscreen/ns2009_final_qualification.c"
 
-	grep -q "nebulaos_backlight_final:" "$SYSTEM_DIR/kernel/kernel-6.6/module_drivers/dts/x2000/halley5_v30.dts" 2>/dev/null
-	check "nebulaos_backlight_final DT node present" $?
+	check_cmd "nebulaos_backlight_final DT node present" \
+		grep -q "nebulaos_backlight_final:" "$SYSTEM_DIR/kernel/kernel-6.6/module_drivers/dts/x2000/halley5_v30.dts"
 
-	msc1_block=$(sed -n '/^&msc1 {/,/^};/p' "$SYSTEM_DIR/kernel/kernel-6.6/module_drivers/dts/x2000/halley5_v30.dts" 2>/dev/null)
-	echo "$msc1_block" | grep -q 'cap-sd-highspeed;'
-	check "W3 cap-sd-highspeed present in &msc1" $?
-	echo "$msc1_block" | grep -q 'cap-sdio-irq;'
-	check "W3 cap-sdio-irq present in &msc1" $?
+	msc1_block=$(sed -n '/^&msc1 {/,/^};/p' "$SYSTEM_DIR/kernel/kernel-6.6/module_drivers/dts/x2000/halley5_v30.dts" 2>/dev/null || true)
+	if echo "$msc1_block" | grep -q 'cap-sd-highspeed;'; then check "W3 cap-sd-highspeed present in &msc1" 0; else check "W3 cap-sd-highspeed present in &msc1" 1; fi
+	if echo "$msc1_block" | grep -q 'cap-sdio-irq;'; then check "W3 cap-sdio-irq present in &msc1" 0; else check "W3 cap-sdio-irq present in &msc1" 1; fi
 
 	# The tracked Kconfig fragment should now (post apply-qualified-baseline.sh,
 	# pre 02) carry every accepted variant's marker block.
@@ -90,9 +98,8 @@ pre-build)
 	# 2026-08-07: wifi-roamoff-disable-variant.sh ROAMOFF1 - not a Kconfig
 	# symbol (see that script's own header), so the only real source-level
 	# proof is the patched module_param default itself.
-	grep -qF "static int brcmf_roamoff = 1;" \
-		"$SYSTEM_DIR/kernel/kernel-6.6/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c" 2>/dev/null
-	check "wifi-roamoff-disable (ROAMOFF1) patch applied to brcmfmac common.c" $?
+	check_cmd "wifi-roamoff-disable (ROAMOFF1) patch applied to brcmfmac common.c" \
+		grep -qF "static int brcmf_roamoff = 1;" "$SYSTEM_DIR/kernel/kernel-6.6/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c"
 	;;
 
 post-build)
@@ -103,8 +110,8 @@ post-build)
 	[ -f "$KCONFIG" ] || { echo "FATAL: $KCONFIG not found - run 05-final-build.sh first" >&2; exit 1; }
 	[ -f "$DTS" ] || { echo "FATAL: $DTS not found - run 05-final-build.sh first" >&2; exit 1; }
 
-	grep -q "^CONFIG_PREEMPT=y$" "$KCONFIG"
-	check "CONFIG_PREEMPT=y (standard PREEMPT baseline)" $?
+	check_cmd "CONFIG_PREEMPT=y (standard PREEMPT baseline)" \
+		grep -q "^CONFIG_PREEMPT=y$" "$KCONFIG"
 
 	if grep -q "^CONFIG_PREEMPT_RT=y$" "$KCONFIG" 2>/dev/null; then
 		check "CONFIG_PREEMPT_RT absent from resolved kernel.config" 1
@@ -112,17 +119,17 @@ post-build)
 		check "CONFIG_PREEMPT_RT absent from resolved kernel.config" 0
 	fi
 
-	grep -q "^CONFIG_HZ=100$" "$KCONFIG"
-	check "CONFIG_HZ=100" $?
+	check_cmd "CONFIG_HZ=100" \
+		grep -q "^CONFIG_HZ=100$" "$KCONFIG"
 
-	grep -q "^CONFIG_NEBULAOS_BACKLIGHT_FINAL_CONTROLLER=y$" "$KCONFIG"
-	check "CONFIG_NEBULAOS_BACKLIGHT_FINAL_CONTROLLER=y (qualified backlight/PWM controller)" $?
+	check_cmd "CONFIG_NEBULAOS_BACKLIGHT_FINAL_CONTROLLER=y (qualified backlight/PWM controller)" \
+		grep -q "^CONFIG_NEBULAOS_BACKLIGHT_FINAL_CONTROLLER=y$" "$KCONFIG"
 
-	grep -q "^CONFIG_TOUCHSCREEN_NS2009_FINAL_QUALIFICATION=y$" "$KCONFIG"
-	check "CONFIG_TOUCHSCREEN_NS2009_FINAL_QUALIFICATION=y" $?
+	check_cmd "CONFIG_TOUCHSCREEN_NS2009_FINAL_QUALIFICATION=y" \
+		grep -q "^CONFIG_TOUCHSCREEN_NS2009_FINAL_QUALIFICATION=y$" "$KCONFIG"
 
-	grep -q "^CONFIG_TOUCHSCREEN_NS2009=y$" "$KCONFIG"
-	check "CONFIG_TOUCHSCREEN_NS2009=y (base driver present - polling touch retained)" $?
+	check_cmd "CONFIG_TOUCHSCREEN_NS2009=y (base driver present - polling touch retained)" \
+		grep -q "^CONFIG_TOUCHSCREEN_NS2009=y$" "$KCONFIG"
 
 	# Touch must remain polling-based: the OLDER, rejected IRQ-based
 	# touch-irq-variant.sh/touch-qualification-variant.sh symbols must NOT
@@ -134,29 +141,26 @@ post-build)
 		echo "  PASS: CONFIG_TOUCHSCREEN_NS2009_QUALIFICATION absent (touch remains polling-based)"
 	fi
 
-	grep -q "^CONFIG_PWM_INGENIC_V2_GET_STATE=y$" "$KCONFIG"
-	check "CONFIG_PWM_INGENIC_V2_GET_STATE=y (PWM brightness readback)" $?
+	check_cmd "CONFIG_PWM_INGENIC_V2_GET_STATE=y (PWM brightness readback)" \
+		grep -q "^CONFIG_PWM_INGENIC_V2_GET_STATE=y$" "$KCONFIG"
 
-	grep -q "^CONFIG_FB_INGENIC_PAN_VSYNC_GATE=y$" "$KCONFIG"
-	check "CONFIG_FB_INGENIC_PAN_VSYNC_GATE=y (DISPLAY-V1)" $?
+	check_cmd "CONFIG_FB_INGENIC_PAN_VSYNC_GATE=y (DISPLAY-V1)" \
+		grep -q "^CONFIG_FB_INGENIC_PAN_VSYNC_GATE=y$" "$KCONFIG"
 
-	grep -q "nebulaos_backlight_final:" "$DTS"
-	check "nebulaos_backlight_final DT node present in resolved DTS" $?
+	check_cmd "nebulaos_backlight_final DT node present in resolved DTS" \
+		grep -q "nebulaos_backlight_final:" "$DTS"
 
-	msc1_block=$(sed -n '/^&msc1 {/,/^};/p' "$DTS")
-	echo "$msc1_block" | grep -q 'cap-sd-highspeed;'
-	check "W3 cap-sd-highspeed present in resolved &msc1" $?
-	echo "$msc1_block" | grep -q 'cap-sdio-irq;'
-	check "W3 cap-sdio-irq present in resolved &msc1" $?
+	msc1_block=$(sed -n '/^&msc1 {/,/^};/p' "$DTS" 2>/dev/null || true)
+	if echo "$msc1_block" | grep -q 'cap-sd-highspeed;'; then check "W3 cap-sd-highspeed present in resolved &msc1" 0; else check "W3 cap-sd-highspeed present in resolved &msc1" 1; fi
+	if echo "$msc1_block" | grep -q 'cap-sdio-irq;'; then check "W3 cap-sdio-irq present in resolved &msc1" 0; else check "W3 cap-sdio-irq present in resolved &msc1" 1; fi
 
 	# 2026-08-07: wifi-roamoff-disable (ROAMOFF1) - not a Kconfig symbol,
 	# so kernel.config can't prove it. vendor/system is not
 	# deleted by the build, so the same source-level check from pre-build
 	# still applies and is the only real proof available short of
 	# extracting strings from the compiled kernel image.
-	grep -qF "static int brcmf_roamoff = 1;" \
-		"$SYSTEM_DIR/kernel/kernel-6.6/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c" 2>/dev/null
-	check "wifi-roamoff-disable (ROAMOFF1) patch present in source tree used for this build" $?
+	check_cmd "wifi-roamoff-disable (ROAMOFF1) patch present in source tree used for this build" \
+		grep -qF "static int brcmf_roamoff = 1;" "$SYSTEM_DIR/kernel/kernel-6.6/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c"
 
 	# Byte-for-byte proof against the pinned baseline tag's own tracked
 	# copies - the strongest assertion available: not "does it look right",
