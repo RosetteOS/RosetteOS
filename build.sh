@@ -57,6 +57,7 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 BUILD_SWU=0
 BUILD_INGENIC=0
 BUILD_OTA=0
+FORCE_PULL=0
 for arg in "$@"; do
 	case "$arg" in
 		--swu)
@@ -68,19 +69,23 @@ for arg in "$@"; do
 		--ota)
 			BUILD_OTA=1
 			;;
+		--pull)
+			FORCE_PULL=1
+			;;
 		-h|--help)
-			echo "Usage: $0 [--swu] [--ingenic] [--ota]"
+			echo "Usage: $0 [--swu] [--ingenic] [--ota] [--pull]"
 			echo ""
 			echo "Options:"
 			echo "  --swu        Package a verified SWUpdate (.swu) archive at the end of the build"
 			echo "  --ingenic    Package a verified Ingenic USB Cloner (.ingenic) archive at the end of the build"
 			echo "  --ota        Package stock CrealityOS-compatible OTA (.img) updates at the end of the build"
+			echo "  --pull       Force pulling the build environment container image even if cached locally"
 			echo "  -h, --help   Display this help message and exit"
 			exit 0
 			;;
 		*)
 			echo "FATAL: unknown argument: $arg" >&2
-			echo "Usage: $0 [--swu] [--ingenic] [--ota]" >&2
+			echo "Usage: $0 [--swu] [--ingenic] [--ota] [--pull]" >&2
 			exit 1
 			;;
 	esac
@@ -88,6 +93,7 @@ done
 [ "${ROSETTEOS_BUILD_SWU:-0}" = "1" ] && BUILD_SWU=1
 [ "${ROSETTEOS_BUILD_INGENIC:-0}" = "1" ] && BUILD_INGENIC=1
 [ "${ROSETTEOS_BUILD_OTA:-0}" = "1" ] && BUILD_OTA=1
+[ "${ROSETTEOS_PULL:-0}" = "1" ] && FORCE_PULL=1
 
 MANIFEST="$SCRIPT_DIR/manifests/dependencies.conf"
 [ -f "$MANIFEST" ] || { echo "FATAL: $MANIFEST not found" >&2; exit 1; }
@@ -106,8 +112,12 @@ done
 	exit 1
 }
 
-echo "== build.sh: pulling pinned build environment $IMAGE_REF (engine: $ENGINE) =="
-"$ENGINE" pull "$IMAGE_REF"
+if [ "$FORCE_PULL" -eq 1 ] || ! "$ENGINE" image inspect "$IMAGE_REF" >/dev/null 2>&1; then
+	echo "== build.sh: pulling pinned build environment $IMAGE_REF (engine: $ENGINE) =="
+	"$ENGINE" pull "$IMAGE_REF"
+else
+	echo "== build.sh: using cached pinned build environment $IMAGE_REF (engine: $ENGINE; pass --pull to force) =="
+fi
 
 # ROSETTEOS_REPO_ROOT: fixed container-internal mount point, deliberately
 # NOT the host's own checkout path.
