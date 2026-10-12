@@ -404,7 +404,10 @@ fi
 # =========================================================================
 echo "=== Test 6: Direct Klipper Python config parser integration test ==="
 
-python3 -c "
+if [ ! -d "$REPO_ROOT/vendor/klipper/klippy" ]; then
+	echo "  SKIP: Klipper source not present in vendor/klipper (run 00-fetch-vendor-sources.sh first)"
+else
+	python3 -c "
 import sys
 sys.path.insert(0, '$REPO_ROOT/vendor/klipper/klippy')
 import configfile
@@ -431,10 +434,11 @@ assert reg_fc.has_section('bed_mesh default'), '[bed_mesh default] missing from 
 print('KLIPPER_PARSER_SUCCESS')
 " > "$WORK/pyout.txt" 2>&1
 
-if grep -q "KLIPPER_PARSER_SUCCESS" "$WORK/pyout.txt"; then
-	pass "migrated config passed native Klipper parser validation with all calibrations active"
-else
-	fail "native Klipper parser failed: $(cat "$WORK/pyout.txt")"
+	if grep -q "KLIPPER_PARSER_SUCCESS" "$WORK/pyout.txt"; then
+		pass "migrated config passed native Klipper parser validation with all calibrations active"
+	else
+		fail "native Klipper parser failed: $(cat "$WORK/pyout.txt")"
+	fi
 fi
 
 # =========================================================================

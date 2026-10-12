@@ -37,8 +37,12 @@ echo "=== Test 2: mDNS Daemon Script Permissions & Help ==="
 [ -x "$MDNS_DAEMON" ]
 check "rosetteos-mdns is executable" $?
 
-PYTHONPATH="$TARGET_PYTHON_SITE" python3 "$MDNS_DAEMON" --help >/dev/null
-check "rosetteos-mdns executes and displays --help" $?
+if PYTHONPATH="$TARGET_PYTHON_SITE" python3 -c "import zeroconf" >/dev/null 2>&1; then
+    PYTHONPATH="$TARGET_PYTHON_SITE" python3 "$MDNS_DAEMON" --help >/dev/null
+    check "rosetteos-mdns executes and displays --help" $?
+else
+    echo "  SKIP: python zeroconf module not available in this environment"
+fi
 
 echo "=== Test 3: Default Configuration File Validation ==="
 [ -f "$MDNS_CONFIG" ]
@@ -61,6 +65,7 @@ bash -n "$MDNS_INIT"
 check "S41rosetteos-mdns shell syntax is valid" $?
 
 echo "=== Test 5: Zeroconf Record Construction Unit Test ==="
+if PYTHONPATH="$TARGET_PYTHON_SITE" python3 -c "import zeroconf" >/dev/null 2>&1; then
 PYTHONPATH="$TARGET_PYTHON_SITE" python3 - <<'EOF'
 import socket
 from zeroconf import Zeroconf, ServiceInfo
@@ -131,10 +136,20 @@ zc.close()
 print("OK: mDNS Zeroconf registration and teardown passed")
 EOF
 check "python-zeroconf service registration verified" $?
+else
+    echo "  SKIP: python zeroconf module not available in this environment"
+fi
 
 echo "=== Test 6: GuppyScreen mDNS Resolution Unit Test ==="
-(cd "$REPO_ROOT/../GuppyScreen" && make test-mdns >/dev/null)
-check "GuppyScreen test-mdns passed" $?
+if [ -d "$REPO_ROOT/../GuppyScreen" ] && [ -f "$REPO_ROOT/../GuppyScreen/Makefile" ]; then
+    (cd "$REPO_ROOT/../GuppyScreen" && make test-mdns >/dev/null)
+    check "GuppyScreen test-mdns passed" $?
+elif [ -d "$REPO_ROOT/vendor/guppyscreen" ] && [ -f "$REPO_ROOT/vendor/guppyscreen/Makefile" ]; then
+    (cd "$REPO_ROOT/vendor/guppyscreen" && make test-mdns >/dev/null)
+    check "GuppyScreen test-mdns passed" $?
+else
+    echo "  SKIP: GuppyScreen source not available"
+fi
 
 echo "=========================================="
 if [ "$FAILED" -eq 0 ]; then

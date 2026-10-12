@@ -40,6 +40,7 @@ fail() { echo "FAIL: $1"; FAIL=$((FAIL + 1)); }
 pass() { PASS=$((PASS + 1)); }
 
 [ -f "$FRAGMENT" ] || { echo "SKIP: $FRAGMENT not present"; exit 0; }
+[ -d "$SYSTEM_DIR/.git" ] || { echo "SKIP: $SYSTEM_DIR not a git checkout - run 00-fetch-vendor-sources.sh first"; exit 0; }
 
 PRETEST_FRAGMENT=$(mktemp)
 cp "$FRAGMENT" "$PRETEST_FRAGMENT"

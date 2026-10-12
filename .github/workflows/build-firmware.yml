@@ -53,10 +53,6 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Run offline test suites
-        shell: bash
-        run: ./tests/run-all.sh
-
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -111,6 +107,10 @@ jobs:
             mkdir -p scripts/build/overlay/lib/firmware
             rsync -a .cache/rosetteos/firmware/ scripts/build/overlay/lib/firmware/
           fi
+
+      - name: Run offline test suites
+        shell: bash
+        run: ./tests/run-all.sh
 
       # Preserve the generated Buildroot state separately so a later run of
       # the same build inputs can resume after an incomplete toolchain or
