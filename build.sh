@@ -64,6 +64,28 @@ FORCE_PULL=0
 RUN_TESTS_ONLY=0
 RUN_TESTS_FILTER=""
 
+clean_build() {
+	echo "== cleaning RosetteOS transient build work, packages, and locks =="
+	rm -f "$SCRIPT_DIR/.rosetteos-build.lock"
+	rm -rf "$SCRIPT_DIR/build-work"
+	rm -f "$SCRIPT_DIR/artifacts/buildroot-halley5-v30-image"/xImage \
+	      "$SCRIPT_DIR/artifacts/buildroot-halley5-v30-image"/rootfs.* \
+	      "$SCRIPT_DIR/artifacts/buildroot-halley5-v30-image"/*.swu \
+	      "$SCRIPT_DIR/artifacts/buildroot-halley5-v30-image"/*.ingenic \
+	      "$SCRIPT_DIR/artifacts/buildroot-halley5-v30-image"/*.img \
+	      "$SCRIPT_DIR/artifacts/buildroot-halley5-v30-image"/*.bin \
+	      "$SCRIPT_DIR/artifacts/buildroot-halley5-v30-image"/*.sha256 2>/dev/null || true
+	echo "Clean complete."
+}
+
+distclean_build() {
+	clean_build
+	echo "== cleaning Buildroot output and download caches =="
+	rm -rf "$SCRIPT_DIR/vendor/system/buildroot/output" 2>/dev/null || true
+	rm -rf "$SCRIPT_DIR/.cache/rosetteos" 2>/dev/null || true
+	echo "Distclean complete."
+}
+
 usage() {
 	echo "Usage: $0 [OPTIONS]"
 	echo ""
@@ -76,6 +98,8 @@ usage() {
 	echo "  --all, --release                Package all deployment formats (.swu, .ingenic, and .img OTA)"
 	echo "  --version <ver>                 Override RosetteOS package version string (.swu and .ingenic)"
 	echo "  --test [filter]                 Run offline test suites inside the build container and exit"
+	echo "  --clean                         Remove transient build artifacts, staging packages, and locks"
+	echo "  --distclean                     Full clean including Buildroot build output and download caches"
 	echo "  --pull                          Force pulling the build environment container image even if cached locally"
 	echo "  -h, --help                      Display this help message and exit"
 }
@@ -146,6 +170,14 @@ while [ $# -gt 0 ]; do
 			RUN_TESTS_FILTER="${1#*=}"
 			shift
 			;;
+		--clean)
+			clean_build
+			exit 0
+			;;
+		--distclean)
+			distclean_build
+			exit 0
+			;;
 		-h|--help)
 			usage
 			exit 0
@@ -182,6 +214,7 @@ esac
 
 MANIFEST="$SCRIPT_DIR/manifests/dependencies.conf"
 [ -f "$MANIFEST" ] || { echo "FATAL: $MANIFEST not found" >&2; exit 1; }
+# shellcheck source=manifests/dependencies.conf disable=SC1091
 . "$MANIFEST"
 [ -n "$CREALITY_OTA_VER_ARG" ] && CREALITY_OTA_VERSION="$CREALITY_OTA_VER_ARG"
 
