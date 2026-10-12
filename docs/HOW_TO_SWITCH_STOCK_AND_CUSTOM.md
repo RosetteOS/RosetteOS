@@ -1,5 +1,8 @@
 # How to switch between stock and custom firmware
 
+> [!WARNING]
+> **Production Notice**: Installing RosetteOS is a destructive operation that replaces CrealityOS and overwrites Creality user data. Restoring factory stock firmware requires performing a bare-metal recovery reflash via the Ingenic USB Cloner tool as detailed in `docs/DEVELOPER_RECOVERY.md`.
+
 Your printer's little computer (the Nebula Pad) can hold **two complete operating systems at the
 same time**, on two separate storage slots:
 

@@ -143,7 +143,7 @@ not as a polished installer walkthrough:
 - [`docs/DEVELOPER_INSTALL_FROM_STOCK.md`](docs/DEVELOPER_INSTALL_FROM_STOCK.md) — putting RosetteOS on a printer for the first time
 - [`docs/DEVELOPER_UPDATE.md`](docs/DEVELOPER_UPDATE.md) — updating a printer that's already running RosetteOS
 - [`docs/DEVELOPER_RECOVERY.md`](docs/DEVELOPER_RECOVERY.md) — what to do if something goes wrong
-- [`docs/HOW_TO_SWITCH_STOCK_AND_CUSTOM.md`](docs/HOW_TO_SWITCH_STOCK_AND_CUSTOM.md) — flipping between stock and RosetteOS day to day
+- [`docs/HOW_TO_SWITCH_STOCK_AND_CUSTOM.md`](docs/HOW_TO_SWITCH_STOCK_AND_CUSTOM.md) — historical slot switching notes and recovery reference
 - [`docs/BUILD_PROVENANCE.md`](docs/BUILD_PROVENANCE.md) — figuring out exactly what produced a given build
 - [`docs/NEBULAOS_FRONTEND_PRINT_CONTROLS.md`](docs/NEBULAOS_FRONTEND_PRINT_CONTROLS.md) — the upstream-Klipper frontend configuration closure
 - [`docs/NEBULAOS_BUILD_ENVIRONMENT.md`](docs/NEBULAOS_BUILD_ENVIRONMENT.md) — what's actually in the build container
