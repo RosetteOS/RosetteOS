@@ -1,0 +1,46 @@
+name: Test Suites & Lint
+
+on:
+  push:
+    branches:
+      - main
+      - rosetteos-rebrand
+  pull_request:
+    branches:
+      - main
+      - rosetteos-rebrand
+  workflow_dispatch:
+
+concurrency:
+  group: rosetteos-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Run Offline Tests & Linters
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install zeroconf
+
+      - name: Run ShellCheck
+        run: |
+          shellcheck -x build.sh tests/run-all.sh scripts/build/package-*.sh scripts/release.sh
+
+      - name: Run offline test suites
+        run: ./tests/run-all.sh
