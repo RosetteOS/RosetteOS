@@ -76,14 +76,48 @@ echo "== publishing GitHub Release $TAG from $PKG_DIR (commit $LOCAL_TAG_COMMIT)
 assets=""
 for f in xImage rootfs.squashfs build-manifest.txt SHA256SUMS DEPLOYMENT_INSTRUCTIONS.md \
 	halley5_v30.dtb halley5_v30.dts halley5_v30.decompiled.dts kernel.config buildroot.config \
-	baseline-difference.txt; do
+	baseline-difference.txt Ender3V3SE_klipper.bin Ender3V2Neo_klipper.bin; do
 	[ -f "$PKG_DIR/$f" ] && assets="$assets $PKG_DIR/$f"
 done
+
+# Collect release packages (.swu, .ingenic, .img) from PKG_DIR
+for ext in swu ingenic img; do
+	for pkg in "$PKG_DIR"/*."$ext"; do
+		[ -f "$pkg" ] && assets="$assets $pkg"
+	done
+done
+
+# Also include any packages from ARTIFACT_DIR if not already in PKG_DIR
+ARTIFACT_DIR="$REPO_ROOT/artifacts/buildroot-halley5-v30-image"
+if [ -d "$ARTIFACT_DIR" ]; then
+	for ext in swu ingenic img; do
+		for pkg in "$ARTIFACT_DIR"/*."$ext"; do
+			if [ -f "$pkg" ] && [ ! -f "$PKG_DIR/$(basename "$pkg")" ]; then
+				assets="$assets $pkg"
+			fi
+		done
+	done
+fi
+
+RELEASE_NOTES="RosetteOS deployment package for $TAG, built from commit $LOCAL_TAG_COMMIT.
+
+### Distribution Assets:
+- **SWUpdate Archive (.swu)**: Verified OTA update package for active RosetteOS systems.
+- **CrealityOS OTA (.img)**: Stock CrealityOS update archive for seamless touch-screen upgrade.
+- **Ingenic USB Cloner (.ingenic)**: Unbrick and raw flashing archive.
+- **MCU Firmware (.bin)**: Pre-compiled Klipper firmware binaries for printer mainboards (Ender-3 V3 SE, Ender-3 V2 Neo).
+- **Core Images**: xImage kernel and rootfs.squashfs root filesystem.
+
+Verify downloaded assets with:
+\`\`\`sh
+sha256sum -c SHA256SUMS
+\`\`\`
+See DEPLOYMENT_INSTRUCTIONS.md for flash procedure."
 
 # shellcheck disable=SC2086
 gh release create "$TAG" $assets \
 	--title "$TAG" \
-	--notes "RosetteOS deployment package for $TAG, built from commit $LOCAL_TAG_COMMIT. Verify downloaded assets with: sha256sum -c SHA256SUMS. See DEPLOYMENT_INSTRUCTIONS.md for the full flash procedure - never write the stock slot."
+	--notes "$RELEASE_NOTES"
 
 echo "== release $TAG published =="
 gh release view "$TAG"

@@ -59,8 +59,27 @@ fi
 echo "== building SWUpdate package (.swu) =="
 sh "$SCRIPT_DIR/package-swu.sh" "$PKG_DIR" "$TS"
 
+# Copy any pre-built Ingenic packages or Creality OTA images
+for pkg in "$ARTIFACT_DIR"/*.ingenic "$ARTIFACT_DIR"/*.img; do
+	if [ -f "$pkg" ]; then
+		echo "== copying $(basename "$pkg") to deployment package =="
+		cp "$pkg" "$PKG_DIR/"
+	fi
+done
+
 echo "== generating SHA256SUMS =="
-(cd "$PKG_DIR" && sha256sum xImage rootfs.squashfs kernel.config halley5_v30.dts buildroot.config build-manifest.txt $( [ -f halley5_v30.dtb ] && echo halley5_v30.dtb ) $( [ -f Ender3V3SE_klipper.bin ] && echo Ender3V3SE_klipper.bin ) $( [ -f Ender3V2Neo_klipper.bin ] && echo Ender3V2Neo_klipper.bin ) $(ls *.swu 2>/dev/null) > SHA256SUMS)
+(
+	cd "$PKG_DIR"
+	files="xImage rootfs.squashfs kernel.config halley5_v30.dts buildroot.config build-manifest.txt"
+	[ -f halley5_v30.dtb ] && files="$files halley5_v30.dtb"
+	[ -f Ender3V3SE_klipper.bin ] && files="$files Ender3V3SE_klipper.bin"
+	[ -f Ender3V2Neo_klipper.bin ] && files="$files Ender3V2Neo_klipper.bin"
+	for p in *.swu *.ingenic *.img; do
+		[ -f "$p" ] && files="$files $p"
+	done
+	# shellcheck disable=SC2086
+	sha256sum $files > SHA256SUMS
+)
 
 cat > "$PKG_DIR/DEPLOYMENT_INSTRUCTIONS.md" <<'EOF'
 # Deployment instructions
