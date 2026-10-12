@@ -14,7 +14,7 @@ set -u
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 
-cd "$REPO_ROOT"
+cd "$REPO_ROOT" || exit 1
 
 FILTER=""
 VERBOSE=0
@@ -50,7 +50,7 @@ PASSED=0
 FAILED=0
 FAILED_NAMES=""
 
-echo "${C_BOLD}=== Running RosetteOS Test Suites ===${C_RESET}"
+echo "${C_BOLD}${C_BLUE}=== Running RosetteOS Test Suites ===${C_RESET}"
 [ -n "$FILTER" ] && echo "Filter: '$FILTER'"
 echo ""
 

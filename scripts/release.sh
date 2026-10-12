@@ -33,6 +33,7 @@ TAG="$1"
 PKG_DIR="${2:-}"
 
 if [ -z "$PKG_DIR" ]; then
+	# shellcheck disable=SC2012
 	PKG_DIR=$(ls -dt "$REPO_ROOT"/build-work/deploy-packages/*/ 2>/dev/null | head -1 || true)
 	[ -n "$PKG_DIR" ] || {
 		echo "FATAL: no package directory found under build-work/deploy-packages/ - run scripts/build/package-deployment.sh first, or pass one explicitly as the second argument" >&2

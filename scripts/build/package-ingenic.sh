@@ -23,6 +23,7 @@ _OVERRIDE_INGENIC_SHA="${INGENIC_TEMPLATE_SHA256:-}"
 _OVERRIDE_INGENIC_URL="${INGENIC_TEMPLATE_URL:-}"
 MANIFEST="$REPO_ROOT/manifests/dependencies.conf"
 if [ -f "$MANIFEST" ]; then
+	# shellcheck source=manifests/dependencies.conf disable=SC1091
 	. "$MANIFEST"
 fi
 [ -n "$_OVERRIDE_INGENIC_SHA" ] && INGENIC_TEMPLATE_SHA256="$_OVERRIDE_INGENIC_SHA"

@@ -24,6 +24,7 @@ _OVERRIDE_KE_ZERO_SHA="${CREALITY_KE_ZERO_BIN_SHA256:-}"
 _OVERRIDE_NEBULA_ZERO_SHA="${CREALITY_NEBULA_ZERO_BIN_SHA256:-}"
 MANIFEST="$REPO_ROOT/manifests/dependencies.conf"
 if [ -f "$MANIFEST" ]; then
+	# shellcheck source=manifests/dependencies.conf disable=SC1091
 	. "$MANIFEST"
 fi
 [ -n "$_OVERRIDE_OTA_VER" ] && CREALITY_OTA_VERSION="$_OVERRIDE_OTA_VER"
@@ -148,6 +149,7 @@ elif [ "$TARGET" = "nebula" ] && [ -n "${NEBULA_ZERO_BIN:-}" ]; then
 	EXTRA_ARGS="--zero-bin $NEBULA_ZERO_PATH"
 fi
 
+# shellcheck disable=SC2086
 python3 "$PACKER_SCRIPT" \
 	--target "$TARGET" \
 	--ximage "$KERNEL_IMAGE" \
