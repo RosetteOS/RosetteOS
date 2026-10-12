@@ -4,7 +4,7 @@ This repository builds **RosetteOS**, a custom, fully open-source Linux + Klippe
 
 While the **Creality Ender-3 V3 KE** serves as our primary reference implementation and development baseline, RosetteOS is architected with a modular multi-printer profile system. The project's vision and roadmap is to **support all 3D printers that Creality's Nebula Smart Kit supports** (including the Ender-3 V3 SE, Ender-3 V2, Ender-3 V2 Neo, Ender-3 S1, Ender-3 Pro, Ender-3 Base, CR-10 SE, and other models driven by the Nebula Pad).
 
-**RosetteOS continues the open-source work of [NebulaOS](https://github.com/coreflake1/NebulaOS-firmware) and uses NebulaOS's Klipper extensions** ([`NebulaOS-klipper-extensions`](https://github.com/coreflake1/NebulaOS-klipper-extensions)). These extensions provide critical host-side hardware integration — including PRtouch loadcell probing, autonomous Z-compensation, power-loss recovery (PLR), and sensor support.
+**RosetteOS continues the open-source work of [NebulaOS](https://github.com/coreflake1/NebulaOS-firmware) and uses NebulaOS's Klipper extensions** ([`NebulaOS-klipper-extensions`](https://github.com/coreflake1/NebulaOS-klipper-extensions)). These extensions provide critical host-side hardware integration — including HX711 strain-gauge loadcell probing for autonomous Z-offset calibration (`z_compensate`, `nebulaos_z_offset_probe`), silicone wiper pad cleaning (`nozzle_clear`), hardware-backed power-loss recovery (`nebulaos_power_loss_recovery`), GD32 MCU die temperature monitoring (`nebulaos_temperature_mcu`), and preflight validation (`nebulaos_compat`). Standard bed meshing and homing are handled by official upstream CR-Touch / BLTouch (`bltouch`).
 
 If you want to build the whole OS, this is the repo you want. The full RosetteOS/System
 OKE checkout supplies both the kernel and Buildroot; official upstream Klipper plus all of NebulaOS's Klipper extensions and RosetteOS/GuppyScreen supply the application stack. The build refreshes moving sources, verifies immutable inputs, and puts the whole thing together into a verified flashable image.
@@ -17,7 +17,7 @@ GuppyScreen (OKE) ───────┘   (this repo)
 
 - [`RosetteOS/System`](https://github.com/RosetteOS/System) — full OKE checkout providing Linux 6.6 (`kernel/kernel-6.6`) and Buildroot (`buildroot/`)
 - [`Klipper`](https://github.com/Klipper3d/klipper) — official upstream Klipper runtime (`master` branch)
-- [`NebulaOS-klipper-extensions`](https://github.com/coreflake1/NebulaOS-klipper-extensions) — all of NebulaOS's companion Klipper extensions powering hardware integration (`prtouch_v2`, `z_compensate`, `nebulaos_power_loss_recovery`, `nebulaos_compat`)
+- [`NebulaOS-klipper-extensions`](https://github.com/coreflake1/NebulaOS-klipper-extensions) — all of NebulaOS's companion Klipper extensions powering hardware integration (`z_compensate`, `nebulaos_z_offset_probe`, `nozzle_clear`, `nebulaos_power_loss_recovery`, `nebulaos_temperature_mcu`, `nebulaos_compat`)
 - [`GuppyScreen`](https://github.com/RosetteOS/GuppyScreen) — touchscreen UI
 - [Firmware releases](https://github.com/RosetteOS/RosetteOS/releases) — firmware releases and SWUpdate packages
 
@@ -122,7 +122,7 @@ RosetteOS continues to rely on **NebulaOS's Klipper extensions** ([`NebulaOS-kli
 
 Rather than being limited to the Ender-3 V3 KE, RosetteOS is designed around the **Creality Nebula Pad** hardware platform (MIPS Ingenic XBurst2 X2000 SoC). It plans to support the complete family of printers compatible with the **Creality Nebula Smart Kit**:
 
-- **Primary Reference Baseline**: **Creality Ender-3 V3 KE** — fully tested and validated hardware baseline, including PRtouch strain-gauge loadcells, auto Z-offset calibration (`z_compensate`), bed tilt calculation, and ADXL345 resonance testing.
+- **Primary Reference Baseline**: **Creality Ender-3 V3 KE** — fully tested and validated hardware baseline, including HX711 strain-gauge loadcell auto Z-offset calibration (`z_compensate`, `nebulaos_z_offset_probe`), CR-Touch bed mesh levelling (`bltouch`), nozzle wiper cleaning (`nozzle_clear`), and ADXL345 resonance testing.
 - **Nebula Smart Kit Family Roadmap**:
   - **Ender-3 V3 SE** (GD32F303 MCU, CR-Touch + strain-gauge auto-Z)
   - **Ender-3 V2 Neo** (STM32F103 MCU, CR-Touch probe-assisted tramming)
