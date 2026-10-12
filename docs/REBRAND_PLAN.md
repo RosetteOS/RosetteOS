@@ -31,15 +31,16 @@ migration paths solely to preserve an OpenKE-era identifier.
    - Run the relevant offline suites and build verification, then document any
      checks that require hardware or external services.
 
-4. **Repository and publication follow-through — pending**
+4. **Repository and publication follow-through — complete**
    - Review canonical repository URLs, organization ownership, CI image
      publication, and digest pins before publishing anything.
    - Build and qualify a RosetteOS image before promoting generated artifacts
      or release metadata.
+   - Promote `rosetteos-rebrand` to `main` across all repositories and retire the branch.
 
 ## Current constraints
 
-- Changes are being made on `rosetteos-rebrand` in each touched repository.
+- All repositories have completed rebranding and standardized on `main`.
 - Historical notes and build records may mention OpenKE when they describe the
   actual past; they must remain clearly historical and must not be used as
   current commands, paths, or supported identity.

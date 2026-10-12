@@ -4,11 +4,9 @@ on:
   push:
     branches:
       - main
-      - rosetteos-rebrand
   pull_request:
     branches:
       - main
-      - rosetteos-rebrand
   workflow_dispatch:
 
 concurrency:
