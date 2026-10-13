@@ -1212,9 +1212,21 @@ fi
 # Deliberately not grepping docs/ for stray "uImage" text here: docs/HISTORY.md
 # and FIRMWARE.md are append-only dated journals that correctly say "uImage"
 # in entries written before the sec 29-31 naming correction - a mechanical
-# grep can't tell historical record from stale current claim, and got this
-# wrong on a first pass (flagged docs/HISTORY.md's legitimate history as a
-# MISS). That distinction needs a human read, which is how scripts/build/
+# G9 phase 1: /usr/data boot check and clean shutdown. REQUIRED:
+# the checker tools exist, and S01 runs the policy and the shutdown.
+echo "=== G9 /usr/data policy ==="
+_g9_ok=1
+[ -f "$REPO_ROOT/scripts/build/overlay/usr/libexec/rosetteos-datafs.sh" ] || _g9_ok=0
+grep -q '^ndf_precheck()' "$REPO_ROOT/scripts/build/overlay/usr/libexec/rosetteos-datafs.sh" 2>/dev/null || _g9_ok=0
+grep -q 'ndf_shutdown' "$REPO_ROOT/scripts/build/overlay/etc/init.d/S01persistent-datastore" 2>/dev/null || _g9_ok=0
+grep -q 'ndf_precheck' "$REPO_ROOT/scripts/build/overlay/etc/init.d/S01persistent-datastore" 2>/dev/null || _g9_ok=0
+if [ "$_g9_ok" = 1 ]; then
+	echo "OK   G9: e2fsck policy and S01 boot check / clean shutdown present"
+else
+	echo "MISS G9: S01 boot check/shutdown or rosetteos-datafs.sh missing   <== REQUIRED"
+	echo "MISS G9: S01 boot check/shutdown missing" >> "$LOG_FAIL_FILE"
+fi
+
 if [ -s "$LOG_FAIL_FILE" ]; then
 	FAIL_COUNT=$(wc -l < "$LOG_FAIL_FILE" | tr -d ' ')
 	echo "FATAL: verification FAILED with $FAIL_COUNT issue(s) - review MISS/FAIL lines above" >&2
