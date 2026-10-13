@@ -37,6 +37,9 @@ V4L2CTL=/usr/bin/v4l2-ctl
 USTREAMER=/usr/bin/ustreamer
 POLL_INTERVAL=5
 
+ROSETTEOS_OOM_POLICY="${ROSETTEOS_OOM_POLICY:-/etc/rosetteos-oom-policy.sh}"
+if [ -r "$ROSETTEOS_OOM_POLICY" ]; then . "$ROSETTEOS_OOM_POLICY"; else rosetteos_start_with_adj() { shift; "$@"; }; fi
+
 # USB/webcam+MCU-recovery mission (2026-07-26): the real webcam (v4l2-ctl
 # --list-formats-ext on the real UVC node) advertises native MJPEG up to
 # 1920x1080 @ 30fps - the original 640x480 here was never a hardware
@@ -163,7 +166,9 @@ ustreamer_running_on() {
 start_ustreamer() {
 	dev="$1"
 	echo "S50webcam: starting ustreamer on $dev"
-	start-stop-daemon -S -b -m -p "$USTREAMER_PIDFILE" \
+	# OOM priority at birth (MEM-T07) and scheduling nice +5 (SCHED-02).
+	rosetteos_start_with_adj "$ROSETTEOS_ADJ_USTREAMER" \
+		start-stop-daemon -S -b -m -p "$USTREAMER_PIDFILE" -N 5 \
 		-x "$USTREAMER" -- \
 		--device="$dev" --format=MJPEG --encoder=HW \
 		--resolution="$RESOLUTION" --desired-fps="$DESIRED_FPS" \
@@ -186,11 +191,6 @@ start_ustreamer() {
 	# together address every machine-side contributor found; residual
 	# jitter beyond these three is attributed to real-time WiFi signal
 	# conditions, out of this mission's scope).
-	# NebulaOS Memory Resilience Gate: webcam streaming is "more
-	# expendable" - optional media, never printer-critical - so it should
-	# be picked as an OOM victim well before Klipper/Moonraker/GuppyScreen
-	# (docs/NEBULAOS_MEMORY_RESILIENCE.md sec 7).
-	[ -f "$USTREAMER_PIDFILE" ] && echo 300 > "/proc/$(cat "$USTREAMER_PIDFILE")/oom_score_adj" 2>/dev/null
 }
 
 stop_ustreamer() {

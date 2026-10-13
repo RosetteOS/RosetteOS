@@ -1,0 +1,13 @@
+# RosetteOS MEM-T06: low-memory git defaults for every git user on the
+# printer (Moonraker update_manager, the update supervisor, seeding).
+# Restricts pack window and delta resolution memory usage to avoid OOM
+# on a 256 MiB system.
+[pack]
+	threads = 1
+	windowMemory = 16m
+[core]
+	packedGitWindowSize = 1m
+	packedGitLimit = 32m
+	deltaBaseCacheLimit = 8m
+[gc]
+	auto = 0

@@ -23,6 +23,9 @@ KLIPPER_HOST_MCU=/usr/bin/klipper_mcu
 SOCKET=/tmp/klipper_host_mcu
 PID_FILE=/var/run/klipper_mcu.pid
 
+ROSETTEOS_OOM_POLICY="${ROSETTEOS_OOM_POLICY:-/etc/rosetteos-oom-policy.sh}"
+if [ -r "$ROSETTEOS_OOM_POLICY" ]; then . "$ROSETTEOS_OOM_POLICY"; else rosetteos_start_with_adj() { shift; "$@"; }; fi
+
 mcu_host_start() {
 	[ -x "$KLIPPER_HOST_MCU" ] || {
 		echo "S54rosetteos-host-mcu: $KLIPPER_HOST_MCU not present, skipping"
@@ -32,14 +35,9 @@ mcu_host_start() {
 		mcu_host_stop
 	fi
 	echo "Starting klipper_mcu (host MCU)"
-	# -I explicitly pins the socket path to $SOCKET, which must match
-	# [mcu rpi]'s serial: value in hardware/nebula_pad.cfg exactly. klipper_mcu's own
-	# compiled-in default (src/linux/main.c) already happens to be this
-	# same path, so this was never a functional bug - but stating it
-	# explicitly means a future change to either side (this script's
-	# $SOCKET, or hardware/nebula_pad.cfg's serial:) fails loudly instead of silently
-	# drifting apart from an upstream default nobody is actually pinning.
-	start-stop-daemon -S -q -b -m -p "$PID_FILE" \
+	# OOM priority at birth (MEM-T07): host MCU must never be killed (-1000).
+	rosetteos_start_with_adj "$ROSETTEOS_ADJ_KLIPPER_MCU" \
+		start-stop-daemon -S -q -b -m -p "$PID_FILE" \
 		--exec "$KLIPPER_HOST_MCU" -- -r -I "$SOCKET"
 }
 

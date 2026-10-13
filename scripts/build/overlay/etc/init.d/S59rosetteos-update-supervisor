@@ -15,16 +15,20 @@
 SUPERVISOR=/etc/rosetteos-update-supervisor.sh
 PIDFILE=/var/run/rosetteos-update-supervisor.pid
 
+ROSETTEOS_OOM_POLICY="${ROSETTEOS_OOM_POLICY:-/etc/rosetteos-oom-policy.sh}"
+if [ -r "$ROSETTEOS_OOM_POLICY" ]; then . "$ROSETTEOS_OOM_POLICY"; else rosetteos_start_with_adj() { shift; "$@"; }; fi
+
 start() {
 	echo "Starting rosetteos-update-supervisor"
-	start-stop-daemon -S -b -m -p "$PIDFILE" \
+	# OOM priority at birth (MEM-T07): update work is expendable (+500); scheduling nice +15 (SCHED-02).
+	rosetteos_start_with_adj "$ROSETTEOS_ADJ_UPDATE_SUPERVISOR" \
+		start-stop-daemon -S -b -m -p "$PIDFILE" -N 15 \
 		-x /bin/sh -- "$SUPERVISOR" loop
-	[ -f "$PIDFILE" ] && echo 500 > "/proc/$(cat "$PIDFILE")/oom_score_adj" 2>/dev/null
 }
 
 stop() {
 	echo "Stopping rosetteos-update-supervisor"
-	start-stop-daemon -K -p "$PIDFILE"
+	start-stop-daemon -K -p "$PIDFILE" && rm -f "$PIDFILE"
 }
 
 case "$1" in

@@ -30,18 +30,10 @@ ZRAM_COMP=lz4
 ZRAM_PRIORITY=100
 
 log() {
-	echo "S00zram-swap: $1"
-}
-
-apply_sysctl_policy() {
-	# vm.page-cluster=0: standard guidance for zram-backed swap to read/write
-	# one page at a time without rotational disk clustering overhead.
-	echo 0 > /proc/sys/vm/page-cluster 2>/dev/null
+	echo "S01zram-swap: $1"
 }
 
 start() {
-	apply_sysctl_policy
-
 	if [ ! -e "$ZRAM_SYSFS" ]; then
 		log "WARNING: $ZRAM_SYSFS not present - kernel may be missing CONFIG_ZRAM, skipping (system continues without this resilience layer rather than failing boot)"
 		return 0
@@ -67,6 +59,13 @@ start() {
 		return 0
 	fi
 
+	# MEM-T11: cap the real (compressed) memory zram may hold at 20% of
+	# MemTotal, so a poorly-compressing workload cannot turn zram itself into
+	# the memory consumer it exists to relieve.
+	mt=$(awk '/^MemTotal:/{print $2}' /proc/meminfo)
+	lim=$((mt * 20 / 100 / 1024))
+	echo "${lim}M" > "$ZRAM_SYSFS/mem_limit" 2>/dev/null || log "ERROR: mem_limit write failed"
+
 	if ! mkswap "$ZRAM_DEV" >/dev/null 2>&1; then
 		log "ERROR: mkswap $ZRAM_DEV failed - skipping zram setup"
 		return 0
@@ -80,7 +79,11 @@ start() {
 	# comp_algorithm reads back as a list with the active one bracketed
 	# (e.g. "lzo [lz4] zstd") - extract just that for a clean log line.
 	active_comp=$(cat "$ZRAM_SYSFS/comp_algorithm" 2>/dev/null | sed -n 's/.*\[\([^]]*\)\].*/\1/p')
-	log "zram active: $ZRAM_DEV, algorithm=${active_comp:-unknown}, size=$ZRAM_SIZE_BYTES bytes, priority=$ZRAM_PRIORITY"
+	log "zram active: $ZRAM_DEV, algorithm=${active_comp:-unknown}, size=$ZRAM_SIZE_BYTES bytes, mem_limit=${lim}M, priority=$ZRAM_PRIORITY"
+	if [ "$active_comp" != "$ZRAM_COMP" ]; then
+		log "ERROR: zram algorithm is ${active_comp:-unknown}, expected $ZRAM_COMP"
+		mkdir -p /run/rosetteos && echo "${active_comp:-unknown}" > /run/rosetteos/zram-alg-mismatch
+	fi
 }
 
 case "$1" in

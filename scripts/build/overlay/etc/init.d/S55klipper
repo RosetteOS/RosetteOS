@@ -31,6 +31,9 @@ PYTHON3=/usr/bin/python3
 export PYTHONOPTIMIZE=2
 export MALLOC_ARENA_MAX=1
 
+ROSETTEOS_OOM_POLICY="${ROSETTEOS_OOM_POLICY:-/etc/rosetteos-oom-policy.sh}"
+if [ -r "$ROSETTEOS_OOM_POLICY" ]; then . "$ROSETTEOS_OOM_POLICY"; else rosetteos_start_with_adj() { shift; "$@"; }; fi
+
 start() {
 	echo "Starting klippy (using $PYTHON3)"
 	if [ ! -f /opt/klipper/klippy/chelper/c_helper.so ] || [ ! -s /opt/klipper/klippy/chelper/c_helper.so ]; then
@@ -45,17 +48,12 @@ start() {
 		[ -n "$newest" ] && touch -r "$newest" /opt/klipper/klippy/chelper/c_helper.so 2>/dev/null || true
 		touch -d "@2000000000" /opt/klipper/klippy/chelper/c_helper.so 2>/dev/null || true
 	fi
-	start-stop-daemon -S -b -m -p "$PIDFILE" \
+	# Scheduling (SCHED-02): -N -10 before exec so every klippy thread inherits it.
+	# OOM priority at birth (MEM-T07): protected killable process (-900).
+	rosetteos_start_with_adj "$ROSETTEOS_ADJ_KLIPPY" \
+		start-stop-daemon -S -b -m -p "$PIDFILE" -N -10 \
 		-x "$PYTHON3" -- \
 		"$KLIPPY" "$CONFIG" -a "$APISOCK" -l "$LOGFILE"
-	# NebulaOS Memory Resilience Gate: Klipper/MCU communication is the
-	# most protected process on this system - -700, not -1000 (this
-	# mission's own explicit instruction: never indiscriminately assign
-	# -1000; the kernel must retain a sensible OOM victim if memory is
-	# truly exhausted, not be forced to pick the one process that must
-	# never die). See docs/NEBULAOS_MEMORY_RESILIENCE.md sec 7 for the
-	# full priority table and reasoning.
-	[ -f "$PIDFILE" ] && echo -700 > "/proc/$(cat "$PIDFILE")/oom_score_adj" 2>/dev/null
 }
 
 stop() {
