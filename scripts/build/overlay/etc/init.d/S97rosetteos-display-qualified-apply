@@ -153,6 +153,11 @@ start() {
 		exit 0
 	fi
 
+	if [ "$(ndq_get_field "$NDQ_CONFIG_FILE" qualification_complete 2>/dev/null)" != "1" ]; then
+		log "$NDQ_CONFIG_FILE is not qualification_complete=1 - nothing to apply"
+		exit 0
+	fi
+
 	if ! wait_for_health; then
 		log "printer stack (Klipper/Moonraker), GuppyScreen, networking, or the display itself never confirmed healthy after $((HEALTH_RETRIES * HEALTH_DELAY))s - doing nothing, both drivers remain at their own safe boot defaults"
 		exit 0

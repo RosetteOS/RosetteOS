@@ -25,7 +25,11 @@ CONFIG=/opt/printer_data/config/moonraker.conf
 DATAPATH=/opt/printer_data
 LOGFILE=/opt/printer_data/logs/moonraker.log
 UNIXSOCKET=/opt/printer_data/comms/moonraker.sock
-PIDFILE=/var/run/moonraker.pid
+PIDFILE="${MOONRAKER_PIDFILE:-/var/run/moonraker.pid}"
+RECOVERY_PIDFILE="${MOONRAKER_RECOVERY_PIDFILE:-/var/run/moonraker-recovery.pid}"
+
+ROSETTEOS_OOM_POLICY="${ROSETTEOS_OOM_POLICY:-/etc/rosetteos-oom-policy.sh}"
+if [ -r "$ROSETTEOS_OOM_POLICY" ]; then . "$ROSETTEOS_OOM_POLICY"; else rosetteos_start_with_adj() { shift; "$@"; }; fi
 
 # NebulaOS mutable-runtime mission, Phase 7: prefer the writable venv
 # S04nebulaos-factory-seed creates at /usr/data/rosetteos/envs/moonraker
@@ -94,25 +98,57 @@ log() {
 	echo "S56moonraker: $1"
 }
 
+# MEM-T04: Moonraker's upload and other temporary files go to eMMC-backed
+# /opt/printer_data instead of the RAM-backed /tmp. Python's tempfile
+# honours TMPDIR, so a 200 MB G-code upload no longer costs 200 MB of RAM.
+# Leftovers from a previous run are cleared, but never while a Moonraker
+# instance is still alive (a restart's stop does not wait for the exit).
+# An unwritable directory falls back to /tmp, which MEM-T02 bounds.
+MOONRAKER_TMPDIR="${MOONRAKER_TMPDIR:-/opt/printer_data/.rosetteos-tmp/moonraker}"
+prepare_tmpdir() {
+	mkdir -p "$MOONRAKER_TMPDIR" 2>/dev/null
+	if ! ( : > "$MOONRAKER_TMPDIR/.w" ) 2>/dev/null; then
+		log "WARNING: $MOONRAKER_TMPDIR not writable - Moonraker temp falls back to RAM /tmp"
+		return 0
+	fi
+	rm -f "$MOONRAKER_TMPDIR/.w"
+	_pid=$(cat "$PIDFILE" 2>/dev/null)
+	if [ -z "$_pid" ] || [ ! -d "/proc/$_pid" ]; then
+		find "$MOONRAKER_TMPDIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null
+	fi
+	export TMPDIR="$MOONRAKER_TMPDIR"
+}
+
 start_daemon() {
+	prepare_tmpdir
 	mkdir -p /usr/data/rosetteos/components
 	[ -x /usr/bin/rosetteos-app ] && /usr/bin/rosetteos-app sync >/dev/null 2>&1 || true
 	echo "Starting moonraker (using $PYTHON3)"
-	start-stop-daemon -S -b -m -p "$PIDFILE" \
+	rosetteos_start_with_adj "$ROSETTEOS_ADJ_MOONRAKER" \
+		start-stop-daemon -S -b -m -p "$PIDFILE" \
 		-x "$PYTHON3" -- \
 		"$MOONRAKER" -d "$DATAPATH" -c "$CONFIG" -l "$LOGFILE" \
 		-u "$UNIXSOCKET"
-	# NebulaOS Memory Resilience Gate: moderately protected - Moonraker
-	# coordinates updates/rollback and must survive memory pressure
-	# preferentially over GuppyScreen/webcam/update-helper processes, but
-	# less critically than Klipper itself (docs/NEBULAOS_MEMORY_RESILIENCE.md
-	# sec 7).
-	[ -f "$PIDFILE" ] && echo -400 > "/proc/$(cat "$PIDFILE")/oom_score_adj" 2>/dev/null
 }
 
 stop() {
+	cancel_pending_recovery
 	echo "Stopping moonraker"
-	start-stop-daemon -K -p "$PIDFILE"
+	start-stop-daemon -K -p "$PIDFILE" && rm -f "$PIDFILE"
+}
+
+# BOOT-05: an explicit stop (or a new start) cancels a still-pending
+# background update_manager check, so it can never restart a Moonraker
+# someone else stopped. The check itself runs with _IN_RECOVERY set and
+# never cancels itself. A pid is only killed while it is still this script.
+cancel_pending_recovery() {
+	[ -n "${_IN_RECOVERY:-}" ] && return 0
+	_rp=$(cat "$RECOVERY_PIDFILE" 2>/dev/null)
+	if [ -n "$_rp" ] && kill -0 "$_rp" 2>/dev/null \
+		&& grep -q 'S56moonraker' "/proc/$_rp/cmdline" 2>/dev/null; then
+		kill "$_rp" 2>/dev/null && log "cancelled the pending first-start update_manager check (pid $_rp)"
+	fi
+	rm -f "$RECOVERY_PIDFILE" 2>/dev/null
 }
 
 # Waits for Moonraker's HTTP API to answer at all (it takes a few seconds
@@ -134,7 +170,10 @@ wait_for_server_info() {
 	return 1
 }
 
+# $1 (optional): the Moonraker pid this check belongs to. When given, the
+# restart only happens if that exact instance is still the running one.
 recover_update_manager_if_needed() {
+	_rum_expected="${1:-}"
 	info=$(wait_for_server_info) || {
 		log "server/info did not respond within ${MOONRAKER_INFO_POLL_TIMEOUT}s - skipping the first-boot update_manager recovery check (Moonraker may still be starting; nothing further this script can safely do)"
 		return 0
@@ -142,6 +181,10 @@ recover_update_manager_if_needed() {
 	failed=$(printf '%s' "$info" | grep -o '"failed_components"[[:space:]]*:[[:space:]]*\[[^]]*\]')
 	case "$failed" in
 		*'"update_manager"'*)
+			if [ -n "$_rum_expected" ] && [ "$(cat "$PIDFILE" 2>/dev/null)" != "$_rum_expected" ]; then
+				log "update_manager failed on start, but Moonraker was restarted meanwhile (pid $_rum_expected is gone) - leaving the new instance alone"
+				return 0
+			fi
 			log "update_manager failed to load on this start (known first-boot venv-discovery race - see this script's own header) - restarting once so it re-reads Klipper's now-identified venv path"
 			stop
 			start_daemon
@@ -151,9 +194,26 @@ recover_update_manager_if_needed() {
 	esac
 }
 
+# BOOT-05 (2026-10-05): the first-start update_manager check used to run
+# synchronously, so rcS held S57/S58 (and the screen) for ~9.7 s on every
+# boot until /server/info answered. It now runs in the background with the
+# same bounded wait and the same one-restart decision. GuppyScreen does not
+# need Moonraker to be up when it starts: its websocket client reconnects
+# forever with a 200 ms - 2 s backoff and shows its init overlay until
+# Moonraker and Klippy report ready; the S57 seeders already retry with
+# their own bounded backoff.
 start() {
 	start_daemon
-	recover_update_manager_if_needed
+	_started=$(cat "$PIDFILE" 2>/dev/null)
+	cancel_pending_recovery
+	(
+		_IN_RECOVERY=1
+		trap '' HUP
+		recover_update_manager_if_needed "$_started"
+		rm -f "$RECOVERY_PIDFILE" 2>/dev/null
+	) < /dev/null &
+	echo $! > "$RECOVERY_PIDFILE" 2>/dev/null
+	return 0
 }
 
 if [ -z "${S56MOONRAKER_NO_AUTORUN:-}" ]; then
