@@ -254,12 +254,11 @@ if [ -n "$klipper_app" ]; then
 	fi
 fi
 
-# Record newly installed software version
-echo "rosetteos ${VERSION}" > /etc/sw-versions 2>/dev/null || true
-echo "${VERSION}" > /etc/rosetteos-version 2>/dev/null || true
+# Record newly installed software version in persistent storage
+mkdir -p /usr/data/rosetteos 2>/dev/null || true
+echo "${VERSION}" > /usr/data/rosetteos/pending_version 2>/dev/null || true
 
 # Write pending what's new changelog for GuppyScreen on first boot
-mkdir -p /usr/data/rosetteos 2>/dev/null || true
 cat > /usr/data/rosetteos/.pending_whats_new <<'CL_EOF'
 __CHANGELOG_CONTENT__
 CL_EOF
