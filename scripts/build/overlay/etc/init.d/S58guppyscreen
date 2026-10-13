@@ -42,6 +42,9 @@ get_touch_binary() {
 		echo "WARNING: Custom touch UI '$active_touch' not found or not executable. Falling back to GuppyScreen." >&2
 	fi
 
+	echo "$GUPPY_DIR/guppyscreen"
+}
+
 ROSETTEOS_OOM_POLICY="${ROSETTEOS_OOM_POLICY:-/etc/rosetteos-oom-policy.sh}"
 if [ -r "$ROSETTEOS_OOM_POLICY" ]; then . "$ROSETTEOS_OOM_POLICY"; else rosetteos_start_with_adj() { shift; "$@"; }; fi
 

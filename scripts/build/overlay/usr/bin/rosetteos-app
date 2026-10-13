@@ -1763,10 +1763,21 @@ def find_app_service_script(app_id: str) -> str:
                 fname.endswith(f"_{normalized_id}") or fname.endswith(normalized_id)):
                 return cand
 
-    # 3. Legacy /etc/init.d/ fallback
-    for cand in [f"/etc/init.d/{app_id}", f"/etc/init.d/S60{normalized_id}", f"/etc/init.d/K60{normalized_id}", f"/etc/init.d/{normalized_id}"]:
-        if os.path.isfile(cand):
-            return cand
+    # 3. System /etc/init.d/ fallback
+    if os.path.isdir("/etc/init.d"):
+        for cand in [f"/etc/init.d/{app_id}", f"/etc/init.d/{normalized_id}"]:
+            if os.path.isfile(cand):
+                return cand
+        for fname in sorted(os.listdir("/etc/init.d")):
+            cand = os.path.join("/etc/init.d", fname)
+            if not os.path.isfile(cand):
+                continue
+            base = re.sub(r"\.disabled$", "", fname)
+            norm_base = re.sub(r"^[SK]\d+", "", base)
+            if (fname == app_id or fname == normalized_id or
+                base == app_id or norm_base == normalized_id or
+                fname.endswith(f"_{normalized_id}") or fname.endswith(normalized_id)):
+                return cand
     return ""
 
 
@@ -2686,7 +2697,13 @@ def cmd_logs(args):
     lines = getattr(args, "lines", 50)
     follow = getattr(args, "follow", False)
 
-    log_dirs = ["/var/log", "/usr/data/rosetteos/logs", "/tmp"]
+    log_dirs = [
+        "/var/log",
+        "/opt/printer_data/logs",
+        "/usr/data/rosetteos/printer_data/logs",
+        "/usr/data/rosetteos/logs",
+        "/tmp",
+    ]
 
     # If no app_id is provided, list all discovered log files with sizes
     if not app_id:
@@ -2709,33 +2726,50 @@ def cmd_logs(args):
                         print(f"{app_name:<22} {sz_str:<10} {fpath}")
                         found = True
         if not found:
-            print("No log files found in /var/log or /usr/data/rosetteos/logs.")
+            print("No log files found in /var/log, /opt/printer_data/logs, or /usr/data/rosetteos/logs.")
         return
 
     app_id = app_id.lower()
     norm_id = re.sub(r"^[SK]\d+", "", app_id)
 
     # Candidate paths for app_id
-    candidates = [
-        f"/var/log/{app_id}.log",
-        f"/var/log/{norm_id}.log",
-        f"/usr/data/rosetteos/logs/{app_id}.log",
-        f"/usr/data/rosetteos/logs/{norm_id}.log",
-        f"/tmp/{app_id}.log",
-        f"/tmp/{norm_id}.log",
-    ]
-    if app_id == "vnc":
-        candidates.insert(0, "/var/log/vnc.log")
-        candidates.insert(1, "/var/log/rosetteos-vnc.log")
+    raw_candidates = []
+    if app_id in ("guppy", "guppyscreen"):
+        raw_candidates.extend([
+            "/opt/printer_data/logs/guppyscreen.log",
+            "/usr/data/rosetteos/printer_data/logs/guppyscreen.log",
+            "/var/log/guppyscreen.log",
+            "/tmp/guppyscreen.log",
+        ])
     elif app_id == "klipper":
-        candidates.insert(0, "/var/log/klipper.log")
-        candidates.insert(1, "/tmp/klipper.log")
+        raw_candidates.extend([
+            "/opt/printer_data/logs/klippy.log",
+            "/usr/data/rosetteos/printer_data/logs/klippy.log",
+            "/var/log/klipper.log",
+            "/tmp/klipper.log",
+        ])
     elif app_id == "moonraker":
-        candidates.insert(0, "/var/log/moonraker.log")
-        candidates.insert(1, "/tmp/moonraker.log")
-    elif app_id in ("guppy", "guppyscreen"):
-        candidates.insert(0, "/var/log/guppyscreen.log")
-        candidates.insert(1, "/tmp/guppyscreen.log")
+        raw_candidates.extend([
+            "/opt/printer_data/logs/moonraker.log",
+            "/usr/data/rosetteos/printer_data/logs/moonraker.log",
+            "/var/log/moonraker.log",
+            "/tmp/moonraker.log",
+        ])
+    elif app_id == "vnc":
+        raw_candidates.extend([
+            "/var/log/vnc.log",
+            "/var/log/rosetteos-vnc.log",
+        ])
+
+    for base_id in (app_id, norm_id):
+        for ld in log_dirs:
+            raw_candidates.append(os.path.join(ld, f"{base_id}.log"))
+
+    # Deduplicate while preserving order
+    candidates = []
+    for c in raw_candidates:
+        if c not in candidates:
+            candidates.append(c)
 
     log_file = None
     for cand in candidates:
