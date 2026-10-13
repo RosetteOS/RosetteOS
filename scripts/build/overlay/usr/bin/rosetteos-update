@@ -1,0 +1,441 @@
+#!/bin/sh
+#
+# rosetteos-update: CLI firmware updater for RosetteOS.
+#
+# Supports downloading and flashing the latest nightly or release SWUpdate
+# image (.swu) from GitHub, or installing from a local file / custom URL.
+#
+# Features:
+#   - Automatic active A/B boot slot detection via /proc/cmdline.
+#   - Precaution warnings before downloading and flashing.
+#   - Moonraker print & heater safety interlocks (refuses flashing during prints).
+#   - Storage space preflight validation.
+#   - Target slot collision and mount safety checks.
+#   - Automated verification and arming via SWUpdate.
+#   - Interactive confirmation prompts with --yes / -y bypass options.
+#
+
+set -eu
+
+ROSETTEOS_GITHUB_REPO="${ROSETTEOS_GITHUB_REPO:-RosetteOS/RosetteOS}"
+NIGHTLY_SWU_URL="https://github.com/${ROSETTEOS_GITHUB_REPO}/releases/download/nightly/rosetteos-update-nightly.swu"
+NIGHTLY_SHA_URL="https://github.com/${ROSETTEOS_GITHUB_REPO}/releases/download/nightly/rosetteos-update-nightly.swu.sha256"
+
+CMDLINE_PATH="${CMDLINE_PATH:-/proc/cmdline}"
+MOUNTS_PATH="${MOUNTS_PATH:-/proc/mounts}"
+MOONRAKER_URL="${MOONRAKER_URL:-http://127.0.0.1:7125}"
+SWUPDATE_BIN="${SWUPDATE_BIN:-swupdate}"
+UPDATE_DIR="${UPDATE_DIR:-/usr/data/rosetteos/updates}"
+REBOOT_CMD="${REBOOT_CMD:-reboot}"
+ROSETTEOS_UPDATE_TEST_MODE="${ROSETTEOS_UPDATE_TEST_MODE:-0}"
+
+NON_INTERACTIVE=0
+NO_REBOOT=0
+KEEP_FILE=0
+FORCE=0
+CHECK_ONLY=0
+TARGET_SRC=""
+
+print_usage() {
+	cat <<EOF
+RosetteOS Firmware Updater CLI (rosetteos-update)
+
+Usage:
+  rosetteos-update nightly [options]
+  rosetteos-update <path-or-url> [options]
+  rosetteos-update --check
+
+Commands & Arguments:
+  nightly, --nightly       Download and install the latest nightly release from GitHub.
+  <path-to-file.swu>       Install firmware from a local .swu file.
+  <url-to-file.swu>        Download and install firmware from a custom URL.
+  -c, --check              Perform preflight checks and show slot status without updating.
+
+Options:
+  -y, --yes                Skip interactive confirmation prompts (accept precaution warnings).
+  --no-reboot              Do not reboot after a successful installation.
+  -k, --keep               Do not delete the downloaded .swu file after installation.
+  -f, --force              Bypass non-critical warnings (e.g. bed temperature).
+  -h, --help               Display this help message.
+
+Examples:
+  rosetteos-update nightly
+  rosetteos-update nightly --yes
+  rosetteos-update /tmp/update.swu
+EOF
+}
+
+log() {
+	printf "[rosetteos-update] %s\n" "$1"
+}
+
+log_err() {
+	printf "[rosetteos-update ERROR] %s\n" "$1" >&2
+}
+
+log_warn() {
+	printf "[rosetteos-update WARNING] %s\n" "$1" >&2
+}
+
+# Resolve active boot slot from kernel command line
+detect_slots() {
+	CURRENT_ROOT=$(sed -n 's/.*\broot=\(\S*\).*/\1/p' "$CMDLINE_PATH" 2>/dev/null || true)
+	CURRENT_SLOT=""
+	TARGET_SLOT=""
+	TARGET_DEVICE=""
+
+	case "$CURRENT_ROOT" in
+		*mmcblk0p7*|*rootfs1*|*by-partlabel/rootfs)
+			CURRENT_SLOT="slot1"
+			TARGET_SLOT="slot2"
+			TARGET_DEVICE="/dev/mmcblk0p8"
+			;;
+		*mmcblk0p8*|*rootfs2*|*by-partlabel/rootfs2)
+			CURRENT_SLOT="slot2"
+			TARGET_SLOT="slot1"
+			TARGET_DEVICE="/dev/mmcblk0p7"
+			;;
+		*)
+			if [ "$ROSETTEOS_UPDATE_TEST_MODE" = "1" ]; then
+				CURRENT_SLOT="${MOCK_CURRENT_SLOT:-slot1}"
+				TARGET_SLOT="${MOCK_TARGET_SLOT:-slot2}"
+				TARGET_DEVICE="/dev/mmcblk0p8"
+			fi
+			;;
+	esac
+
+	if [ -z "$CURRENT_SLOT" ] || [ -z "$TARGET_SLOT" ]; then
+		log_err "Unable to identify active boot slot from $CMDLINE_PATH (root='$CURRENT_ROOT'). Refusing to proceed."
+		return 1
+	fi
+	return 0
+}
+
+# Check Moonraker printer and heater states
+check_printer_safety() {
+	if [ "$ROSETTEOS_UPDATE_TEST_MODE" = "1" ] && [ -n "${MOCK_MOONRAKER_STATUS:-}" ]; then
+		eval "$MOCK_MOONRAKER_STATUS"
+		return 0
+	fi
+
+	command -v python3 >/dev/null 2>&1 || return 0
+
+	python3 - "$MOONRAKER_URL" "$FORCE" <<'PYEOF'
+import urllib.request
+import json
+import sys
+
+url = sys.argv[1]
+force = sys.argv[2] == "1"
+
+try:
+    req = urllib.request.urlopen(f"{url}/printer/objects/query?print_stats&extruder&heater_bed", timeout=2)
+    data = json.loads(req.read().decode('utf-8'))
+    status = data.get("result", {}).get("status", {})
+
+    print_state = status.get("print_stats", {}).get("state", "").lower()
+    if print_state in ["printing", "paused"]:
+        print(f"CRITICAL: Active print job in progress (state: {print_state})!", file=sys.stderr)
+        print("Firmware update is blocked while printing to prevent hardware damage.", file=sys.stderr)
+        sys.exit(2)
+
+    hot = False
+    extruder = status.get("extruder", {})
+    if extruder.get("target", 0) > 0 or extruder.get("temperature", 0) > 60:
+        print(f"WARNING: Extruder heater is active/hot ({extruder.get('temperature', 0):.1f}°C, target: {extruder.get('target', 0):.1f}°C)", file=sys.stderr)
+        hot = True
+
+    bed = status.get("heater_bed", {})
+    if bed.get("target", 0) > 0 or bed.get("temperature", 0) > 55:
+        print(f"WARNING: Heated bed is active/hot ({bed.get('temperature', 0):.1f}°C, target: {bed.get('target', 0):.1f}°C)", file=sys.stderr)
+        hot = True
+
+    if hot and not force:
+        print("Heaters are currently active or hot. Pass --force to bypass heater check.", file=sys.stderr)
+        sys.exit(3)
+
+except Exception:
+    pass
+sys.exit(0)
+PYEOF
+}
+
+# Verify storage space on /usr/data
+check_storage_space() {
+	dest_dir="${1:-$UPDATE_DIR}"
+	mkdir -p "$dest_dir" 2>/dev/null || true
+
+	# Require at least 150MB (153600 KB) free space
+	if command -v df >/dev/null 2>&1; then
+		free_kb=$(df -k "$dest_dir" 2>/dev/null | awk 'NR==2 {print $4}')
+		if [ -n "$free_kb" ] && [ "$free_kb" -lt 153600 ] && [ "$ROSETTEOS_UPDATE_TEST_MODE" != "1" ]; then
+			free_mb=$((free_kb / 1024))
+			log_err "Insufficient disk space on $dest_dir: only ${free_mb}MB free (at least 150MB required)."
+			return 1
+		fi
+	fi
+	return 0
+}
+
+# Verify target partition is not mounted
+check_partition_safety() {
+	if [ -e "$MOUNTS_PATH" ] && [ -n "$TARGET_DEVICE" ]; then
+		if grep -q "^$TARGET_DEVICE " "$MOUNTS_PATH" 2>/dev/null; then
+			log_err "Target partition $TARGET_DEVICE is currently mounted in $MOUNTS_PATH! Cannot overwrite safely."
+			return 1
+		fi
+	fi
+	return 0
+}
+
+# Download file via wget or curl
+download_file() {
+	url="$1"
+	dest="$2"
+	mkdir -p "$(dirname "$dest")"
+
+	log "Downloading $url -> $dest ..."
+	if command -v wget >/dev/null 2>&1; then
+		wget -q --show-progress -O "$dest" "$url" || {
+			# Fallback if busybox wget lacks --show-progress
+			wget -O "$dest" "$url"
+		}
+	elif command -v curl >/dev/null 2>&1; then
+		curl -L -f --progress-bar -o "$dest" "$url"
+	else
+		log_err "Neither wget nor curl is available to download update."
+		return 1
+	fi
+}
+
+# Download and verify sha256 checksum if available
+verify_download_sha256() {
+	swu_file="$1"
+	sha_url="$2"
+	sha_tmp="${swu_file}.sha256"
+
+	if download_file "$sha_url" "$sha_tmp" 2>/dev/null; then
+		expected_sha=$(awk '{print $1}' "$sha_tmp" | tr -d ' \n\r' || true)
+		rm -f "$sha_tmp"
+		if [ -n "$expected_sha" ] && command -v sha256sum >/dev/null 2>&1; then
+			log "Verifying SHA256 checksum..."
+			actual_sha=$(sha256sum "$swu_file" | awk '{print $1}')
+			if [ "$expected_sha" != "$actual_sha" ]; then
+				log_err "Checksum mismatch! Expected: $expected_sha, got: $actual_sha"
+				return 1
+			fi
+			log "SHA256 checksum verified OK ($actual_sha)."
+		fi
+	fi
+	return 0
+}
+
+display_precaution() {
+	source_label="$1"
+	cat <<EOF
+
+======================================================================
+               ⚠️   ROSETTEOS FIRMWARE UPDATE PRECAUTION   ⚠️
+======================================================================
+ Active Running Slot : $CURRENT_SLOT ($CURRENT_ROOT)
+ Target Inactive Slot: $TARGET_SLOT ($TARGET_DEVICE)
+ Update Source       : $source_label
+
+ PRECAUTIONARY NOTICE:
+ • Firmware will be downloaded and flashed to the inactive slot ($TARGET_SLOT).
+ • The active system ($CURRENT_SLOT) remains untouched until the next reboot.
+ • CRITICAL: Do NOT power off, unplug, or reset the printer during flashing!
+ • Ensure a stable power supply before starting the installation.
+======================================================================
+EOF
+}
+
+prompt_confirmation() {
+	if [ "$NON_INTERACTIVE" = "1" ]; then
+		log "Non-interactive mode enabled (--yes): Proceeding automatically."
+		return 0
+	fi
+
+	printf "Do you want to proceed with downloading and flashing the update? [y/N]: "
+	read -r reply || reply=""
+	case "$reply" in
+		[yY]|[yY][eE][sS])
+			return 0
+			;;
+		*)
+			log "Update cancelled by user."
+			exit 0
+			;;
+	esac
+}
+
+prompt_reboot() {
+	cat <<EOF
+
+======================================================================
+           🎉  FIRMWARE UPDATE COMPLETED SUCCESSFULLY!  🎉
+======================================================================
+ The standby slot ($TARGET_SLOT) was written and verified.
+ Boot markers have been armed to boot into $TARGET_SLOT on next restart.
+======================================================================
+EOF
+
+	if [ "$NO_REBOOT" = "1" ]; then
+		log "Reboot suppressed (--no-reboot). Please reboot manually to switch to $TARGET_SLOT."
+		return 0
+	fi
+
+	if [ "$NON_INTERACTIVE" = "1" ]; then
+		log "Non-interactive mode: Rebooting into $TARGET_SLOT now..."
+		$REBOOT_CMD
+		return 0
+	fi
+
+	printf "Reboot the printer now into the updated firmware? [y/N]: "
+	read -r reply || reply=""
+	case "$reply" in
+		[yY]|[yY][eE][sS])
+			log "Rebooting system..."
+			$REBOOT_CMD
+			;;
+		*)
+			log "Reboot deferred. Please reboot when convenient to activate $TARGET_SLOT."
+			;;
+	esac
+}
+
+main() {
+	while [ $# -gt 0 ]; do
+		case "$1" in
+			nightly|--nightly)
+				TARGET_SRC="nightly"
+				;;
+			-c|--check)
+				CHECK_ONLY=1
+				;;
+			-y|--yes)
+				NON_INTERACTIVE=1
+				;;
+			--no-reboot)
+				NO_REBOOT=1
+				;;
+			-k|--keep)
+				KEEP_FILE=1
+				;;
+			-f|--force)
+				FORCE=1
+				;;
+			-h|--help)
+				print_usage
+				exit 0
+				;;
+			-*)
+				log_err "Unknown option: $1"
+				print_usage
+				exit 1
+				;;
+			*)
+				if [ -z "$TARGET_SRC" ]; then
+					TARGET_SRC="$1"
+				else
+					log_err "Unexpected argument: $1"
+					exit 1
+				fi
+				;;
+		esac
+		shift
+	done
+
+	if [ -z "$TARGET_SRC" ] && [ "$CHECK_ONLY" = "0" ]; then
+		print_usage
+		exit 1
+	fi
+
+	# 1. Slot Detection
+	detect_slots || exit 1
+
+	if [ "$CHECK_ONLY" = "1" ]; then
+		echo "=== RosetteOS System Update Preflight Check ==="
+		echo "Active Running Slot : $CURRENT_SLOT"
+		echo "Target Standby Slot : $TARGET_SLOT ($TARGET_DEVICE)"
+		check_printer_safety || true
+		check_storage_space "$UPDATE_DIR" || true
+		check_partition_safety || true
+		echo "Preflight check complete."
+		exit 0
+	fi
+
+	# 2. Safety Interlocks
+	check_printer_safety || exit 1
+	check_partition_safety || exit 1
+	check_storage_space "$UPDATE_DIR" || exit 1
+
+	# 3. Source Selection & Precaution Prompt
+	SWU_FILE=""
+	IS_DOWNLOADED=0
+
+	case "$TARGET_SRC" in
+		nightly)
+			display_precaution "Nightly Release ($NIGHTLY_SWU_URL)"
+			prompt_confirmation
+			SWU_FILE="$UPDATE_DIR/rosetteos-update-nightly.swu"
+			download_file "$NIGHTLY_SWU_URL" "$SWU_FILE" || {
+				log_err "Failed to download nightly release from GitHub."
+				rm -f "$SWU_FILE"
+				exit 1
+			}
+			verify_download_sha256 "$SWU_FILE" "$NIGHTLY_SHA_URL" || {
+				rm -f "$SWU_FILE"
+				exit 1
+			}
+			IS_DOWNLOADED=1
+			;;
+		http://*|https://*)
+			display_precaution "Custom URL ($TARGET_SRC)"
+			prompt_confirmation
+			SWU_FILE="$UPDATE_DIR/rosetteos-custom-update.swu"
+			download_file "$TARGET_SRC" "$SWU_FILE" || {
+				log_err "Failed to download update from $TARGET_SRC."
+				rm -f "$SWU_FILE"
+				exit 1
+			}
+			IS_DOWNLOADED=1
+			;;
+		*)
+			if [ ! -f "$TARGET_SRC" ]; then
+				log_err "File not found: $TARGET_SRC"
+				exit 1
+			fi
+			SWU_FILE="$TARGET_SRC"
+			display_precaution "Local File ($SWU_FILE)"
+			prompt_confirmation
+			;;
+	esac
+
+	# 4. SWUpdate Execution
+	log "Starting SWUpdate flashing to $TARGET_SLOT..."
+	log "Executing: $SWUPDATE_BIN -i \"$SWU_FILE\" -e \"stable,$TARGET_SLOT\" -v"
+
+	if [ "$ROSETTEOS_UPDATE_TEST_MODE" = "1" ]; then
+		log "[TEST MODE] Simulated SWUpdate executed successfully."
+	else
+		if ! "$SWUPDATE_BIN" -i "$SWU_FILE" -e "stable,$TARGET_SLOT" -v; then
+			log_err "SWUpdate failed! Standby partition may be incomplete."
+			log_err "The currently active slot ($CURRENT_SLOT) was NOT modified and remains functional."
+			[ "$IS_DOWNLOADED" = "1" ] && [ "$KEEP_FILE" = "0" ] && rm -f "$SWU_FILE"
+			exit 1
+		fi
+	fi
+
+	# 5. Cleanup
+	if [ "$IS_DOWNLOADED" = "1" ] && [ "$KEEP_FILE" = "0" ]; then
+		rm -f "$SWU_FILE"
+	fi
+
+	# 6. Post-Installation & Reboot Prompt
+	prompt_reboot
+}
+
+if [ "${ROSETTEOS_UPDATE_NO_AUTORUN:-0}" != "1" ]; then
+	main "$@"
+fi

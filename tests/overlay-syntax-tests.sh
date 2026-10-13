@@ -26,8 +26,13 @@ for script in "$OVERLAY"/etc/init.d/*; do
 	fi
 done
 
-# Check all other .sh scripts in overlay
-find "$OVERLAY" -type f -name "*.sh" | while read -r script; do
+# Check all other shell scripts in overlay
+for script in $(find "$OVERLAY" -type f \( -name "*.sh" -o -perm -111 \)); do
+	[ -f "$script" ] || continue
+	case "$script" in
+		*/etc/init.d/*|*.py|*.so|*.png|*.json|*.txt|*.cfg|*.conf|*.service|*.rules|*.env|*.md) continue ;;
+	esac
+	head -n1 "$script" 2>/dev/null | grep -qE '^#!/(bin|usr/bin)/(sh|ash|bash)' || continue
 	if sh -n "$script" 2>/dev/null; then
 		pass
 	else

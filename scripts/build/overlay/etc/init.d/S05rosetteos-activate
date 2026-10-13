@@ -35,6 +35,35 @@ log() {
 	echo "S05rosetteos-activate: $1"
 }
 
+_venv_cand_dirs="."
+for _d in "${0:-}" "${1:-}" "${GATE_LIB:-}"; do
+	case "$_d" in
+		/*|*/*) _venv_cand_dirs="$_venv_cand_dirs $(dirname "$_d" 2>/dev/null || echo ".")" ;;
+	esac
+done
+for _cand_dir in $_venv_cand_dirs; do
+	for _name in rosetteos-venv-lib.sh nebulaos-venv-lib.sh; do
+		for _rel in "$_cand_dir/../../usr/libexec/$_name" "$_cand_dir/../usr/libexec/$_name"; do
+			[ -r "$_rel" ] && ROSETTEOS_VENV_LIB="$_rel" && break 3
+		done
+	done
+done
+for _cand in \
+	"${ROSETTEOS_VENV_LIB:-${NEBULAOS_VENV_LIB:-}}" \
+	/usr/libexec/rosetteos-venv-lib.sh \
+	/usr/libexec/nebulaos-venv-lib.sh; do
+	[ -n "$_cand" ] && [ -r "$_cand" ] || continue
+	ROSETTEOS_VENV_LIB=$_cand
+	break
+done
+if [ -n "${ROSETTEOS_VENV_LIB:-}" ] && [ -r "$ROSETTEOS_VENV_LIB" ]; then
+	. "$ROSETTEOS_VENV_LIB"
+else
+	log "WARNING: rosetteos-venv-lib.sh not found - treating the klipper venv as unusable"
+	venv_is_usable() { return 1; }
+	venv_validated_usable() { return 1; }
+fi
+
 # Records one app's activation decision. Appended as simple key=value lines
 # to a working file, assembled into JSON at the end of start() - avoids
 # needing a JSON-aware tool in a BusyBox ash environment.
@@ -219,10 +248,20 @@ start() {
 	# hasn't already had a lucky prior boot persist Klipper's real
 	# executable path into Moonraker's own database - i.e. always, on a
 	# genuinely fresh device.
-	if [ -x "$ROSETTEOS_ROOT/envs/klipper/bin/python3" ]; then
+	# Same predicate S04rosetteos-factory-seed uses, from the same file - a
+	# bare `-x bin/python3` is true for a venv built against an interpreter
+	# this image no longer ships (persistent envs survive an A/B slot change
+	# in BOTH directions), and bind-mounting such a venv onto /root/klippy-env
+	# is worse than leaving it unmounted: Moonraker's update_manager would
+	# then infer a klipper venv that cannot execute.
+	# BOOT-04: the same stamp S04 maintains - this boot's S04 normally just
+	# validated (or stamp-matched) this exact environment, so the 2.6 s import
+	# check runs again only if its identity changed or no passing check is on
+	# record.
+	if venv_validated_usable "$ROSETTEOS_ROOT/envs/klipper" "import greenlet, cffi, jinja2, serial, can"; then
 		bind_if_not_already "$ROSETTEOS_ROOT/envs/klipper" /root/klippy-env
 	else
-		log "klipper venv not present at $ROSETTEOS_ROOT/envs/klipper - leaving /root/klippy-env unmounted (update_manager's klipper slot will fail to load until S04 provisions it)"
+		log "klipper venv at $ROSETTEOS_ROOT/envs/klipper is absent or not usable by this image's python - leaving /root/klippy-env unmounted (S04rosetteos-factory-seed provisions/replaces it on the next seeding pass)"
 	fi
 
 	if validate_app mainsail "$ROSETTEOS_ROOT/apps/mainsail" "index.html"; then

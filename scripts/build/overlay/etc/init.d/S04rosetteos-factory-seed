@@ -47,6 +47,8 @@ KLIPPER_QUALIFIED_COMMIT=$(sed -n 's/.*"qualified_commit": "\([0-9a-f][0-9a-f]*\
 GATE_LIB="${GATE_LIB:-/etc/rosetteos-maintenance-gate.sh}"
 [ -f "$GATE_LIB" ] || GATE_LIB="/etc/nebulaos-maintenance-gate.sh"
 
+
+
 # NebulaOS Memory Resilience Gate (docs/NEBULAOS_MEMORY_RESILIENCE.md): this
 # is the "most expendable during maintenance" process tier - it should be
 # the OOM-killer's first choice, well before Klipper/Moonraker/GuppyScreen.
@@ -353,6 +355,34 @@ seed_mainsail() {
 # smoke test - so a bad or missing seed can never leave the printer
 # unusable. $1: seed archive filename under $SEEDS. $2: envdir. $3: python
 # import smoke-test expression (same ones already used below).
+_venv_cand_dirs="."
+for _d in "${0:-}" "${1:-}" "${GATE_LIB:-}"; do
+	case "$_d" in
+		/*|*/*) _venv_cand_dirs="$_venv_cand_dirs $(dirname "$_d" 2>/dev/null || echo ".")" ;;
+	esac
+done
+for _cand_dir in $_venv_cand_dirs; do
+	for _name in rosetteos-venv-lib.sh nebulaos-venv-lib.sh; do
+		for _rel in "$_cand_dir/../../usr/libexec/$_name" "$_cand_dir/../usr/libexec/$_name"; do
+			[ -r "$_rel" ] && ROSETTEOS_VENV_LIB="$_rel" && break 3
+		done
+	done
+done
+for _cand in \
+	"${ROSETTEOS_VENV_LIB:-${NEBULAOS_VENV_LIB:-}}" \
+	/usr/libexec/rosetteos-venv-lib.sh \
+	/usr/libexec/nebulaos-venv-lib.sh; do
+	[ -n "$_cand" ] && [ -r "$_cand" ] || continue
+	ROSETTEOS_VENV_LIB=$_cand
+	break
+done
+if [ -n "${ROSETTEOS_VENV_LIB:-}" ] && [ -r "$ROSETTEOS_VENV_LIB" ]; then
+	. "$ROSETTEOS_VENV_LIB"
+else
+	log "FATAL: rosetteos-venv-lib.sh not found - cannot validate persistent venvs safely"
+	exit 1
+fi
+
 try_venv_seed() {
 	seed_file="$1"; envdir="$2"; smoke_test="$3"
 	seed_path="$SEEDS/$seed_file"
@@ -369,29 +399,19 @@ try_venv_seed() {
 		rm -rf "$envdir.partial"
 		return 1
 	fi
-	rm -rf "$envdir"
-	mv "$envdir.partial" "$envdir"
-	return 0
-}
-
-is_venv_valid() {
-	envdir="$1"; smoke_test="$2"
-	[ -x "$envdir/bin/python3" ] || return 1
-	venv_py_ver=$("$envdir/bin/python3" -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")' 2>/dev/null) || return 1
-	sys_py_ver=$(python3 -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")' 2>/dev/null) || return 1
-	[ "$venv_py_ver" = "$sys_py_ver" ] || return 1
-	"$envdir/bin/python3" -c "$smoke_test" >/dev/null 2>&1 || return 1
+	swap_venv_into_place "$envdir" || return 1
 	return 0
 }
 
 setup_moonraker_env() {
 	envdir="$ENVS/moonraker"
-	if is_venv_valid "$envdir" "import tornado, numpy, streaming_form_data"; then
-		log "moonraker venv already present and valid ($envdir) - skipping"
+	moonraker_smoke="import tornado, numpy, streaming_form_data.targets"
+	recover_torn_venv "$envdir" "$moonraker_smoke"
+	if venv_validated_usable "$envdir" "$moonraker_smoke"; then
+		log "moonraker venv already present and matches this image's python ($envdir) - skipping"
 		return 0
 	fi
-	log "moonraker venv missing, invalid, or Python version mismatched - provisioning"
-	if try_venv_seed "moonraker-venv-seed.tar.gz" "$envdir" "import tornado, numpy, streaming_form_data"; then
+	if try_venv_seed "moonraker-venv-seed.tar.gz" "$envdir" "$moonraker_smoke"; then
 		log "moonraker venv seeded from prebuilt archive and verified successfully"
 		return 0
 	fi
@@ -402,13 +422,12 @@ setup_moonraker_env() {
 		rm -rf "$envdir.partial"
 		return 1
 	fi
-	if ! "$envdir.partial/bin/python3" -c "import tornado, numpy, streaming_form_data" 2>/tmp/moonraker-venv-error.log; then
+	if ! "$envdir.partial/bin/python3" -c "$moonraker_smoke" 2>/tmp/moonraker-venv-error.log; then
 		log "ERROR: moonraker venv failed its own import smoke test - see /tmp/moonraker-venv-error.log - rejecting"
 		rm -rf "$envdir.partial"
 		return 1
 	fi
-	rm -rf "$envdir"
-	mv "$envdir.partial" "$envdir"
+	swap_venv_into_place "$envdir" || return 1
 	log "moonraker venv created and verified successfully"
 }
 
@@ -431,12 +450,13 @@ setup_moonraker_env() {
 # (S55klipper prefers this venv's python the same way).
 setup_klipper_env() {
 	envdir="$ENVS/klipper"
-	if is_venv_valid "$envdir" "import greenlet, cffi, jinja2, serial, can"; then
-		log "klipper venv already present and valid ($envdir) - skipping"
+	klipper_smoke="import greenlet, cffi, jinja2, serial, can"
+	recover_torn_venv "$envdir" "$klipper_smoke"
+	if venv_validated_usable "$envdir" "$klipper_smoke"; then
+		log "klipper venv already present and matches this image's python ($envdir) - skipping"
 		return 0
 	fi
-	log "klipper venv missing, invalid, or Python version mismatched - provisioning"
-	if try_venv_seed "klipper-venv-seed.tar.gz" "$envdir" "import greenlet, cffi, jinja2, serial, can"; then
+	if try_venv_seed "klipper-venv-seed.tar.gz" "$envdir" "$klipper_smoke"; then
 		log "klipper venv seeded from prebuilt archive and verified successfully"
 		return 0
 	fi
@@ -447,13 +467,12 @@ setup_klipper_env() {
 		rm -rf "$envdir.partial"
 		return 1
 	fi
-	if ! "$envdir.partial/bin/python3" -c "import greenlet, cffi, jinja2, serial, can" 2>/tmp/klipper-venv-error.log; then
+	if ! "$envdir.partial/bin/python3" -c "$klipper_smoke" 2>/tmp/klipper-venv-error.log; then
 		log "ERROR: klipper venv failed its own import smoke test - see /tmp/klipper-venv-error.log - rejecting"
 		rm -rf "$envdir.partial"
 		return 1
 	fi
-	rm -rf "$envdir"
-	mv "$envdir.partial" "$envdir"
+	swap_venv_into_place "$envdir" || return 1
 	log "klipper venv created and verified successfully"
 }
 
@@ -492,6 +511,16 @@ EOF
 start() {
 	[ -d "$APPS" ] || { log "namespace not present yet ($APPS missing) - S02 should have created it, skipping"; exit 0; }
 
+	# BOOT-03: an explicit revalidation request (maintenance/revalidate-venvs)
+	# discards every venv validation stamp, so this boot and S05 run the full
+	# import checks. One-shot: consumed here, the stamps it removed are
+	# rewritten only by checks that pass.
+	if [ -e "$VENV_REVALIDATE_MARKER" ]; then
+		log "revalidation requested - discarding venv validation stamps"
+		venv_validation_reset
+		rm -f "$VENV_REVALIDATE_MARKER" 2>/dev/null || true
+	fi
+
 	# Nothing to do - already fully seeded from a prior boot. Skip the
 	# gate/pause/resume dance entirely rather than pausing services for
 	# no reason on every normal boot after the first.
@@ -499,8 +528,8 @@ start() {
 		&& [ -f "$APPS/klipper/.nebulaos-chelper-verdict.json" ] \
 		&& [ -f "$APPS/klipper/scripts/install-octopi.sh" ] \
 		&& [ -e "$APPS/moonraker/.git" ] && [ -e "$APPS/mainsail/index.html" ] \
-		&& is_venv_valid "$ENVS/moonraker" "import tornado, numpy, streaming_form_data" \
-		&& is_venv_valid "$ENVS/klipper" "import greenlet, cffi, jinja2, serial, can"; then
+		&& venv_validated_usable "$ENVS/moonraker" "import tornado, numpy, streaming_form_data.targets" \
+		&& venv_validated_usable "$ENVS/klipper" "import greenlet, cffi, jinja2, serial, can"; then
 		log "all components already seeded and valid - nothing to do"
 		return 0
 	fi
@@ -573,7 +602,7 @@ EOF
 # lets tests/factory-seed-git-tests.sh source this script (same convention as
 # scripts/flash-spare-slot.sh's FLASH_SPARE_SLOT_NO_AUTORUN) to call seed_git_app()
 # directly against fixture archives, without also running the init-script dispatch below.
-if [ -z "${S04ROSETTEOS_FACTORY_SEED_NO_AUTORUN:-}" ]; then
+if [ -z "${S04ROSETTEOS_FACTORY_SEED_NO_AUTORUN:-${S04NEBULAOS_FACTORY_SEED_NO_AUTORUN:-}}" ]; then
 	case "$1" in
 		start)
 			start
