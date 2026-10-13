@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # Offline, repeatable tests for the RosetteOS Printer Config Migration Engine
-# (scripts/build/lib/migrate-printer-config.sh).
+# (scripts/build/overlay/etc/rosetteos-config-migrate.sh).
 #
 # Validates:
 #   1. Automatic commenting out of template baseline fields that are overridden in SAVE_CONFIG
@@ -19,7 +19,7 @@ set -u
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
-LIB="$REPO_ROOT/scripts/build/lib/migrate-printer-config.sh"
+LIB="$REPO_ROOT/scripts/build/overlay/etc/rosetteos-config-migrate.sh"
 VALIDATOR_LIB="$REPO_ROOT/scripts/build/lib/validate-frontend-controls.sh"
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/config-migration-tests.XXXXXX")
 trap 'rm -rf "$WORK"' EXIT INT TERM
