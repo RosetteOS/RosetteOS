@@ -19,6 +19,7 @@ SYSTEM_DIR="$REPO_ROOT/vendor/system"
 DEPS_MANIFEST="$REPO_ROOT/manifests/dependencies.conf"
 
 [ -f "$DEPS_MANIFEST" ] || { echo "FATAL: $DEPS_MANIFEST not found" >&2; exit 1; }
+# shellcheck source=/dev/null
 . "$DEPS_MANIFEST"
 
 if [ ! -d "$SYSTEM_DIR/.git" ]; then
@@ -41,4 +42,11 @@ test -f kernel/kernel-6.6/drivers/input/touchscreen/ns2009.c
 test -f kernel/kernel-6.6/module_drivers/drivers/video/fbdev/ingenic/displays/panel-rosetteos-general-480x272.c
 grep -q "rosetteos,bcm4343x-bt" kernel/kernel-6.6/drivers/bluetooth/hci_h5.c
 grep -q "ns2009@48" kernel/kernel-6.6/module_drivers/dts/x2000/halley5_v30.dts
+# Ensure USB_DWC2_SOF_FILTER is selectable when operating in dual-role mode
+DWC2_KCONFIG="kernel/kernel-6.6/drivers/usb/dwc2/Kconfig"
+if [ -f "$DWC2_KCONFIG" ] && grep -q "depends on USB_DWC2_HOST$" "$DWC2_KCONFIG"; then
+	echo "== patching DWC2 SOF_FILTER to support USB_DWC2_DUAL_ROLE =="
+	sed -i 's/depends on USB_DWC2_HOST$/depends on USB_DWC2_HOST || USB_DWC2_DUAL_ROLE/' "$DWC2_KCONFIG"
+fi
+
 echo "== kernel source verified =="

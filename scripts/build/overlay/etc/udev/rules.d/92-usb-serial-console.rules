@@ -1,0 +1,5 @@
+# RosetteOS Micro-USB Serial Console (CDC-ACM gadget / g_serial)
+# Spawns /sbin/getty on ttyGS0 when micro-USB cable is connected,
+# and cleans up the console process when disconnected to prevent log spam.
+ACTION=="add", SUBSYSTEM=="tty", KERNEL=="ttyGS[0-9]*", RUN+="/usr/libexec/rosetteos-usb-serial-console start %k"
+ACTION=="remove", SUBSYSTEM=="tty", KERNEL=="ttyGS[0-9]*", RUN+="/usr/libexec/rosetteos-usb-serial-console stop %k"

@@ -1,0 +1,45 @@
+#!/bin/sh
+# /etc/init.d/S11rosetteos-usb-serial
+# RosetteOS Micro-USB Serial Console boot service.
+#
+# If a micro-USB cable is connected at boot, /dev/ttyGS0 is present after
+# udev coldplug. This service ensures the getty supervisor starts immediately.
+
+ROSETTEOS_CONSOLE_HELPER="${ROSETTEOS_CONSOLE_HELPER:-/usr/libexec/rosetteos-usb-serial-console}"
+DEV_PREFIX="${ROSETTEOS_DEVNODE_PREFIX:-/dev/}"
+
+case "$1" in
+	start)
+		for devnode in "${DEV_PREFIX}"ttyGS[0-9]*; do
+			if [ -c "$devnode" ] || [ -f "$devnode" ]; then
+				dev="${devnode#"${DEV_PREFIX}"}"
+				"$ROSETTEOS_CONSOLE_HELPER" start "$dev"
+			fi
+		done
+		;;
+	stop)
+		for devnode in "${DEV_PREFIX}"ttyGS[0-9]*; do
+			if [ -c "$devnode" ] || [ -f "$devnode" ]; then
+				dev="${devnode#"${DEV_PREFIX}"}"
+				"$ROSETTEOS_CONSOLE_HELPER" stop "$dev"
+			fi
+		done
+		;;
+	status)
+		for devnode in "${DEV_PREFIX}"ttyGS[0-9]*; do
+			if [ -c "$devnode" ] || [ -f "$devnode" ]; then
+				dev="${devnode#"${DEV_PREFIX}"}"
+				"$ROSETTEOS_CONSOLE_HELPER" status "$dev"
+			fi
+		done
+		;;
+	restart|reload)
+		"$0" stop
+		"$0" start
+		;;
+	*)
+		echo "Usage: $0 {start|stop|restart|status}" >&2
+		exit 1
+		;;
+esac
+exit 0
