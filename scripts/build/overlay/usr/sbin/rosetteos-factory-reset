@@ -12,7 +12,7 @@ for arg in "$@"; do
 		-h|--help)
 			echo "Usage: rosetteos-factory-reset [--confirm]"
 			echo ""
-			echo "Wipes all user data and formats /dev/mmcblk0p10."
+			echo "Erases all user data, print files, settings, and Wi-Fi networks."
 			echo "Resets external configurations (EEPROM PLR journal, overlay partition)."
 			echo "Reboots the printer into fresh factory-default RosetteOS."
 			exit 0
@@ -41,7 +41,7 @@ done
 
 if [ "$CONFIRM" -ne 1 ]; then
 	if [ -t 0 ]; then
-		printf "WARNING: This will format /dev/mmcblk0p10 and reset ALL printer data and configs!\n"
+		printf "WARNING: This will erase all print files, settings, Wi-Fi networks, and calibration!\n"
 		printf "Are you sure you want to proceed? [y/N]: "
 		read -r answer
 		case "$answer" in
