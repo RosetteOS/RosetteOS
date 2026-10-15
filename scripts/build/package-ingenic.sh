@@ -19,15 +19,11 @@ SLOT="${3:-slot1}"
 BASE_TEMPLATE_ARG="${4:-}"
 
 # Source dependency pins if present, allowing environment overrides
-_OVERRIDE_INGENIC_SHA="${INGENIC_TEMPLATE_SHA256:-}"
-_OVERRIDE_INGENIC_URL="${INGENIC_TEMPLATE_URL:-}"
 MANIFEST="$REPO_ROOT/manifests/dependencies.conf"
 if [ -f "$MANIFEST" ]; then
 	# shellcheck source=manifests/dependencies.conf disable=SC1091
 	. "$MANIFEST"
 fi
-[ -n "$_OVERRIDE_INGENIC_SHA" ] && INGENIC_TEMPLATE_SHA256="$_OVERRIDE_INGENIC_SHA"
-[ -n "$_OVERRIDE_INGENIC_URL" ] && INGENIC_TEMPLATE_URL="$_OVERRIDE_INGENIC_URL"
 
 if [ -z "$VERSION" ]; then
 	if [ -n "${ROSETTEOS_VERSION:-}" ]; then
@@ -55,43 +51,27 @@ fi
 
 # Locate base Ingenic template
 TEMPLATE_FILE=""
-EXPECTED_SHA="${INGENIC_TEMPLATE_SHA256:-5388b16810e51c8233d6ee978b5b4a09347a4c9a4a516d3c5bf8c686e6783f3c}"
-TEMPLATE_URL="${INGENIC_TEMPLATE_URL:-https://github.com/RosetteOS/Recovery/raw/main/Ender-3_V3_KE_1.1.0.12.ingenic}"
-
 if [ -n "$BASE_TEMPLATE_ARG" ] && [ -f "$BASE_TEMPLATE_ARG" ]; then
 	TEMPLATE_FILE="$BASE_TEMPLATE_ARG"
-elif [ -f "$REPO_ROOT/vendor-downloads/Ender-3_V3_KE_1.1.0.12.ingenic" ]; then
-	TEMPLATE_FILE="$REPO_ROOT/vendor-downloads/Ender-3_V3_KE_1.1.0.12.ingenic"
+elif [ -f "$REPO_ROOT/assets/Ender-3_V3_KE_1.1.0.12.ingenic" ]; then
+	TEMPLATE_FILE="$REPO_ROOT/assets/Ender-3_V3_KE_1.1.0.12.ingenic"
+elif [ -f "$REPO_ROOT/Ender-3_V3_KE_1.1.0.12.ingenic" ]; then
+	TEMPLATE_FILE="$REPO_ROOT/Ender-3_V3_KE_1.1.0.12.ingenic"
 elif [ -f "$ARTIFACT_DIR/Ender-3_V3_KE_1.1.0.12.ingenic" ]; then
 	TEMPLATE_FILE="$ARTIFACT_DIR/Ender-3_V3_KE_1.1.0.12.ingenic"
-elif [ -f "$REPO_ROOT/../Recovery/Ender-3_V3_KE_1.1.0.12.ingenic" ]; then
-	TEMPLATE_FILE="$REPO_ROOT/../Recovery/Ender-3_V3_KE_1.1.0.12.ingenic"
+elif [ -f "$REPO_ROOT/vendor-downloads/Ender-3_V3_KE_1.1.0.12.ingenic" ]; then
+	TEMPLATE_FILE="$REPO_ROOT/vendor-downloads/Ender-3_V3_KE_1.1.0.12.ingenic"
 fi
 
 if [ -z "$TEMPLATE_FILE" ] || [ ! -f "$TEMPLATE_FILE" ]; then
-	echo "== Ingenic template not found locally; downloading from $TEMPLATE_URL =="
-	DOWNLOAD_DIR="$REPO_ROOT/vendor-downloads"
-	mkdir -p "$DOWNLOAD_DIR"
-	DOWNLOAD_TARGET="$DOWNLOAD_DIR/Ender-3_V3_KE_1.1.0.12.ingenic"
-
-	if command -v curl >/dev/null 2>&1; then
-		curl -fSL --retry 3 --retry-delay 2 "$TEMPLATE_URL" -o "$DOWNLOAD_TARGET"
-	elif command -v wget >/dev/null 2>&1; then
-		wget -q --tries=3 "$TEMPLATE_URL" -O "$DOWNLOAD_TARGET"
-	else
-		python3 -c "
-import urllib.request, sys
-urllib.request.urlretrieve('$TEMPLATE_URL', '$DOWNLOAD_TARGET')
-"
-	fi
-	TEMPLATE_FILE="$DOWNLOAD_TARGET"
+	echo "FATAL: Ingenic base template not found at assets/Ender-3_V3_KE_1.1.0.12.ingenic" >&2
+	exit 1
 fi
 
-# Verify template checksum
-ACTUAL_SHA=$(sha256sum "$TEMPLATE_FILE" | awk '{print $1}')
-if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
-	echo "FATAL: Ingenic base template $TEMPLATE_FILE checksum mismatch: expected $EXPECTED_SHA, got $ACTUAL_SHA" >&2
-	exit 1
+# Auto-hydrate Git LFS pointer if cloned without LFS filter
+if [ "$(wc -c < "$TEMPLATE_FILE")" -lt 1024 ] && { grep -q "git-lfs" "$TEMPLATE_FILE" 2>/dev/null || grep -q "^oid sha256:" "$TEMPLATE_FILE" 2>/dev/null; }; then
+	echo "== $TEMPLATE_FILE is a Git LFS pointer stub; running git lfs pull =="
+	(cd "$REPO_ROOT" && git lfs pull --include="assets/Ender-3_V3_KE_1.1.0.12.ingenic")
 fi
 
 mkdir -p "$OUTPUT_DIR"
