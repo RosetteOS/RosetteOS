@@ -109,9 +109,9 @@ def main():
         if rec_nebula.exists():
             patch_zero_nebula(rec_nebula, jpeg_path)
 
-    print("\nNew Hashes for dependencies.conf:")
-    print(f"CREALITY_KE_ZERO_BIN_SHA256={ke_sha}")
-    print(f"CREALITY_NEBULA_ZERO_BIN_SHA256={nebula_sha}")
+    print("\nPatched Asset Hashes:")
+    print(f"KE zero.bin: {ke_sha}")
+    print(f"Nebula zero_nebula.bin: {nebula_sha}")
 
 if __name__ == "__main__":
     main()

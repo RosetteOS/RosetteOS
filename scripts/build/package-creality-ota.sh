@@ -20,16 +20,12 @@ VERSION="${3:-}"
 
 # Source dependency pins if present, allowing environment overrides
 _OVERRIDE_OTA_VER="${CREALITY_OTA_VERSION:-}"
-_OVERRIDE_KE_ZERO_SHA="${CREALITY_KE_ZERO_BIN_SHA256:-}"
-_OVERRIDE_NEBULA_ZERO_SHA="${CREALITY_NEBULA_ZERO_BIN_SHA256:-}"
 MANIFEST="$REPO_ROOT/manifests/dependencies.conf"
 if [ -f "$MANIFEST" ]; then
 	# shellcheck source=manifests/dependencies.conf disable=SC1091
 	. "$MANIFEST"
 fi
 [ -n "$_OVERRIDE_OTA_VER" ] && CREALITY_OTA_VERSION="$_OVERRIDE_OTA_VER"
-[ -n "$_OVERRIDE_KE_ZERO_SHA" ] && CREALITY_KE_ZERO_BIN_SHA256="$_OVERRIDE_KE_ZERO_SHA"
-[ -n "$_OVERRIDE_NEBULA_ZERO_SHA" ] && CREALITY_NEBULA_ZERO_BIN_SHA256="$_OVERRIDE_NEBULA_ZERO_SHA"
 
 if [ -z "$VERSION" ]; then
 	VERSION="${CREALITY_OTA_VERSION:-1.1.0.34}"
@@ -61,70 +57,24 @@ if ! command -v 7z >/dev/null 2>&1; then
 	fi
 fi
 
-# Function to fetch and verify zero asset
-ensure_zero_bin() {
-	_target_name="$1"
-	_dest_file="$2"
-	_url="$3"
-	_expected_sha="$4"
-
-	if [ -f "$_dest_file" ]; then
-		if [ "$(wc -c < "$_dest_file")" -lt 1024 ] && { grep -q "git-lfs" "$_dest_file" 2>/dev/null || grep -q "^oid sha256:" "$_dest_file" 2>/dev/null; }; then
-			echo "WARN: $_dest_file is a Git LFS pointer text file; removing and fetching real binary..."
-			rm -f "$_dest_file"
-		else
-			_actual_sha=$(sha256sum "$_dest_file" | awk '{print $1}')
-			if [ -z "$_expected_sha" ] || [ "$_actual_sha" = "$_expected_sha" ]; then
-				return 0
-			else
-				echo "WARN: Checksum mismatch on $_dest_file, re-fetching..."
-			fi
-		fi
-	fi
-
-	echo "== Fetching $_target_name RTOS firmware from $_url =="
-	mkdir -p "$(dirname "$_dest_file")"
-	if command -v curl >/dev/null 2>&1; then
-		curl -fSL --retry 3 --retry-delay 2 "$_url" -o "$_dest_file"
-	elif command -v wget >/dev/null 2>&1; then
-		wget -q --tries=3 "$_url" -O "$_dest_file"
-	else
-		python3 -c "
-import urllib.request
-urllib.request.urlretrieve('$_url', '$_dest_file')
-"
-	fi
-
-	if [ -f "$_dest_file" ] && [ "$(wc -c < "$_dest_file")" -lt 1024 ] && { grep -q "git-lfs" "$_dest_file" 2>/dev/null || grep -q "^oid sha256:" "$_dest_file" 2>/dev/null; }; then
-		echo "FATAL: $_dest_file was fetched as a Git LFS pointer stub instead of binary payload" >&2
-		exit 1
-	fi
-
-	if [ -n "$_expected_sha" ]; then
-		_actual_sha=$(sha256sum "$_dest_file" | awk '{print $1}')
-		if [ "$_actual_sha" != "$_expected_sha" ]; then
-			echo "FATAL: $_target_name checksum mismatch: expected $_expected_sha, got $_actual_sha" >&2
-			exit 1
-		fi
-	fi
-}
-
 KE_ZERO_PATH="${KE_ZERO_BIN:-$REPO_ROOT/assets/zero.bin}"
 NEBULA_ZERO_PATH="${NEBULA_ZERO_BIN:-$REPO_ROOT/assets/zero_nebula.bin}"
 
 case "$TARGET" in
 	ke|all)
-		ensure_zero_bin "Ender-3 V3 KE" "$KE_ZERO_PATH" \
-			"${CREALITY_KE_ZERO_BIN_URL:-https://github.com/RosetteOS/RosetteOS/raw/main/assets/zero.bin}" \
-			"${CREALITY_KE_ZERO_BIN_SHA256:-ccac0856497e69916e82865932bcfdd2395c0b086984c6b45bef652b2fbee50d}"
+		if [ ! -f "$KE_ZERO_PATH" ]; then
+			echo "FATAL: Ender-3 V3 KE RTOS firmware not found at $KE_ZERO_PATH" >&2
+			exit 1
+		fi
 		;;
 esac
 
 case "$TARGET" in
 	nebula|all)
-		ensure_zero_bin "Nebula Pad" "$NEBULA_ZERO_PATH" \
-			"${CREALITY_NEBULA_ZERO_BIN_URL:-https://github.com/RosetteOS/RosetteOS/raw/main/assets/zero_nebula.bin}" \
-			"${CREALITY_NEBULA_ZERO_BIN_SHA256:-94e32420ccc314e2eaad3956f2fdf75646128d0f794fa9c3cbce56ad3f8a74ee}"
+		if [ ! -f "$NEBULA_ZERO_PATH" ]; then
+			echo "FATAL: Nebula Pad RTOS firmware not found at $NEBULA_ZERO_PATH" >&2
+			exit 1
+		fi
 		;;
 esac
 
