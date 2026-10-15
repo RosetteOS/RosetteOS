@@ -436,8 +436,14 @@ with socketserver.TCPServer(("127.0.0.1", 0), Handler) as httpd:
 MOCK_PID=$!
 trap 'kill $MOCK_PID 2>/dev/null || true; rm -rf "$TEST_SANDBOX"' EXIT
 
+waited=0
 while [ ! -s "$PORT_FILE" ]; do
     sleep 0.05
+    waited=$((waited + 1))
+    if [ "$waited" -gt 60 ]; then
+        fail "Mock Moonraker server failed to start within 3s"
+        break
+    fi
 done
 MOCK_MOONRAKER_PORT=$(cat "$PORT_FILE")
 export ROSETTEOS_MOONRAKER_URL="http://127.0.0.1:$MOCK_MOONRAKER_PORT"

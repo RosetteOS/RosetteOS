@@ -32,6 +32,8 @@ DEV_OTA="${DEV_OTA:-/dev/mmcblk0p1}"
 DEV_EEPROM="${DEV_EEPROM:-/sys/bus/i2c/devices/2-0050/eeprom}"
 DATA_MOUNT="${DATA_MOUNT:-/usr/data}"
 DO_REBOOT="${DO_REBOOT:-1}"
+DO_SWAPOFF="${DO_SWAPOFF:-1}"
+DO_SERVICE_STOP="${DO_SERVICE_STOP:-1}"
 USB_SEARCH_PATHS="${USB_SEARCH_PATHS:-/tmp/udisk /media /mnt}"
 
 log() {
@@ -40,6 +42,7 @@ log() {
 }
 
 stop_services() {
+	[ "$DO_SERVICE_STOP" = "1" ] || return 0
 	log "stopping all user-facing and backend services"
 	[ -f /etc/init.d/S58guppyscreen ] && /etc/init.d/S58guppyscreen stop 2>/dev/null || true
 	[ -f /etc/init.d/S50webcam ] && /etc/init.d/S50webcam stop 2>/dev/null || true
@@ -92,24 +95,32 @@ reset_external_configs() {
 	fi
 
 	# 4. Remove runtime dropbear and volatile state
-	rm -rf /var/run/dropbear.conf /var/run/rosetteos-* /run/rosetteos /run/wpa_supplicant 2>/dev/null || true
+	if [ "$DO_SERVICE_STOP" = "1" ]; then
+		rm -rf /var/run/dropbear.conf /var/run/rosetteos-* /run/rosetteos /run/wpa_supplicant 2>/dev/null || true
+	fi
 }
 
 unmount_data_partition() {
-	log "disabling swap tiers"
-	swapoff -a 2>/dev/null || true
+	if [ "$DO_SWAPOFF" = "1" ]; then
+		log "disabling swap tiers"
+		swapoff -a 2>/dev/null || true
+	fi
 
 	log "unmounting persistent bind mounts over $DATA_MOUNT"
 	umount -f /opt/printer_data 2>/dev/null || umount -l /opt/printer_data 2>/dev/null || true
 	umount -f /opt/guppyscreen/guppyconfig.json 2>/dev/null || umount -l /opt/guppyscreen/guppyconfig.json 2>/dev/null || true
 	umount -f /var/run/rosetteos-web-root 2>/dev/null || true
 
-	if command -v fuser >/dev/null 2>&1; then
-		fuser -km "$DATA_MOUNT" 2>/dev/null || true
-		sleep 1
+	# CRITICAL: Only attempt fuser/umount if DATA_MOUNT is an actual mount point in /proc/mounts!
+	# Running fuser -m on an unmounted directory resolves to the host's root filesystem (/)
+	# and would terminate all host processes.
+	if grep -qs "[[:space:]]${DATA_MOUNT}[[:space:]]" /proc/mounts 2>/dev/null; then
+		if command -v fuser >/dev/null 2>&1; then
+			fuser -km "$DATA_MOUNT" 2>/dev/null || true
+			sleep 1
+		fi
+		umount "$DATA_MOUNT" 2>/dev/null || umount -l "$DATA_MOUNT" 2>/dev/null || true
 	fi
-
-	umount "$DATA_MOUNT" 2>/dev/null || umount -l "$DATA_MOUNT" 2>/dev/null || true
 }
 
 format_data_partition() {

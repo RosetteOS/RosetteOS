@@ -15,7 +15,8 @@ PROFILES_SRC="$REPO_ROOT/scripts/build/overlay/opt/rosetteos-seeds/printer_profi
 S02_SCRIPT="$REPO_ROOT/scripts/build/overlay/etc/init.d/S02rosetteos-namespace"
 
 WORK=$(mktemp -d "/tmp/multi-printer-tests.XXXXXX")
-trap 'rm -rf "$WORK"' EXIT INT TERM
+MOCK_PID=""
+trap 'kill "$MOCK_PID" 2>/dev/null || true; rm -rf "$WORK"' EXIT INT TERM
 
 PASS=0
 FAIL=0
@@ -233,7 +234,10 @@ for _ in range(50):
         break
     time.sleep(0.05)
 "
-MOCK_PORT=$(cat "$WORK/mock_port.txt")
+if [ ! -s "$WORK/mock_port.txt" ]; then
+    fail "Mock Moonraker server failed to create port file"
+fi
+MOCK_PORT=$(cat "$WORK/mock_port.txt" 2>/dev/null || echo "0")
 
 # Try switching profile while print is active -> should fail
 ROSETTEOS_PROFILES_SEEDS="$PROFILES_SRC" \

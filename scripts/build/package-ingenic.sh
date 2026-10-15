@@ -101,20 +101,36 @@ fi
 
 case "$SLOT" in
 	slot1)
-		python3 "$REBUILD_SCRIPT" \
-			"$TEMPLATE_FILE" \
-			"$OUTPUT_PATH" \
-			--root1 "$ROOTFS_IMAGE" \
-			--kernel1 "$KERNEL_IMAGE" \
-			$RTOS_ARG
+		if [ -n "$RTOS_ARG" ]; then
+			python3 "$REBUILD_SCRIPT" \
+				"$TEMPLATE_FILE" \
+				"$OUTPUT_PATH" \
+				--root1 "$ROOTFS_IMAGE" \
+				--kernel1 "$KERNEL_IMAGE" \
+				--rtos "$RTOS_IMAGE"
+		else
+			python3 "$REBUILD_SCRIPT" \
+				"$TEMPLATE_FILE" \
+				"$OUTPUT_PATH" \
+				--root1 "$ROOTFS_IMAGE" \
+				--kernel1 "$KERNEL_IMAGE"
+		fi
 		;;
 	slot2)
-		python3 "$REBUILD_SCRIPT" \
-			"$TEMPLATE_FILE" \
-			"$OUTPUT_PATH" \
-			--root2 "$ROOTFS_IMAGE" \
-			--kernel2 "$KERNEL_IMAGE" \
-			$RTOS_ARG
+		if [ -n "$RTOS_ARG" ]; then
+			python3 "$REBUILD_SCRIPT" \
+				"$TEMPLATE_FILE" \
+				"$OUTPUT_PATH" \
+				--root2 "$ROOTFS_IMAGE" \
+				--kernel2 "$KERNEL_IMAGE" \
+				--rtos "$RTOS_IMAGE"
+		else
+			python3 "$REBUILD_SCRIPT" \
+				"$TEMPLATE_FILE" \
+				"$OUTPUT_PATH" \
+				--root2 "$ROOTFS_IMAGE" \
+				--kernel2 "$KERNEL_IMAGE"
+		fi
 		;;
 	*)
 		echo "FATAL: unknown slot target: $SLOT (must be slot1 or slot2)" >&2
