@@ -67,6 +67,12 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_RTOS2_ENTRY,
         help=f"Slot 2/B RTOS archive entry (default: {DEFAULT_RTOS2_ENTRY})",
     )
+    parser.add_argument(
+        "--rtos",
+        type=Path,
+        default=None,
+        help="Custom RTOS firmware image (zero.bin) to pack into the package",
+    )
     args = parser.parse_args()
     slot1_mode = args.root1 is not None or args.kernel1 is not None
     slot2_mode = args.root2 is not None or args.kernel2 is not None
@@ -173,6 +179,11 @@ def renamed_info(template: zipfile.ZipInfo, filename: str) -> zipfile.ZipInfo:
 def rebuild(args: argparse.Namespace) -> None:
     require_file(args.input, "Input package")
 
+    rtos_path: Path | None = None
+    if args.rtos is not None:
+        require_file(args.rtos, "rtos image")
+        rtos_path = args.rtos.resolve()
+
     slot1_mode = args.root1 is not None
     if slot1_mode:
         require_file(args.root1, "root1 image")
@@ -181,6 +192,8 @@ def rebuild(args: argparse.Namespace) -> None:
             STOCK_ROOTFS_ENTRY: args.root1.resolve(),
             STOCK_KERNEL_ENTRY: args.kernel1.resolve(),
         }
+        if rtos_path is not None:
+            replacements[STOCK_RTOS_ENTRY] = rtos_path
     else:
         require_file(args.root2, "root2 image")
         require_file(args.kernel2, "kernel2 image")
@@ -188,6 +201,8 @@ def rebuild(args: argparse.Namespace) -> None:
             args.root2_entry: args.root2.resolve(),
             args.kernel2_entry: args.kernel2.resolve(),
         }
+        if rtos_path is not None:
+            replacements[STOCK_RTOS_ENTRY] = rtos_path
 
     output = args.output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -212,6 +227,10 @@ def rebuild(args: argparse.Namespace) -> None:
                 configured_profile = configure_dual_slot_profile(
                     source.read(DUAL_SLOT_CONFIG_ENTRY)
                 )
+
+            # If STOCK_RTOS_ENTRY is not in source archive, ignore rtos replacement
+            if STOCK_RTOS_ENTRY in replacements and STOCK_RTOS_ENTRY not in infos:
+                del replacements[STOCK_RTOS_ENTRY]
 
             target_entries = set(replacements)
             if not slot1_mode:
@@ -250,12 +269,19 @@ def rebuild(args: argparse.Namespace) -> None:
                         SLOT2_OTA_MARKER,
                         renamed_info(infos[STOCK_KERNEL_ENTRY], args.ota_entry),
                     )
-                    copy_entry(
-                        source,
-                        destination,
-                        infos[STOCK_RTOS_ENTRY],
-                        renamed_info(infos[STOCK_RTOS_ENTRY], args.rtos2_entry),
-                    )
+                    if rtos_path is not None:
+                        copy_file(
+                            destination,
+                            rtos_path,
+                            renamed_info(infos[STOCK_RTOS_ENTRY], args.rtos2_entry),
+                        )
+                    else:
+                        copy_entry(
+                            source,
+                            destination,
+                            infos[STOCK_RTOS_ENTRY],
+                            renamed_info(infos[STOCK_RTOS_ENTRY], args.rtos2_entry),
+                        )
                     copy_file(
                         destination,
                         replacements[args.kernel2_entry],
@@ -283,13 +309,17 @@ def rebuild(args: argparse.Namespace) -> None:
                 STOCK_ROOTFS_ENTRY: args.root1.stat().st_size,
                 STOCK_KERNEL_ENTRY: args.kernel1.stat().st_size,
             }
+            if rtos_path is not None and STOCK_RTOS_ENTRY in infos:
+                expected_sizes[STOCK_RTOS_ENTRY] = rtos_path.stat().st_size
         else:
             expected_sizes = {
                 args.root2_entry: args.root2.stat().st_size,
                 args.kernel2_entry: args.kernel2.stat().st_size,
-                args.rtos2_entry: infos[STOCK_RTOS_ENTRY].file_size,
+                args.rtos2_entry: rtos_path.stat().st_size if rtos_path is not None else infos[STOCK_RTOS_ENTRY].file_size,
                 args.ota_entry: len(SLOT2_OTA_MARKER),
             }
+            if rtos_path is not None and STOCK_RTOS_ENTRY in infos:
+                expected_sizes[STOCK_RTOS_ENTRY] = rtos_path.stat().st_size
         for entry, expected_size in expected_sizes.items():
             actual_size = rebuilt.getinfo(entry).file_size
             if actual_size != expected_size:
@@ -309,13 +339,21 @@ def rebuild(args: argparse.Namespace) -> None:
     if slot1_mode:
         print(f"  {STOCK_ROOTFS_ENTRY} <- {args.root1} (Slot 1/A replacement)")
         print(f"  {STOCK_KERNEL_ENTRY} <- {args.kernel1} (Slot 1/A replacement)")
+        if rtos_path is not None and STOCK_RTOS_ENTRY in infos:
+            print(f"  {STOCK_RTOS_ENTRY} <- {rtos_path} (custom RTOS zero.bin)")
     else:
         print(f"  {STOCK_ROOTFS_ENTRY} kept as Slot 1/A")
         print(f"  {STOCK_KERNEL_ENTRY} kept as Slot 1/A")
-        print(f"  {STOCK_RTOS_ENTRY} kept as Slot 1/A")
+        if rtos_path is not None and STOCK_RTOS_ENTRY in infos:
+            print(f"  {STOCK_RTOS_ENTRY} <- {rtos_path} (custom RTOS zero.bin)")
+        else:
+            print(f"  {STOCK_RTOS_ENTRY} kept as Slot 1/A")
         print(f"  {args.root2_entry} <- {args.root2} ({args.root2.stat().st_size} bytes)")
         print(f"  {args.kernel2_entry} <- {args.kernel2} ({args.kernel2.stat().st_size} bytes)")
-        print(f"  {args.rtos2_entry} <- {STOCK_RTOS_ENTRY} (stock copy)")
+        if rtos_path is not None:
+            print(f"  {args.rtos2_entry} <- {rtos_path} (custom RTOS zero.bin copy)")
+        else:
+            print(f"  {args.rtos2_entry} <- {STOCK_RTOS_ENTRY} (stock copy)")
         print(f"  {args.ota_entry} <- ota:kernel2 (Slot 2/B)")
         print(f"  {DUAL_SLOT_CONFIG_ENTRY} <- dual-slot Cloner policy")
 

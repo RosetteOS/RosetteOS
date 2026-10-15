@@ -80,10 +80,17 @@ OUTPUT_DIR=$(cd "$OUTPUT_DIR" && pwd)
 INGENIC_NAME="${INGENIC_PACKAGE_NAME:-RosetteOS-${VERSION}.ingenic}"
 OUTPUT_PATH="$OUTPUT_DIR/$INGENIC_NAME"
 
+RTOS_IMAGE="${RTOS_IMAGE:-$REPO_ROOT/assets/zero.bin}"
+RTOS_ARG=""
+if [ -f "$RTOS_IMAGE" ]; then
+	RTOS_ARG="--rtos $RTOS_IMAGE"
+fi
+
 echo "== Packaging RosetteOS Ingenic Cloner Package (${SLOT}) v${VERSION} =="
 echo "   Template: $TEMPLATE_FILE"
 echo "   Kernel:   $KERNEL_IMAGE"
 echo "   RootFS:   $ROOTFS_IMAGE"
+[ -n "$RTOS_ARG" ] && echo "   RTOS:     $RTOS_IMAGE"
 echo "   Output:   $OUTPUT_PATH"
 
 REBUILD_SCRIPT="$SCRIPT_DIR/lib/rebuild_ingenic.py"
@@ -98,14 +105,16 @@ case "$SLOT" in
 			"$TEMPLATE_FILE" \
 			"$OUTPUT_PATH" \
 			--root1 "$ROOTFS_IMAGE" \
-			--kernel1 "$KERNEL_IMAGE"
+			--kernel1 "$KERNEL_IMAGE" \
+			$RTOS_ARG
 		;;
 	slot2)
 		python3 "$REBUILD_SCRIPT" \
 			"$TEMPLATE_FILE" \
 			"$OUTPUT_PATH" \
 			--root2 "$ROOTFS_IMAGE" \
-			--kernel2 "$KERNEL_IMAGE"
+			--kernel2 "$KERNEL_IMAGE" \
+			$RTOS_ARG
 		;;
 	*)
 		echo "FATAL: unknown slot target: $SLOT (must be slot1 or slot2)" >&2

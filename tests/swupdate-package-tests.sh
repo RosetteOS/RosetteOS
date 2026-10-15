@@ -399,18 +399,20 @@ else
 fi
 
 MOCK_TEMPLATE="$WORK/mock_template.ingenic"
+MOCK_ZERO="$WORK/mock_zero.bin"
+echo "MOCK_ZERO_DATA_54321" > "$MOCK_ZERO"
 python3 -c "
 import zipfile
 with zipfile.ZipFile('$MOCK_TEMPLATE', 'w') as zf:
     zf.writestr('images/rootfs.squashfs', b'STOCK_ROOTFS_PAYLOAD')
     zf.writestr('images/xImage', b'STOCK_KERNEL_PAYLOAD')
+    zf.writestr('images/zero.bin', b'STOCK_ZERO_PAYLOAD')
 "
 
 MOCK_TEMPLATE_SHA=$(sha256sum "$MOCK_TEMPLATE" | awk '{print $1}')
 INGENIC_OUT_DIR="$WORK/ingenic_out"
 
-INGENIC_TEMPLATE_SHA256="$MOCK_TEMPLATE_SHA" \
-KERNEL_IMAGE="$MOCK_KERNEL" ROOTFS_IMAGE="$MOCK_ROOTFS" \
+KERNEL_IMAGE="$MOCK_KERNEL" ROOTFS_IMAGE="$MOCK_ROOTFS" RTOS_IMAGE="$MOCK_ZERO" \
     sh "$PACKAGE_INGENIC_SCRIPT" "$INGENIC_OUT_DIR" "test-1.2.3" "slot1" "$MOCK_TEMPLATE" > "$WORK/ingenic_build.log" 2>&1
 
 INGENIC_FILE="$INGENIC_OUT_DIR/RosetteOS-test-1.2.3.ingenic"
@@ -440,14 +442,15 @@ import zipfile, sys
 with zipfile.ZipFile('$INGENIC_FILE', 'r') as zf:
     r = zf.read('images/rootfs.squashfs').decode('utf-8', errors='ignore').strip()
     k = zf.read('images/xImage').decode('utf-8', errors='ignore').strip()
-    if r == 'MOCK_ROOTFS_DATA_67890' and k == 'MOCK_KERNEL_DATA_12345':
+    z = zf.read('images/zero.bin').decode('utf-8', errors='ignore').strip()
+    if r == 'MOCK_ROOTFS_DATA_67890' and k == 'MOCK_KERNEL_DATA_12345' and z == 'MOCK_ZERO_DATA_54321':
         print('OK')
     else:
-        print(f'MISMATCH: rootfs={r}, kernel={k}')
+        print(f'MISMATCH: rootfs={r}, kernel={k}, zero={z}')
 ")
 
 if [ "$VERIFY_RESULT" = "OK" ]; then
-    pass "rebuilt .ingenic contains expected rootfs and kernel payloads"
+    pass "rebuilt .ingenic contains expected rootfs, kernel, and zero.bin payloads"
 else
     fail "rebuilt .ingenic payload verification failed: $VERIFY_RESULT"
 fi
