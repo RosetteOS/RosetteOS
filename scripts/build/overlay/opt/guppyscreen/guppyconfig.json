@@ -1,6 +1,7 @@
 {
   "default_printer": "default_printer",
   "display_rotate": 2,
+  "theme": "red",
   "log_path": "/opt/printer_data/logs/guppyscreen.log",
   "printers": {
     "default_printer": {

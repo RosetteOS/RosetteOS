@@ -15,7 +15,7 @@ set -e
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/../.." && pwd)
 
-# ROSETTEOS_VERSION/GUPPYSCREEN_THEME (section 6, below) come
+# ROSETTEOS_VERSION (section 6, below) comes
 # from the same authoritative dependency manifest 00-fetch-vendor-sources.sh
 # already sources - see that script/manifests/dependencies.conf's own
 # header for why dependency settings live in one file instead of being hardcoded per-script.
@@ -832,7 +832,7 @@ else
 	set -e
 	cd "$GUPPYSCREEN_SRC"
 	export ROSETTEOS_VERSION="$ROSETTEOS_VERSION"
-	export GUPPY_THEME="$GUPPYSCREEN_THEME"
+	export GUPPY_THEME="${GUPPYSCREEN_THEME:-red}"
 	# Scoped to this subshell only, NOT the image's global PATH - see
 	# build-env/Dockerfile's own comment on GUPPYSCREEN_TOOLCHAIN_BIN for
 	# why (this toolchain's own bundled autoreconf/automake is broken and
