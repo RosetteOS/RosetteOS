@@ -1,0 +1,77 @@
+#!/bin/sh
+#
+# RosetteOS Custom Boot Animation init service
+# Starts earliest in boot sequence (S00) to provide visual feedback on /dev/fb0
+# until GuppyScreen / HelixScreen takes over at S58guppyscreen.
+#
+
+BOOTANIM=/usr/bin/rosetteos-bootanim
+PIDFILE=/var/run/rosetteos-bootanim.pid
+STATUS_FILE=/run/rosetteos-boot-status
+
+ROSETTEOS_OOM_POLICY="${ROSETTEOS_OOM_POLICY:-/etc/rosetteos-oom-policy.sh}"
+if [ -r "$ROSETTEOS_OOM_POLICY" ]; then
+	. "$ROSETTEOS_OOM_POLICY"
+else
+	rosetteos_start_with_adj() { shift; "$@"; }
+fi
+
+start() {
+	if [ ! -x "$BOOTANIM" ]; then
+		return 0
+	fi
+
+	# If already running, do nothing
+	if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
+		return 0
+	fi
+
+	echo "Starting RosetteOS Boot Animation..."
+	echo "Initializing RosetteOS..." > "$STATUS_FILE" 2>/dev/null || true
+
+	# OOM priority at birth: expendable boot UI tier (600)
+	rosetteos_start_with_adj "${ROSETTEOS_ADJ_BOOTANIM:-600}" \
+		start-stop-daemon -S -b -m -p "$PIDFILE" \
+		-x "$BOOTANIM" -- --status-file "$STATUS_FILE"
+}
+
+stop() {
+	if [ -f "$PIDFILE" ]; then
+		echo "Stopping RosetteOS Boot Animation..."
+		start-stop-daemon -K -p "$PIDFILE" -s TERM -q || true
+		# Allow brief graceful fade-out
+		for _ in 1 2 3 4 5; do
+			kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null || break
+			usleep 50000 2>/dev/null || sleep 1
+		done
+		rm -f "$PIDFILE"
+	fi
+}
+
+case "$1" in
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	restart)
+		stop
+		start
+		;;
+	status)
+		if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
+			echo "rosetteos-bootanim is running (PID $(cat "$PIDFILE"))"
+			exit 0
+		else
+			echo "rosetteos-bootanim is stopped"
+			exit 3
+		fi
+		;;
+	*)
+		echo "Usage: $0 {start|stop|restart|status}"
+		exit 1
+		;;
+esac
+
+exit 0

@@ -58,6 +58,17 @@ _bt_begin() {
 
 _bt_start() {
 	_bt_now; _bt_t0=$_cs; _bt_log "T=$_t EV=start S=${1##*/}"
+	case "${1##*/}" in
+		S01wifi) echo "Connecting network..." > /run/rosetteos-boot-status 2>/dev/null || true ;;
+		S01zram*) echo "Configuring memory..." > /run/rosetteos-boot-status 2>/dev/null || true ;;
+		S04rosetteos-factory-seed) echo "Checking printer configuration..." > /run/rosetteos-boot-status 2>/dev/null || true ;;
+		S05rosetteos-activate) echo "Activating runtime layers..." > /run/rosetteos-boot-status 2>/dev/null || true ;;
+		S50webcam) echo "Initializing camera..." > /run/rosetteos-boot-status 2>/dev/null || true ;;
+		S54rosetteos-host-mcu) echo "Connecting controller board..." > /run/rosetteos-boot-status 2>/dev/null || true ;;
+		S55klipper) echo "Starting Klipper firmware..." > /run/rosetteos-boot-status 2>/dev/null || true ;;
+		S56moonraker) echo "Starting Moonraker API..." > /run/rosetteos-boot-status 2>/dev/null || true ;;
+		S58guppyscreen) echo "Starting touchscreen interface..." > /run/rosetteos-boot-status 2>/dev/null || true ;;
+	esac
 }
 
 _bt_end() {

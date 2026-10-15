@@ -17,6 +17,7 @@ ROSETTEOS_ADJ_MOONRAKER=-400
 ROSETTEOS_ADJ_GUPPYSCREEN=0
 ROSETTEOS_ADJ_USTREAMER=300
 ROSETTEOS_ADJ_UPDATE_SUPERVISOR=500
+ROSETTEOS_ADJ_BOOTANIM=600
 
 # rosetteos_start_with_adj <adj> <command...>: run command with oom_score_adj set
 # before it starts.
