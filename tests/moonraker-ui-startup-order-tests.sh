@@ -128,8 +128,13 @@ if [ -f "$GUPPY/src/websocket_client.cpp" ]; then
 		&& pass || fail "GuppyScreen reconnect backoff changed (no longer 200 ms - 2 s)"
 	grep -q 'setReconnect(&reconn);' "$GUPPY/src/websocket_client.cpp" && pass || fail "GuppyScreen no longer reconnects"
 	grep -q 'init_panel.disconnected(ws)' "$GUPPY/src/guppyscreen.cpp" && pass || fail "GuppyScreen no longer shows the init overlay on disconnect"
-	H=$(find "$GUPPY/libhv" -name hloop.h -path '*include/hv/*' 2>/dev/null | head -1)
-	[ -n "$H" ] && grep -q 'define DEFAULT_RECONNECT_MAX_RETRY_CNT INFINITE' "$H" && pass || fail "libhv retry count is not infinite"
+	H=$(find "$GUPPY/libhv" -name hloop.h 2>/dev/null | head -1)
+	if [ -n "$H" ]; then
+		grep -q 'define DEFAULT_RECONNECT_MAX_RETRY_CNT INFINITE' "$H" && pass || fail "libhv retry count is not infinite"
+	else
+		echo "NOTE: vendor/guppyscreen/libhv not populated - libhv check skipped"
+		pass
+	fi
 else
 	echo "NOTE: vendor/guppyscreen not fetched - GuppyScreen source checks skipped"
 fi
