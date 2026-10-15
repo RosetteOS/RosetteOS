@@ -1,0 +1,62 @@
+#!/bin/sh
+#
+# RosetteOS Factory Reset CLI utility
+#
+
+set -eu
+
+FACTORY_RESET_SCRIPT="${FACTORY_RESET_SCRIPT:-/etc/init.d/S58factoryreset}"
+
+for arg in "$@"; do
+	case "$arg" in
+		-h|--help)
+			echo "Usage: rosetteos-factory-reset [--confirm]"
+			echo ""
+			echo "Wipes all user data and formats /dev/mmcblk0p10."
+			echo "Resets external configurations (EEPROM PLR journal, overlay partition)."
+			echo "Reboots the printer into fresh factory-default RosetteOS."
+			exit 0
+			;;
+	esac
+done
+
+if [ ! -x "$FACTORY_RESET_SCRIPT" ]; then
+	echo "ERROR: Factory reset script not found at $FACTORY_RESET_SCRIPT" >&2
+	exit 1
+fi
+
+CONFIRM=0
+for arg in "$@"; do
+	case "$arg" in
+		--confirm|-y|--yes)
+			CONFIRM=1
+			;;
+		*)
+			echo "Unknown argument: $arg" >&2
+			echo "Usage: rosetteos-factory-reset [--confirm]" >&2
+			exit 1
+			;;
+	esac
+done
+
+if [ "$CONFIRM" -ne 1 ]; then
+	if [ -t 0 ]; then
+		printf "WARNING: This will format /dev/mmcblk0p10 and reset ALL printer data and configs!\n"
+		printf "Are you sure you want to proceed? [y/N]: "
+		read -r answer
+		case "$answer" in
+			[yY]|[yY][eE][sS])
+				CONFIRM=1
+				;;
+			*)
+				echo "Aborted."
+				exit 0
+				;;
+		esac
+	else
+		echo "ERROR: Non-interactive session requires --confirm or -y" >&2
+		exit 1
+	fi
+fi
+
+exec "$FACTORY_RESET_SCRIPT" reset

@@ -1,0 +1,194 @@
+#!/bin/sh
+#
+# RosetteOS Factory Reset Service & Script
+#
+# Capability-gated by GuppyScreen (sysinfo_panel.cpp: fs::exists("/etc/init.d/S58factoryreset"))
+# and invokable via:
+#   /etc/init.d/S58factoryreset reset
+#   rosetteos-factory-reset --confirm
+#
+# On boot (start):
+#   Scans attached USB drives for an emergency_factory_reset flag file.
+#   If present, consumes the flag (renames to .old) and triggers factory reset.
+#
+# On reset:
+#   1. Stops all user and runtime services (GuppyScreen, Moonraker, Klipper, Webcam, WiFi).
+#   2. Resets external configs living outside /usr/data:
+#      - Wipes I2C EEPROM power-loss recovery (PLR) journal (/sys/bus/i2c/devices/2-0050/eeprom).
+#      - Formats / wipes stock Creality overlay partition (/dev/mmcblk0p9) if present.
+#      - Re-verifies active OTA slot marker (/dev/mmcblk0p1) to ensure clean boot into RosetteOS.
+#      - Clears runtime dropbear keys and ephemeral state.
+#   3. Deactivates all swap tiers (zram & eMMC swapfile).
+#   4. Unmounts all active bind mounts and /usr/data.
+#   5. Formats /dev/mmcblk0p10 (ext4, label "userdata").
+#   6. Syncs storage and reboots into clean virgin RosetteOS first-boot provisioning.
+#
+
+set -u
+
+DEV_DATA="${DEV_DATA:-/dev/mmcblk0p10}"
+DEV_OVERLAY="${DEV_OVERLAY:-/dev/mmcblk0p9}"
+DEV_OTA="${DEV_OTA:-/dev/mmcblk0p1}"
+DEV_EEPROM="${DEV_EEPROM:-/sys/bus/i2c/devices/2-0050/eeprom}"
+DATA_MOUNT="${DATA_MOUNT:-/usr/data}"
+DO_REBOOT="${DO_REBOOT:-1}"
+USB_SEARCH_PATHS="${USB_SEARCH_PATHS:-/tmp/udisk /media /mnt}"
+
+log() {
+	echo "rosetteos-factory-reset: $1"
+	command -v logger >/dev/null 2>&1 && logger -t rosetteos-factory-reset -- "$1" 2>/dev/null || true
+}
+
+stop_services() {
+	log "stopping all user-facing and backend services"
+	[ -f /etc/init.d/S58guppyscreen ] && /etc/init.d/S58guppyscreen stop 2>/dev/null || true
+	[ -f /etc/init.d/S50webcam ] && /etc/init.d/S50webcam stop 2>/dev/null || true
+	[ -f /etc/init.d/S56moonraker ] && /etc/init.d/S56moonraker stop 2>/dev/null || true
+	[ -f /etc/init.d/S55klipper ] && /etc/init.d/S55klipper stop 2>/dev/null || true
+	[ -f /etc/init.d/S01wifi ] && /etc/init.d/S01wifi stop 2>/dev/null || true
+	[ -f /etc/init.d/S46rosetteos-dropbear-keys ] && /etc/init.d/S46rosetteos-dropbear-keys stop 2>/dev/null || true
+
+	killall guppyscreen 2>/dev/null || true
+	killall mjpg_streamer 2>/dev/null || true
+	killall wpa_supplicant 2>/dev/null || true
+}
+
+reset_external_configs() {
+	log "resetting external configs and state living outside /usr/data"
+
+	# 1. Clear I2C EEPROM Power-Loss Recovery (PLR) journal
+	if [ -w "$DEV_EEPROM" ] || [ -f "$DEV_EEPROM" ]; then
+		log "clearing PLR journal in EEPROM ($DEV_EEPROM)"
+		dd if=/dev/zero of="$DEV_EEPROM" bs=128 count=32 conv=notrunc 2>/dev/null || true
+	fi
+
+	# 2. Format / wipe stock overlay partition if present
+	if [ -b "$DEV_OVERLAY" ]; then
+		log "formatting stock overlay partition ($DEV_OVERLAY)"
+		umount -f "$DEV_OVERLAY" 2>/dev/null || true
+		if command -v mkfs.ext4 >/dev/null 2>&1; then
+			mkfs.ext4 -F -L "overlay" "$DEV_OVERLAY" 2>/dev/null || true
+		elif command -v mke2fs >/dev/null 2>&1; then
+			mke2fs -F -L "overlay" "$DEV_OVERLAY" 2>/dev/null || true
+		fi
+	fi
+
+	# 3. Ensure OTA boot marker points to currently active RosetteOS slot
+	if [ -b "$DEV_OTA" ] || [ -w "$DEV_OTA" ]; then
+		active_slot="kernel2"
+		if grep -q "root=/dev/mmcblk0p7" /proc/cmdline 2>/dev/null; then
+			active_slot="kernel"
+		fi
+		log "re-verifying OTA boot marker on $DEV_OTA -> ota:$active_slot"
+		if command -v write_ota_marker >/dev/null 2>&1; then
+			write_ota_marker "ota:${active_slot}" 2>/dev/null || true
+		elif [ -f /etc/ota_marker.sh ]; then
+			# shellcheck disable=SC1091
+			. /etc/ota_marker.sh
+			write_ota_marker "ota:${active_slot}" 2>/dev/null || true
+		else
+			printf "ota:%s\n" "$active_slot" > "$DEV_OTA" 2>/dev/null || true
+		fi
+	fi
+
+	# 4. Remove runtime dropbear and volatile state
+	rm -rf /var/run/dropbear.conf /var/run/rosetteos-* /run/rosetteos /run/wpa_supplicant 2>/dev/null || true
+}
+
+unmount_data_partition() {
+	log "disabling swap tiers"
+	swapoff -a 2>/dev/null || true
+
+	log "unmounting persistent bind mounts over $DATA_MOUNT"
+	umount -f /opt/printer_data 2>/dev/null || umount -l /opt/printer_data 2>/dev/null || true
+	umount -f /opt/guppyscreen/guppyconfig.json 2>/dev/null || umount -l /opt/guppyscreen/guppyconfig.json 2>/dev/null || true
+	umount -f /var/run/rosetteos-web-root 2>/dev/null || true
+
+	if command -v fuser >/dev/null 2>&1; then
+		fuser -km "$DATA_MOUNT" 2>/dev/null || true
+		sleep 1
+	fi
+
+	umount "$DATA_MOUNT" 2>/dev/null || umount -l "$DATA_MOUNT" 2>/dev/null || true
+}
+
+format_data_partition() {
+	log "formatting data partition $DEV_DATA"
+	formatted=0
+
+	if [ -b "$DEV_DATA" ] || [ -f "$DEV_DATA" ]; then
+		if command -v mkfs.ext4 >/dev/null 2>&1; then
+			if mkfs.ext4 -F -L "userdata" "$DEV_DATA"; then
+				formatted=1
+			fi
+		elif command -v mke2fs >/dev/null 2>&1; then
+			if mke2fs -F -L "userdata" "$DEV_DATA"; then
+				formatted=1
+			fi
+		fi
+	fi
+
+	if [ "$formatted" -ne 1 ]; then
+		log "WARNING: direct mkfs failed or device unavailable; falling back to filesystem wipe"
+		mkdir -p "$DATA_MOUNT" 2>/dev/null || true
+		mount -t ext4 "$DEV_DATA" "$DATA_MOUNT" 2>/dev/null || true
+		rm -rf "${DATA_MOUNT:?}"/* "${DATA_MOUNT:?}"/.* 2>/dev/null || true
+		umount "$DATA_MOUNT" 2>/dev/null || true
+	fi
+}
+
+do_factory_reset() {
+	log "=== STARTING ROSETTEOS FACTORY RESET ==="
+	stop_services
+	reset_external_configs
+	unmount_data_partition
+	format_data_partition
+	sync
+
+	log "=== FACTORY RESET COMPLETE ==="
+	if [ "$DO_REBOOT" = "1" ]; then
+		log "rebooting into fresh RosetteOS first-boot provisioning"
+		sleep 1
+		reboot -f 2>/dev/null || /sbin/reboot -f 2>/dev/null || true
+	fi
+}
+
+check_usb_emergency_flag() {
+	for base_dir in $USB_SEARCH_PATHS; do
+		[ -d "$base_dir" ] || continue
+		for flag_file in "$base_dir"/sda*/emergency_factory_reset "$base_dir"/sdb*/emergency_factory_reset "$base_dir"/*/emergency_factory_reset; do
+			if [ -f "$flag_file" ]; then
+				log "USB emergency factory reset flag found at $flag_file"
+				mv "$flag_file" "${flag_file}.old" 2>/dev/null || true
+				sync
+				usb_mnt=$(dirname "$flag_file")
+				umount -f "$usb_mnt" 2>/dev/null || true
+				do_factory_reset
+				return 0
+			fi
+		done
+	done
+	return 0
+}
+
+case "${1:-}" in
+	start)
+		# Triggered during boot rcS; checks for USB emergency recovery trigger
+		check_usb_emergency_flag
+		;;
+	reset|--confirm)
+		do_factory_reset
+		;;
+	stop)
+		# No-op during shutdown
+		;;
+	status)
+		echo "RosetteOS factory reset service is ready."
+		;;
+	*)
+		echo "Usage: $0 {start|reset|status}"
+		exit 1
+		;;
+esac
+
+exit 0
