@@ -115,16 +115,16 @@ NEBULA_ZERO_PATH="${NEBULA_ZERO_BIN:-$REPO_ROOT/assets/zero_nebula.bin}"
 case "$TARGET" in
 	ke|all)
 		ensure_zero_bin "Ender-3 V3 KE" "$KE_ZERO_PATH" \
-			"${CREALITY_KE_ZERO_BIN_URL:-https://github.com/RosetteOS/Recovery/raw/main/assets/zero.bin}" \
-			"${CREALITY_KE_ZERO_BIN_SHA256:-2a6b8fcdc7acb73eb7c0fe660906c94989b9f1fb2a3436f3c897766e18dfc340}"
+			"${CREALITY_KE_ZERO_BIN_URL:-https://github.com/RosetteOS/RosetteOS/raw/main/assets/zero.bin}" \
+			"${CREALITY_KE_ZERO_BIN_SHA256:-ccac0856497e69916e82865932bcfdd2395c0b086984c6b45bef652b2fbee50d}"
 		;;
 esac
 
 case "$TARGET" in
 	nebula|all)
 		ensure_zero_bin "Nebula Pad" "$NEBULA_ZERO_PATH" \
-			"${CREALITY_NEBULA_ZERO_BIN_URL:-https://github.com/RosetteOS/Recovery/raw/main/assets/zero_nebula.bin}" \
-			"${CREALITY_NEBULA_ZERO_BIN_SHA256:-f0ab5db5120c8d69d9094e115df6943b62ed7b0fceaa3f09edfee85a64997b88}"
+			"${CREALITY_NEBULA_ZERO_BIN_URL:-https://github.com/RosetteOS/RosetteOS/raw/main/assets/zero_nebula.bin}" \
+			"${CREALITY_NEBULA_ZERO_BIN_SHA256:-94e32420ccc314e2eaad3956f2fdf75646128d0f794fa9c3cbce56ad3f8a74ee}"
 		;;
 esac
 
