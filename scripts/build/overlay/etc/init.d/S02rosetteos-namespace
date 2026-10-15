@@ -131,7 +131,17 @@ seed_printer_data_config() {
 
 	# Check for USB/boot initial profile override
 	selected_profile="creality-ender3-v3-ke"
-	for override_file in /media/sda1/rosetteos-profile.txt /media/sda/rosetteos-profile.txt /boot/rosetteos-profile.txt /usr/data/rosetteos-profile.txt; do
+	for override_file in \
+		/opt/printer_data/gcodes/USB/sda1/rosetteos-profile.txt \
+		/opt/printer_data/gcodes/USB/sda/rosetteos-profile.txt \
+		/opt/printer_data/gcodes/USB/*/rosetteos-profile.txt \
+		/usr/data/rosetteos/printer_data/gcodes/USB/*/rosetteos-profile.txt \
+		/media/sda1/rosetteos-profile.txt \
+		/media/sda/rosetteos-profile.txt \
+		/tmp/udisk/sda1/rosetteos-profile.txt \
+		/tmp/udisk/sda/rosetteos-profile.txt \
+		/boot/rosetteos-profile.txt \
+		/usr/data/rosetteos-profile.txt; do
 		if [ -f "$override_file" ]; then
 			cand=$(cat "$override_file" 2>/dev/null | tr -d '\r\n[:space:]')
 			if [ -d "$PRINTER_PROFILES_SEED/$cand" ] || [ -d "$ROSETTEOS_ROOT/printer_profiles/$cand" ]; then

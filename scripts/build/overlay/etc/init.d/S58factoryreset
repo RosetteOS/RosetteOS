@@ -34,7 +34,7 @@ DATA_MOUNT="${DATA_MOUNT:-/usr/data}"
 DO_REBOOT="${DO_REBOOT:-1}"
 DO_SWAPOFF="${DO_SWAPOFF:-1}"
 DO_SERVICE_STOP="${DO_SERVICE_STOP:-1}"
-USB_SEARCH_PATHS="${USB_SEARCH_PATHS:-/tmp/udisk /media /mnt}"
+USB_SEARCH_PATHS="${USB_SEARCH_PATHS:-/opt/printer_data/gcodes/USB /usr/data/rosetteos/printer_data/gcodes/USB /tmp/udisk /media /mnt}"
 
 log() {
 	echo "rosetteos-factory-reset: $1"
@@ -222,9 +222,39 @@ do_factory_reset() {
 }
 
 check_usb_emergency_flag() {
+	# 1. Search all active USB mount points from /proc/mounts (/dev/sd*)
+	if [ -r /proc/mounts ]; then
+		while read -r dev mnt rest; do
+			case "$dev" in
+				/dev/sd*)
+					[ -d "$mnt" ] || continue
+					if [ -f "$mnt/emergency_factory_reset" ]; then
+						log "USB emergency factory reset flag found at $mnt/emergency_factory_reset (from /proc/mounts)"
+						mv "$mnt/emergency_factory_reset" "$mnt/emergency_factory_reset.old" 2>/dev/null || true
+						sync
+						umount -f "$mnt" 2>/dev/null || true
+						FORCE=1 do_factory_reset
+						return 0
+					fi
+					;;
+			esac
+		done < /proc/mounts
+	fi
+
+	# 2. Search configured base search directories and their subdirectories
 	for base_dir in $USB_SEARCH_PATHS; do
 		[ -d "$base_dir" ] || continue
-		for flag_file in "$base_dir"/sda*/emergency_factory_reset "$base_dir"/sdb*/emergency_factory_reset "$base_dir"/*/emergency_factory_reset; do
+		# Check if base_dir directly contains the flag
+		if [ -f "$base_dir/emergency_factory_reset" ]; then
+			log "USB emergency factory reset flag found at $base_dir/emergency_factory_reset"
+			mv "$base_dir/emergency_factory_reset" "$base_dir/emergency_factory_reset.old" 2>/dev/null || true
+			sync
+			umount -f "$base_dir" 2>/dev/null || true
+			FORCE=1 do_factory_reset
+			return 0
+		fi
+		# Check subdirectories (e.g. sda1, sda, subfolders)
+		for flag_file in "$base_dir"/*/emergency_factory_reset "$base_dir"/*/*/emergency_factory_reset; do
 			if [ -f "$flag_file" ]; then
 				log "USB emergency factory reset flag found at $flag_file"
 				mv "$flag_file" "${flag_file}.old" 2>/dev/null || true
@@ -236,6 +266,29 @@ check_usb_emergency_flag() {
 			fi
 		done
 	done
+
+	# 3. If not yet mounted by udev, check any attached USB block devices
+	for devnode in /dev/sd[a-z][0-9]* /dev/sd[a-z]; do
+		[ -b "$devnode" ] || continue
+		# Skip if already mounted
+		grep -qs "^$devnode " /proc/mounts 2>/dev/null && continue
+		tmp_mnt="/tmp/emergency_usb_check"
+		mkdir -p "$tmp_mnt" 2>/dev/null || continue
+		if mount -t auto -o rw,sync "$devnode" "$tmp_mnt" 2>/dev/null || mount -t auto -o ro "$devnode" "$tmp_mnt" 2>/dev/null; then
+			if [ -f "$tmp_mnt/emergency_factory_reset" ]; then
+				log "USB emergency factory reset flag found on unmounted $devnode at $tmp_mnt/emergency_factory_reset"
+				mv "$tmp_mnt/emergency_factory_reset" "$tmp_mnt/emergency_factory_reset.old" 2>/dev/null || true
+				sync
+				umount "$tmp_mnt" 2>/dev/null || true
+				rmdir "$tmp_mnt" 2>/dev/null || true
+				FORCE=1 do_factory_reset
+				return 0
+			fi
+			umount "$tmp_mnt" 2>/dev/null || true
+		fi
+		rmdir "$tmp_mnt" 2>/dev/null || true
+	done
+
 	return 0
 }
 

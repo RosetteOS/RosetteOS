@@ -98,6 +98,27 @@ else
 	fail "USB emergency_factory_reset flag was not properly renamed"
 fi
 
+# --- Test 4b: USB emergency flag at direct mount root ---
+T4B_USB="$WORK/t4b_usb"
+mkdir -p "$T4B_USB"
+touch "$T4B_USB/emergency_factory_reset"
+USB_SEARCH_PATHS="$T4B_USB" \
+DEV_EEPROM="$MOCK_EEPROM" \
+DEV_OVERLAY="$MOCK_OVERLAY" \
+DEV_OTA="$MOCK_OTA" \
+DEV_DATA="$MOCK_DATA" \
+DATA_MOUNT="$MOCK_MOUNT" \
+DO_REBOOT=0 \
+DO_SWAPOFF=0 \
+DO_SERVICE_STOP=0 \
+sh "$SERVICE_SCRIPT" start > "$WORK/t4b.log" 2>&1
+
+if [ ! -f "$T4B_USB/emergency_factory_reset" ] && [ -f "$T4B_USB/emergency_factory_reset.old" ]; then
+	pass "USB emergency_factory_reset at mount root was consumed and renamed to .old"
+else
+	fail "USB emergency_factory_reset at mount root was not properly renamed"
+fi
+
 # --- Test 5: External configs reset (EEPROM, OTA marker, Overlay) ---
 echo "=== Test 5: External configurations reset ==="
 # Check EEPROM was zeroed
