@@ -11,6 +11,11 @@ DEV_PREFIX="${ROSETTEOS_DEVNODE_PREFIX:-/dev/}"
 
 case "$1" in
 	start)
+		for sw in /sys/devices/platform/apb/10000000.otg_phy/sw_switch_hsotg /sys/devices/platform/*.otg_phy/sw_switch_hsotg /sys/class/phy/*/sw_switch_hsotg; do
+			if [ -f "$sw" ]; then
+				echo device > "$sw" 2>/dev/null || true
+			fi
+		done
 		for devnode in "${DEV_PREFIX}"ttyGS[0-9]*; do
 			if [ -c "$devnode" ] || [ -f "$devnode" ]; then
 				dev="${devnode#"${DEV_PREFIX}"}"

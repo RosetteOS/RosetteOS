@@ -85,6 +85,8 @@ check_cmd "CONFIG_CMDLINE_BOOL=y is enabled for early bootlogs" grep -q '^CONFIG
 check_cmd "CONFIG_CMDLINE extends console=ttyGS0,115200" grep -q '^CONFIG_CMDLINE=.*console=ttyGS0,115200' "$KERNEL_FRAGMENT"
 check_cmd "02-configure-buildroot.sh cleans obsolete S11 path" grep -q "etc/init.d/S11rosetteos-usb-serial" "$CONFIGURE_SCRIPT"
 check_cmd "rcS broadcasts milestone telemetry to /dev/kmsg" grep -q '/dev/kmsg' "$RCS_SCRIPT"
+check_cmd "S00rosetteos-usb-serial activates sw_switch_hsotg device mode" grep -q "sw_switch_hsotg" "$INIT_SCRIPT"
+check_cmd "rosetteos-usb-serial-console activates sw_switch_hsotg device mode" grep -q "sw_switch_hsotg" "$CONSOLE_HELPER"
 
 # 5. Device validation and error handling
 echo "--- Device Validation and Error Handling ---"

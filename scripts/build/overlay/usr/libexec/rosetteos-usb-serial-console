@@ -40,6 +40,12 @@ do_start() {
 		return 0
 	fi
 
+	for sw in /sys/devices/platform/apb/10000000.otg_phy/sw_switch_hsotg /sys/devices/platform/*.otg_phy/sw_switch_hsotg /sys/class/phy/*/sw_switch_hsotg; do
+		if [ -f "$sw" ]; then
+			echo device > "$sw" 2>/dev/null || true
+		fi
+	done
+
 	# Wait up to 1 second for device node if invoked immediately by udev
 	retries=0
 	while [ ! -c "$DEVNODE" ] && [ ! -f "$DEVNODE" ] && [ "$retries" -lt 10 ]; do
