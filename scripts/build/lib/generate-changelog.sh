@@ -127,10 +127,12 @@ if not guppy_commits:
             except Exception:
                 pass
 
-if guppy_commits:
-    lines.append("### GuppyScreen UI")
-    lines.extend(guppy_commits)
-    lines.append("")
+if not guppy_commits:
+    guppy_commits = ["• GuppyScreen Touchscreen UI Release"]
+
+lines.append("### GuppyScreen UI")
+lines.extend(guppy_commits)
+lines.append("")
 
 result_text = "\n".join(lines).strip() + "\n"
 
