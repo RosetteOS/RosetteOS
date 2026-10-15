@@ -186,6 +186,80 @@ def check_print_in_progress():
 
     return False, None
 
+def check_thermal_status():
+    """
+    Queries Moonraker or Klipper API to check if heaters are active or hot.
+    Returns (is_hot: bool, details: list).
+    """
+    moonraker_port = os.environ.get("ROSETTEOS_MOONRAKER_PORT", "7125")
+    moonraker_url = f"http://127.0.0.1:{moonraker_port}/printer/objects/query?extruder&heater_bed"
+    heaters = []
+    try:
+        req = urllib.request.Request(moonraker_url, headers={"User-Agent": "rosetteos-profile"})
+        with urllib.request.urlopen(req, timeout=0.8) as resp:
+            data = json.loads(resp.read().decode())
+            status = data.get("result", {}).get("status", {})
+            ext = status.get("extruder", {})
+            if ext:
+                target = float(ext.get("target", 0.0))
+                temp = float(ext.get("temperature", 0.0))
+                if target > 0.0:
+                    heaters.append(f"Hotend heating (target: {target:.0f}°C, temp: {temp:.1f}°C)")
+                elif temp > 60.0:
+                    heaters.append(f"Hotend is hot (temp: {temp:.1f}°C > 60°C)")
+            bed = status.get("heater_bed", {})
+            if bed:
+                target = float(bed.get("target", 0.0))
+                temp = float(bed.get("temperature", 0.0))
+                if target > 0.0:
+                    heaters.append(f"Bed heating (target: {target:.0f}°C, temp: {temp:.1f}°C)")
+                elif temp > 55.0:
+                    heaters.append(f"Bed is hot (temp: {temp:.1f}°C > 55°C)")
+            if heaters:
+                return True, heaters
+    except Exception:
+        pass
+
+    # Try Klipper socket if Moonraker is unreachable
+    klippy_sock = os.environ.get("ROSETTEOS_KLIPPY_SOCKET", "/tmp/klippy_uds")
+    if not os.path.exists(klippy_sock):
+        klippy_sock = "/opt/printer_data/comms/klippy.sock"
+    if os.path.exists(klippy_sock):
+        try:
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.settimeout(0.8)
+            sock.connect(klippy_sock)
+            query = json.dumps({"id": 1, "method": "objects/query", "params": {"objects": {"extruder": None, "heater_bed": None}}}) + "\x03"
+            sock.sendall(query.encode())
+            raw_resp = sock.recv(4096).decode()
+            sock.close()
+            if "\x03" in raw_resp:
+                raw_resp = raw_resp.split("\x03")[0]
+            data = json.loads(raw_resp)
+            status = data.get("result", {}).get("status", {})
+            ext = status.get("extruder", {})
+            if ext:
+                target = float(ext.get("target", 0.0))
+                temp = float(ext.get("temperature", 0.0))
+                if target > 0.0:
+                    heaters.append(f"Hotend heating (target: {target:.0f}°C, temp: {temp:.1f}°C)")
+                elif temp > 60.0:
+                    heaters.append(f"Hotend is hot (temp: {temp:.1f}°C > 60°C)")
+            bed = status.get("heater_bed", {})
+            if bed:
+                target = float(bed.get("target", 0.0))
+                temp = float(bed.get("temperature", 0.0))
+                if target > 0.0:
+                    heaters.append(f"Bed heating (target: {target:.0f}°C, temp: {temp:.1f}°C)")
+                elif temp > 55.0:
+                    heaters.append(f"Bed is hot (temp: {temp:.1f}°C > 55°C)")
+            if heaters:
+                return True, heaters
+        except Exception:
+            pass
+
+    return False, []
+
 def check_mcu_architecture_change(current_profile, target_profile, quiet=False):
     """
     Checks if moving between profiles involves a different MCU architecture or firmware requirement,
@@ -246,13 +320,26 @@ def cmd_set(args):
     system_dir = os.environ.get("ROSETTEOS_SYSTEM_DIR", SYSTEM_DIR)
     marker_path = os.environ.get("ROSETTEOS_ACTIVE_MARKER", ACTIVE_MARKER)
 
-    # 0. Safety Interlock: Print in progress validation
+    # 0. Safety Interlock: Print in progress and thermal safeguards
     if not getattr(args, "force", False):
         is_printing, print_state = check_print_in_progress()
         if is_printing:
             sys.stderr.write(
                 f"\n[ERROR] Cannot switch printer profile while a print is actively in progress (state: '{print_state}').\n"
                 f"Please cancel or wait for the print job to finish before changing printer models.\n"
+                f"Use 'rosetteos-profile set {target_id} --force' if you must override this safety check.\n\n"
+            )
+            return 1
+
+        is_hot, hot_heaters = check_thermal_status()
+        if is_hot:
+            sys.stderr.write(
+                f"\n[ERROR] Cannot switch printer profile while heaters are active or hot:\n"
+            )
+            for h in hot_heaters:
+                sys.stderr.write(f"  • {h}\n")
+            sys.stderr.write(
+                f"Please turn off heaters and wait for cooldown before changing printer models.\n"
                 f"Use 'rosetteos-profile set {target_id} --force' if you must override this safety check.\n\n"
             )
             return 1

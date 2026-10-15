@@ -182,17 +182,35 @@ else
     fail "S02 failed to seed printer_profiles repository"
 fi
 
-echo "=== Test 5: Safety Interlocks & Print-in-Progress Protection ==="
-# Start a lightweight mock Moonraker server returning state: printing
+echo "=== Test 5: Safety Interlocks & Print/Thermal Safeguards ==="
+# Start a lightweight mock Moonraker server with state controls
 python3 -c "
 import http.server, socketserver, json
 
+state = {'state': 'printing', 'ext_temp': 25.0, 'ext_target': 0.0, 'bed_temp': 25.0, 'bed_target': 0.0}
+
 class MockHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
+        if self.path.startswith('/set_state'):
+            q = self.path.split('?', 1)[1]
+            for p in q.split('&'):
+                k, v = p.split('=')
+                if k in ('ext_temp', 'ext_target', 'bed_temp', 'bed_target'): state[k] = float(v)
+                else: state[k] = v
+            self.send_response(200); self.end_headers(); self.wfile.write(b'ok')
+            return
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
         self.end_headers()
-        resp = {'result': {'status': {'print_stats': {'state': 'printing'}}}}
+        resp = {
+            'result': {
+                'status': {
+                    'print_stats': {'state': state['state']},
+                    'extruder': {'target': state['ext_target'], 'temperature': state['ext_temp']},
+                    'heater_bed': {'target': state['bed_target'], 'temperature': state['bed_temp']}
+                }
+            }
+        }
         self.wfile.write(json.dumps(resp).encode())
     def log_message(self, format, *args):
         pass
@@ -249,6 +267,59 @@ if [ "$FORCE_STATUS" -eq 0 ]; then
     pass "Safety interlock --force flag successfully bypassed print check when requested"
 else
     fail "Safety interlock --force failed to permit profile switch"
+fi
+
+# Thermal check 1: Nozzle hot (> 60C)
+curl -s "http://127.0.0.1:$MOCK_PORT/set_state?state=standby&ext_temp=70.0&ext_target=0&bed_temp=25.0&bed_target=0" >/dev/null
+ROSETTEOS_PROFILES_SEEDS="$PROFILES_SRC" \
+ROSETTEOS_USER_PROFILES="$WORK/user_profiles" \
+ROSETTEOS_SYSTEM_DIR="$WORK/system" \
+ROSETTEOS_CONFIG_DIR="$WORK/config" \
+ROSETTEOS_BACKUP_DIR="$WORK/backups" \
+ROSETTEOS_ACTIVE_MARKER="$WORK/system/active-profile.json" \
+ROSETTEOS_MOONRAKER_PORT="$MOCK_PORT" \
+python3 "$PROFILE_MGR" set creality-ender3-v3-se > "$WORK/thermal1.log" 2>&1
+T1_STATUS=$?
+
+if [ "$T1_STATUS" -ne 0 ] && grep -q "Cannot switch printer profile while heaters are active or hot" "$WORK/thermal1.log"; then
+    pass "Safety interlock blocked profile switch while nozzle is hot (70C)"
+else
+    fail "Safety interlock failed to block profile switch while nozzle is hot"
+fi
+
+# Thermal check 2: Bed hot (> 55C)
+curl -s "http://127.0.0.1:$MOCK_PORT/set_state?state=standby&ext_temp=25.0&ext_target=0&bed_temp=65.0&bed_target=0" >/dev/null
+ROSETTEOS_PROFILES_SEEDS="$PROFILES_SRC" \
+ROSETTEOS_USER_PROFILES="$WORK/user_profiles" \
+ROSETTEOS_SYSTEM_DIR="$WORK/system" \
+ROSETTEOS_CONFIG_DIR="$WORK/config" \
+ROSETTEOS_BACKUP_DIR="$WORK/backups" \
+ROSETTEOS_ACTIVE_MARKER="$WORK/system/active-profile.json" \
+ROSETTEOS_MOONRAKER_PORT="$MOCK_PORT" \
+python3 "$PROFILE_MGR" set creality-ender3-v3-se > "$WORK/thermal2.log" 2>&1
+T2_STATUS=$?
+
+if [ "$T2_STATUS" -ne 0 ] && grep -q "Cannot switch printer profile while heaters are active or hot" "$WORK/thermal2.log"; then
+    pass "Safety interlock blocked profile switch while bed is hot (65C)"
+else
+    fail "Safety interlock failed to block profile switch while bed is hot"
+fi
+
+# Thermal override with --force
+ROSETTEOS_PROFILES_SEEDS="$PROFILES_SRC" \
+ROSETTEOS_USER_PROFILES="$WORK/user_profiles" \
+ROSETTEOS_SYSTEM_DIR="$WORK/system" \
+ROSETTEOS_CONFIG_DIR="$WORK/config" \
+ROSETTEOS_BACKUP_DIR="$WORK/backups" \
+ROSETTEOS_ACTIVE_MARKER="$WORK/system/active-profile.json" \
+ROSETTEOS_MOONRAKER_PORT="$MOCK_PORT" \
+python3 "$PROFILE_MGR" set creality-ender3-v3-se --force --quiet > "$WORK/thermal_force.log" 2>&1
+TFORCE_STATUS=$?
+
+if [ "$TFORCE_STATUS" -eq 0 ]; then
+    pass "Safety interlock --force flag successfully bypassed thermal check"
+else
+    fail "Safety interlock --force failed to permit profile switch during thermal check"
 fi
 
 # Stop mock server

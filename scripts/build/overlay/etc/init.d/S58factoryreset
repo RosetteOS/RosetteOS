@@ -137,7 +137,64 @@ format_data_partition() {
 	fi
 }
 
+check_safety_guards() {
+	[ "${FORCE:-0}" = "1" ] && return 0
+
+	moonraker_url="${ROSETTEOS_MOONRAKER_URL:-http://127.0.0.1:7125}"
+	status=""
+	if command -v curl >/dev/null 2>&1; then
+		status=$(curl -s -m 2 "$moonraker_url/printer/objects/query?print_stats&extruder&heater_bed" 2>/dev/null || true)
+	elif command -v wget >/dev/null 2>&1; then
+		status=$(wget -q -O - --timeout=2 "$moonraker_url/printer/objects/query?print_stats&extruder&heater_bed" 2>/dev/null || true)
+	fi
+	[ -z "$status" ] && return 0
+
+	case "$status" in
+		*'"print_stats"'*'"printing"'*|*'"print_stats"'*'"paused"'*|*'"print_stats"'*'"busy"'*)
+			log "REFUSED: a print is actively in progress - cannot factory reset during printing"
+			echo "FATAL: Cannot factory reset while a print is active. Cancel print first or pass --force." >&2
+			return 1
+			;;
+	esac
+
+	if command -v python3 >/dev/null 2>&1; then
+		if ! printf '%s' "$status" | python3 -c '
+import json, sys
+try:
+    st = json.loads(sys.stdin.read()).get("result", {}).get("status", {})
+    ext = st.get("extruder", {})
+    bed = st.get("heater_bed", {})
+    heaters = []
+    ext_target = ext.get("target", 0)
+    ext_temp = ext.get("temperature", 0)
+    if ext_target > 0:
+        heaters.append(f"Hotend heating (target: {ext_target:.0f}°C)")
+    elif ext_temp > 60:
+        heaters.append(f"Hotend is hot ({ext_temp:.1f}°C > 60°C)")
+    bed_target = bed.get("target", 0)
+    bed_temp = bed.get("temperature", 0)
+    if bed_target > 0:
+        heaters.append(f"Bed heating (target: {bed_target:.0f}°C)")
+    elif bed_temp > 55:
+        heaters.append(f"Bed is hot ({bed_temp:.1f}°C > 55°C)")
+    if heaters:
+        for h in heaters:
+            print(f"  - {h}", file=sys.stderr)
+        sys.exit(1)
+except Exception:
+    pass
+sys.exit(0)
+'; then
+			log "REFUSED: heaters are active or hot - cannot factory reset while hot"
+			echo "FATAL: Cannot factory reset while heaters are active or hot. Turn off heaters and let nozzle cool, or pass --force." >&2
+			return 1
+		fi
+	fi
+	return 0
+}
+
 do_factory_reset() {
+	check_safety_guards || return 1
 	log "=== STARTING ROSETTEOS FACTORY RESET ==="
 	stop_services
 	reset_external_configs
@@ -163,7 +220,7 @@ check_usb_emergency_flag() {
 				sync
 				usb_mnt=$(dirname "$flag_file")
 				umount -f "$usb_mnt" 2>/dev/null || true
-				do_factory_reset
+				FORCE=1 do_factory_reset
 				return 0
 			fi
 		done
@@ -177,7 +234,10 @@ case "${1:-}" in
 		check_usb_emergency_flag
 		;;
 	reset|--confirm)
-		do_factory_reset
+		for a in "$@"; do
+			case "$a" in -f|--force) FORCE=1 ;; esac
+		done
+		do_factory_reset || exit 1
 		;;
 	stop)
 		# No-op during shutdown

@@ -10,7 +10,7 @@ FACTORY_RESET_SCRIPT="${FACTORY_RESET_SCRIPT:-/etc/init.d/S58factoryreset}"
 for arg in "$@"; do
 	case "$arg" in
 		-h|--help)
-			echo "Usage: rosetteos-factory-reset [--confirm]"
+			echo "Usage: rosetteos-factory-reset [--confirm] [--force]"
 			echo ""
 			echo "Erases all user data, print files, settings, and Wi-Fi networks."
 			echo "Resets external configurations (EEPROM PLR journal, overlay partition)."
@@ -26,14 +26,18 @@ if [ ! -x "$FACTORY_RESET_SCRIPT" ]; then
 fi
 
 CONFIRM=0
+FORCE_ARG=""
 for arg in "$@"; do
 	case "$arg" in
 		--confirm|-y|--yes)
 			CONFIRM=1
 			;;
+		-f|--force)
+			FORCE_ARG="--force"
+			;;
 		*)
 			echo "Unknown argument: $arg" >&2
-			echo "Usage: rosetteos-factory-reset [--confirm]" >&2
+			echo "Usage: rosetteos-factory-reset [--confirm] [--force]" >&2
 			exit 1
 			;;
 	esac
@@ -59,4 +63,8 @@ if [ "$CONFIRM" -ne 1 ]; then
 	fi
 fi
 
-exec "$FACTORY_RESET_SCRIPT" reset
+if [ -n "$FORCE_ARG" ]; then
+	exec "$FACTORY_RESET_SCRIPT" reset "$FORCE_ARG"
+else
+	exec "$FACTORY_RESET_SCRIPT" reset
+fi

@@ -101,6 +101,36 @@ run_update_flash() {
 }
 
 start() {
+	if [ "${FORCE:-0}" != "1" ]; then
+		moonraker_url="${ROSETTEOS_MOONRAKER_URL:-http://127.0.0.1:7125}"
+		status=$(wget -q -O - --timeout=2 "$moonraker_url/printer/objects/query?print_stats&extruder&heater_bed" 2>/dev/null || true)
+		if [ -n "$status" ]; then
+			case "$status" in
+				*'"state":"printing"'*|*'"state":"paused"'*)
+					log "BLOCKED: a print is actively in progress - refusing MCU upgrade"
+					return 1
+					;;
+			esac
+			if command -v python3 >/dev/null 2>&1; then
+				if ! printf '%s' "$status" | python3 -c '
+import json, sys
+try:
+    st = json.loads(sys.stdin.read()).get("result", {}).get("status", {})
+    ext = st.get("extruder", {})
+    bed = st.get("heater_bed", {})
+    if ext.get("target", 0) > 0 or ext.get("temperature", 0) > 60 or bed.get("target", 0) > 0 or bed.get("temperature", 0) > 55:
+        sys.exit(1)
+except Exception:
+    pass
+sys.exit(0)
+' 2>/dev/null; then
+					log "BLOCKED: heaters are active or hot - refusing MCU upgrade"
+					return 1
+				fi
+			fi
+		fi
+	fi
+
 	[ -e "$STATE_DIR/mcu-auto-upgrade.disabled" ] && {
 		log "disabled by persistent opt-out marker"
 		return 0
@@ -116,7 +146,9 @@ start() {
 
 	# The generated manifest is shell-compatible and contains only build-time
 	# constants. Do not derive the expected hash from the file being checked.
+	# shellcheck disable=SC1091
 	. "$MCU_DIR/manifest.env"
+	# shellcheck disable=SC2154
 	EXPECTED_SHA256="$image_sha256"
 	actual=$(image_sha256)
 	[ -n "$EXPECTED_SHA256" ] && [ "$actual" = "$EXPECTED_SHA256" ] || {

@@ -67,13 +67,38 @@ EOF
 }
 
 maintenance_gate_ok() {
-	active=$(wget -q -O - --timeout=3 'http://127.0.0.1:7125/printer/objects/query?print_stats' 2>/dev/null)
+	moonraker_url="${ROSETTEOS_MOONRAKER_URL:-http://127.0.0.1:7125}"
+	active=""
+	if command -v curl >/dev/null 2>&1; then
+		active=$(curl -s -m 3 "$moonraker_url/printer/objects/query?print_stats&extruder&heater_bed" 2>/dev/null || true)
+	elif command -v wget >/dev/null 2>&1; then
+		active=$(wget -q -O - --timeout=3 "$moonraker_url/printer/objects/query?print_stats&extruder&heater_bed" 2>/dev/null || true)
+	fi
 	case "$active" in
-		*'"state":"printing"'*|*'"state":"paused"'*)
+		*'"print_stats"'*'"printing"'*|*'"print_stats"'*'"paused"'*|*'"print_stats"'*'"busy"'*)
 			log "REFUSED: a print is active - this cannot run while the printer is in use"
 			return 1
 			;;
 	esac
+	if [ -z "${SKIP_THERMAL_CHECK:-}" ] && [ -n "$active" ]; then
+		if command -v python3 >/dev/null 2>&1; then
+			if ! printf '%s' "$active" | python3 -c '
+import json, sys
+try:
+    st = json.loads(sys.stdin.read()).get("result", {}).get("status", {})
+    ext = st.get("extruder", {})
+    bed = st.get("heater_bed", {})
+    if ext.get("target", 0) > 0 or ext.get("temperature", 0) > 60 or bed.get("target", 0) > 0 or bed.get("temperature", 0) > 55:
+        sys.exit(1)
+except Exception:
+    pass
+sys.exit(0)
+' 2>/dev/null; then
+				log "REFUSED: heaters are active or hot - this cannot run while heaters are on"
+				return 1
+			fi
+		fi
+	fi
 	if [ -d "$LOCKDIR" ] && [ -n "$(ls -A "$LOCKDIR" 2>/dev/null)" ]; then
 		log "REFUSED: an update transaction lock is present - cannot run concurrently with an update"
 		return 1

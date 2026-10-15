@@ -400,7 +400,7 @@ PORT_FILE="$TEST_SANDBOX/mock_port.txt"
 python3 -c '
 import http.server, socketserver, json, sys
 
-state = {"print_state": "standby", "ext_target": 0.0, "bed_target": 0.0}
+state = {"print_state": "standby", "ext_target": 0.0, "bed_target": 0.0, "ext_temp": 25.0, "bed_temp": 25.0}
 
 class Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self, format, *args): pass
@@ -409,7 +409,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             q = self.path.split("?", 1)[1]
             for p in q.split("&"):
                 k, v = p.split("=")
-                if k in ("ext_target", "bed_target"): state[k] = float(v)
+                if k in ("ext_target", "bed_target", "ext_temp", "bed_temp"): state[k] = float(v)
                 else: state[k] = v
             self.send_response(200); self.end_headers(); self.wfile.write(b"ok")
             return
@@ -417,8 +417,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "result": {
                 "status": {
                     "print_stats": {"state": state["print_state"]},
-                    "extruder": {"target": state["ext_target"], "temperature": 200.0 if state["ext_target"] > 0 else 25.0},
-                    "heater_bed": {"target": state["bed_target"], "temperature": 60.0 if state["bed_target"] > 0 else 25.0}
+                    "extruder": {"target": state["ext_target"], "temperature": state["ext_temp"] if state["ext_target"] == 0.0 else 200.0},
+                    "heater_bed": {"target": state["bed_target"], "temperature": state["bed_temp"] if state["bed_target"] == 0.0 else 60.0}
                 }
             }
         }
@@ -483,13 +483,79 @@ else
 fi
 
 # Case 3: Bed heating -> touch switch blocked without --force
-curl -s "$ROSETTEOS_MOONRAKER_URL/set_state?print_state=standby&ext_target=0&bed_target=60" >/dev/null
+curl -s "$ROSETTEOS_MOONRAKER_URL/set_state?print_state=standby&ext_target=0&bed_target=60&ext_temp=25&bed_temp=60" >/dev/null
 
 if python3 "$ROSETTEOS_APP" set-active-touch helixscreen >/dev/null 2>&1; then
 	fail "set-active-touch should be blocked while bed is heating"
 else
 	pass "set-active-touch blocked while bed target is active"
 fi
+
+# Case 4: Mutating actions (install, remove, service restart) blocked during active print
+curl -s "$ROSETTEOS_MOONRAKER_URL/set_state?print_state=printing&ext_target=0&bed_target=0&ext_temp=25&bed_temp=25" >/dev/null
+
+if python3 "$ROSETTEOS_APP" install fluidd >/dev/null 2>&1; then
+	fail "install should be blocked while printing"
+else
+	pass "install blocked while printing"
+fi
+
+if python3 "$ROSETTEOS_APP" remove fluidd >/dev/null 2>&1; then
+	fail "remove should be blocked while printing"
+else
+	pass "remove blocked while printing"
+fi
+
+cat << 'EOF' > "$ROSETTEOS_SERVICES_DIR/S60mocksvc"
+#!/bin/sh
+exit 0
+EOF
+chmod +x "$ROSETTEOS_SERVICES_DIR/S60mocksvc"
+
+if python3 "$ROSETTEOS_APP" service restart mocksvc >/dev/null 2>&1; then
+	fail "service restart should be blocked while printing"
+else
+	pass "service restart blocked while printing"
+fi
+
+if python3 "$ROSETTEOS_APP" service restart mocksvc --force >/dev/null 2>&1; then
+	pass "service restart --force successfully overrides print safeguard"
+else
+	fail "service restart --force failed to override"
+fi
+rm -f "$ROSETTEOS_SERVICES_DIR/S60mocksvc"
+
+# Case 5: Mutating actions blocked during residual heat (> 60C nozzle or > 55C bed)
+curl -s "$ROSETTEOS_MOONRAKER_URL/set_state?print_state=standby&ext_target=0&bed_target=0&ext_temp=70&bed_temp=25" >/dev/null
+
+if python3 "$ROSETTEOS_APP" install fluidd >/dev/null 2>&1; then
+	fail "install should be blocked while nozzle is hot (70C)"
+else
+	pass "install blocked while nozzle is hot (70C)"
+fi
+
+if python3 "$ROSETTEOS_APP" install fluidd --force >/dev/null 2>&1; then
+	pass "install --force overrides residual thermal safeguard"
+else
+	fail "install --force failed to override residual thermal safeguard"
+fi
+
+curl -s "$ROSETTEOS_MOONRAKER_URL/set_state?print_state=standby&ext_target=0&bed_target=0&ext_temp=25&bed_temp=65" >/dev/null
+
+if python3 "$ROSETTEOS_APP" remove fluidd >/dev/null 2>&1; then
+	fail "remove should be blocked while bed is hot (65C)"
+else
+	pass "remove blocked while bed is hot (65C)"
+fi
+
+if python3 "$ROSETTEOS_APP" remove fluidd --force >/dev/null 2>&1; then
+	pass "remove --force overrides residual bed thermal safeguard"
+else
+	fail "remove --force failed to override residual bed thermal safeguard"
+fi
+
+# Reset state to cold standby
+curl -s "$ROSETTEOS_MOONRAKER_URL/set_state?print_state=standby&ext_target=0&bed_target=0&ext_temp=25&bed_temp=25" >/dev/null
 
 kill $MOCK_PID 2>/dev/null || true
 

@@ -152,6 +152,100 @@ else
 	fail "rosetteos-factory-reset --confirm failed (rc=$rc)"
 fi
 
+# --- Test 8: Print and thermal safety safeguards ---
+echo "=== Test 8: Print and thermal safety safeguards ==="
+MOCK_PORT_FILE="$WORK/mock_moonraker_port"
+python3 -c '
+import http.server, socketserver, json, sys
+
+state = {"state": "printing", "ext_temp": 25.0, "ext_target": 0.0, "bed_temp": 25.0, "bed_target": 0.0}
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    def log_message(self, format, *args): pass
+    def do_GET(self):
+        if self.path.startswith("/set_state"):
+            q = self.path.split("?", 1)[1]
+            for p in q.split("&"):
+                k, v = p.split("=")
+                if k in ("ext_temp", "ext_target", "bed_temp", "bed_target"): state[k] = float(v)
+                else: state[k] = v
+            self.send_response(200); self.end_headers(); self.wfile.write(b"ok")
+            return
+        payload = {
+            "result": {
+                "status": {
+                    "print_stats": {"state": state["state"]},
+                    "extruder": {"target": state["ext_target"], "temperature": state["ext_temp"]},
+                    "heater_bed": {"target": state["bed_target"], "temperature": state["bed_temp"]}
+                }
+            }
+        }
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(payload).encode())
+
+with socketserver.TCPServer(("127.0.0.1", 0), Handler) as httpd:
+    port = httpd.server_address[1]
+    with open(sys.argv[1], "w") as f:
+        f.write(str(port))
+    httpd.serve_forever()
+' "$MOCK_PORT_FILE" &
+MOCK_PID=$!
+
+while [ ! -s "$MOCK_PORT_FILE" ]; do sleep 0.05; done
+M_PORT=$(cat "$MOCK_PORT_FILE")
+MOCK_URL="http://127.0.0.1:$M_PORT"
+
+# 8a: Print active -> blocked without --force
+if ROSETTEOS_MOONRAKER_URL="$MOCK_URL" FACTORY_RESET_SCRIPT="$SERVICE_SCRIPT" \
+   DEV_EEPROM="$T7_EEPROM" DEV_OVERLAY="/dev/null" DEV_OTA="$T7_OTA" DEV_DATA="$T7_DATA" \
+   DATA_MOUNT="$WORK/t7_mnt" DO_REBOOT=0 sh "$CLI_SCRIPT" --confirm >/dev/null 2>&1; then
+	fail "rosetteos-factory-reset should be blocked while printing"
+else
+	pass "rosetteos-factory-reset blocked while printing"
+fi
+
+# 8b: Print active -> allowed with --force
+if ROSETTEOS_MOONRAKER_URL="$MOCK_URL" FACTORY_RESET_SCRIPT="$SERVICE_SCRIPT" \
+   DEV_EEPROM="$T7_EEPROM" DEV_OVERLAY="/dev/null" DEV_OTA="$T7_OTA" DEV_DATA="$T7_DATA" \
+   DATA_MOUNT="$WORK/t7_mnt" DO_REBOOT=0 sh "$CLI_SCRIPT" --confirm --force >/dev/null 2>&1; then
+	pass "rosetteos-factory-reset --force overrides active print guard"
+else
+	fail "rosetteos-factory-reset --force failed to override active print guard"
+fi
+
+# 8c: Standby but hotend hot (> 60C) -> blocked without --force
+curl -s "$MOCK_URL/set_state?state=standby&ext_temp=75.0&ext_target=0&bed_temp=25.0&bed_target=0" >/dev/null
+if ROSETTEOS_MOONRAKER_URL="$MOCK_URL" FACTORY_RESET_SCRIPT="$SERVICE_SCRIPT" \
+   DEV_EEPROM="$T7_EEPROM" DEV_OVERLAY="/dev/null" DEV_OTA="$T7_OTA" DEV_DATA="$T7_DATA" \
+   DATA_MOUNT="$WORK/t7_mnt" DO_REBOOT=0 sh "$CLI_SCRIPT" --confirm >/dev/null 2>&1; then
+	fail "rosetteos-factory-reset should be blocked while hotend is hot (75C)"
+else
+	pass "rosetteos-factory-reset blocked while hotend is hot (75C)"
+fi
+
+# 8d: Standby but bed hot (> 55C) -> blocked without --force
+curl -s "$MOCK_URL/set_state?state=standby&ext_temp=25.0&ext_target=0&bed_temp=65.0&bed_target=0" >/dev/null
+if ROSETTEOS_MOONRAKER_URL="$MOCK_URL" FACTORY_RESET_SCRIPT="$SERVICE_SCRIPT" \
+   DEV_EEPROM="$T7_EEPROM" DEV_OVERLAY="/dev/null" DEV_OTA="$T7_OTA" DEV_DATA="$T7_DATA" \
+   DATA_MOUNT="$WORK/t7_mnt" DO_REBOOT=0 sh "$CLI_SCRIPT" --confirm >/dev/null 2>&1; then
+	fail "rosetteos-factory-reset should be blocked while bed is hot (65C)"
+else
+	pass "rosetteos-factory-reset blocked while bed is hot (65C)"
+fi
+
+# 8e: Thermal override with --force
+if ROSETTEOS_MOONRAKER_URL="$MOCK_URL" FACTORY_RESET_SCRIPT="$SERVICE_SCRIPT" \
+   DEV_EEPROM="$T7_EEPROM" DEV_OVERLAY="/dev/null" DEV_OTA="$T7_OTA" DEV_DATA="$T7_DATA" \
+   DATA_MOUNT="$WORK/t7_mnt" DO_REBOOT=0 sh "$CLI_SCRIPT" --confirm --force >/dev/null 2>&1; then
+	pass "rosetteos-factory-reset --force overrides thermal safeguard"
+else
+	fail "rosetteos-factory-reset --force failed to override thermal safeguard"
+fi
+
+kill "$MOCK_PID" 2>/dev/null || true
+
 echo ""
 echo "Summary: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

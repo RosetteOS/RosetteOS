@@ -263,20 +263,24 @@ def check_safety_safeguards(action_desc: str, force: bool = False, check_thermal
                 target = float(extruder.get("target", 0.0))
                 temp = float(extruder.get("temperature", 0.0))
                 if target > 0.0:
-                    heaters.append(f"Hotend heating (target: {target:.0f}°C, temp: {temp:.1f}°C)")
+                    heaters.append(f"Hotend heating commanded (target: {target:.0f}°C, temp: {temp:.1f}°C)")
+                elif temp > 60.0:
+                    heaters.append(f"Hotend is hot (temp: {temp:.1f}°C > 60°C)")
 
             heater_bed = status.get("heater_bed", {})
             if heater_bed:
                 target = float(heater_bed.get("target", 0.0))
                 temp = float(heater_bed.get("temperature", 0.0))
                 if target > 0.0:
-                    heaters.append(f"Bed heating (target: {target:.0f}°C, temp: {temp:.1f}°C)")
+                    heaters.append(f"Bed heating commanded (target: {target:.0f}°C, temp: {temp:.1f}°C)")
+                elif temp > 55.0:
+                    heaters.append(f"Bed is hot (temp: {temp:.1f}°C > 55°C)")
 
             if heaters:
-                print(f"FATAL: Refusing to {action_desc} while heaters are actively commanded on:", file=sys.stderr)
+                print(f"FATAL: Refusing to {action_desc} while heaters are active or hot:", file=sys.stderr)
                 for h in heaters:
                     print(f"  - {h}", file=sys.stderr)
-                print("Please turn off heaters (M104 S0 / M140 S0) before switching, or pass --force to override.", file=sys.stderr)
+                print("Please turn off heaters and wait for cooldown before proceeding, or pass --force to override.", file=sys.stderr)
                 sys.exit(1)
     except Exception:
         # If Moonraker query fails (e.g. offline during flashing or isolated test sandbox), proceed safely
@@ -1630,6 +1634,9 @@ def cmd_changelog(args):
 
 
 def cmd_install(args):
+    force = getattr(args, "force", False)
+    check_safety_safeguards(f"install '{args.app_id}'", force=force, check_thermal=True)
+
     ensure_catalog_fetched()
     app_id = args.app_id.lower()
     catalog = load_catalog()
@@ -2213,6 +2220,10 @@ def cmd_service(args):
         print(f"ERROR: App ID required for service {action}", file=sys.stderr)
         sys.exit(1)
 
+    if action in ("start", "stop", "restart", "enable", "disable"):
+        force = getattr(args, "force", False)
+        check_safety_safeguards(f"service {action} for '{app_id}'", force=force, check_thermal=True)
+
     if action == "enable":
         ok = enable_app_service(app_id)
         sys.exit(0 if ok else 1)
@@ -2355,6 +2366,9 @@ def cmd_service(args):
 
 def cmd_remove(args):
     app_id = args.app_id.lower()
+    force = getattr(args, "force", False)
+    check_safety_safeguards(f"remove app '{app_id}'", force=force, check_thermal=True)
+
     catalog = load_catalog()
     app = next((a for a in catalog.get("apps", []) if a.get("id") == app_id), None)
 
@@ -3030,6 +3044,7 @@ def main():
     p_svc = subparsers.add_parser("service", help="Manage dynamic background app services")
     p_svc.add_argument("action", choices=["start", "stop", "restart", "status", "enable", "disable", "is-enabled", "list"], help="Service action (start, stop, restart, status, enable, disable, is-enabled, list)")
     p_svc.add_argument("app_id", nargs="?", help="App ID for service action")
+    p_svc.add_argument("--force", action="store_true", help="Bypass print and thermal safety checks")
     p_svc.set_defaults(func=cmd_service)
 
     args = parser.parse_args()
