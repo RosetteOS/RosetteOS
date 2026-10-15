@@ -43,18 +43,12 @@ test -f kernel/kernel-6.6/drivers/input/touchscreen/ns2009.c
 test -f kernel/kernel-6.6/module_drivers/drivers/video/fbdev/ingenic/displays/panel-rosetteos-general-480x272.c
 grep -q "rosetteos,bcm4343x-bt" kernel/kernel-6.6/drivers/bluetooth/hci_h5.c
 grep -q "ns2009@48" kernel/kernel-6.6/module_drivers/dts/x2000/halley5_v30.dts
-# Ensure USB_DWC2_SOF_FILTER is selectable when operating in dual-role mode
-DWC2_KCONFIG="kernel/kernel-6.6/drivers/usb/dwc2/Kconfig"
-if [ -f "$DWC2_KCONFIG" ] && grep -q "depends on USB_DWC2_HOST$" "$DWC2_KCONFIG"; then
-	echo "== patching DWC2 SOF_FILTER to support USB_DWC2_DUAL_ROLE =="
-	sed -i 's/depends on USB_DWC2_HOST$/depends on USB_DWC2_HOST || USB_DWC2_DUAL_ROLE/' "$DWC2_KCONFIG"
-fi
 
-# Ensure OTG controller runs in dual-role (otg) mode so CDC-ACM gadget (g_serial) binds to UDC
+# Ensure OTG controller runs in peripheral mode so CDC-ACM gadget (g_serial) binds to UDC
 HALLEY5_DTS="kernel/kernel-6.6/module_drivers/dts/x2000/halley5_v30.dts"
-if [ -f "$HALLEY5_DTS" ] && grep -q 'dr_mode = "host";' "$HALLEY5_DTS"; then
-	echo "== patching &otg dr_mode to otg in $HALLEY5_DTS =="
-	sed -i '/&otg {/,/};/ s/dr_mode = "host";/dr_mode = "otg";/' "$HALLEY5_DTS"
+if [ -f "$HALLEY5_DTS" ]; then
+	echo "== patching &otg dr_mode to peripheral in $HALLEY5_DTS =="
+	sed -i '/&otg {/,/};/ s/dr_mode = ".*";/dr_mode = "peripheral";/' "$HALLEY5_DTS"
 fi
 
 echo "== kernel source verified =="

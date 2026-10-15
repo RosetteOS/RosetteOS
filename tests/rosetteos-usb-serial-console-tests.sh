@@ -80,7 +80,7 @@ fi
 check_cmd "CONFIG_USB_GADGET=y is enabled" grep -q '^CONFIG_USB_GADGET=y' "$KERNEL_FRAGMENT"
 check_cmd "CONFIG_USB_G_SERIAL=y is enabled" grep -q '^CONFIG_USB_G_SERIAL=y' "$KERNEL_FRAGMENT"
 check_cmd "CONFIG_U_SERIAL_CONSOLE=y is enabled" grep -q '^CONFIG_U_SERIAL_CONSOLE=y' "$KERNEL_FRAGMENT"
-check_cmd "CONFIG_USB_DWC2_SOF_FILTER=y is enabled" grep -q '^CONFIG_USB_DWC2_SOF_FILTER=y' "$KERNEL_FRAGMENT"
+check_cmd "CONFIG_USB_DWC2_SOF_FILTER is disabled for gadget IRQ sharing" grep -q '^# CONFIG_USB_DWC2_SOF_FILTER is not set' "$KERNEL_FRAGMENT"
 check_cmd "CONFIG_CMDLINE_BOOL=y is enabled for early bootlogs" grep -q '^CONFIG_CMDLINE_BOOL=y' "$KERNEL_FRAGMENT"
 check_cmd "CONFIG_CMDLINE extends console=ttyGS0,115200" grep -q '^CONFIG_CMDLINE=.*console=ttyGS0,115200' "$KERNEL_FRAGMENT"
 check_cmd "02-configure-buildroot.sh cleans obsolete S11 path" grep -q "etc/init.d/S11rosetteos-usb-serial" "$CONFIGURE_SCRIPT"
