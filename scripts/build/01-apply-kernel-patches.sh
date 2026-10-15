@@ -32,6 +32,7 @@ cd "$SYSTEM_DIR"
 # Defense in depth: stage 00 verified the checkout, but verify here that the
 # build is still at the pinned commit before composing the accepted variants.
 ACTUAL_SHA=$(git rev-parse HEAD)
+# shellcheck disable=SC2153
 if [ "$ACTUAL_SHA" != "$SYSTEM_PIN" ]; then
 	echo "vendor/system HEAD is $ACTUAL_SHA, expected pinned commit $SYSTEM_PIN - re-run 00-fetch-vendor-sources.sh" >&2
 	exit 1
@@ -47,6 +48,13 @@ DWC2_KCONFIG="kernel/kernel-6.6/drivers/usb/dwc2/Kconfig"
 if [ -f "$DWC2_KCONFIG" ] && grep -q "depends on USB_DWC2_HOST$" "$DWC2_KCONFIG"; then
 	echo "== patching DWC2 SOF_FILTER to support USB_DWC2_DUAL_ROLE =="
 	sed -i 's/depends on USB_DWC2_HOST$/depends on USB_DWC2_HOST || USB_DWC2_DUAL_ROLE/' "$DWC2_KCONFIG"
+fi
+
+# Ensure OTG controller runs in dual-role (otg) mode so CDC-ACM gadget (g_serial) binds to UDC
+HALLEY5_DTS="kernel/kernel-6.6/module_drivers/dts/x2000/halley5_v30.dts"
+if [ -f "$HALLEY5_DTS" ] && grep -q 'dr_mode = "host";' "$HALLEY5_DTS"; then
+	echo "== patching &otg dr_mode to otg in $HALLEY5_DTS =="
+	sed -i '/&otg {/,/};/ s/dr_mode = "host";/dr_mode = "otg";/' "$HALLEY5_DTS"
 fi
 
 echo "== kernel source verified =="
