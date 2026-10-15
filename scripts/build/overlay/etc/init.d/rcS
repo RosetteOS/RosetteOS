@@ -58,6 +58,7 @@ _bt_begin() {
 
 _bt_start() {
 	_bt_now; _bt_t0=$_cs; _bt_log "T=$_t EV=start S=${1##*/}"
+	echo "<6>[RosetteOS] Starting ${1##*/}..." > /dev/kmsg 2>/dev/null || true
 	case "${1##*/}" in
 		S01wifi) echo "Connecting network..." > /run/rosetteos-boot-status 2>/dev/null || true ;;
 		S01zram*) echo "Configuring memory..." > /run/rosetteos-boot-status 2>/dev/null || true ;;
@@ -79,6 +80,7 @@ _bt_end() {
 		_dur='?'
 	fi
 	_bt_log "T=$_t EV=end S=${1##*/} RC=$2 DUR=$_dur"
+	echo "<6>[RosetteOS] Finished ${1##*/} (rc=$2 in ${_dur}s)" > /dev/kmsg 2>/dev/null || true
 }
 
 _bt_begin

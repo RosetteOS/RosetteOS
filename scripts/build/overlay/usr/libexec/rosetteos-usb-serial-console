@@ -57,6 +57,7 @@ do_start() {
 	(
 		trap 'rm -f "$PIDFILE"; exit 0' TERM INT HUP
 		while [ -e "$DEVNODE" ]; do
+			printf "\n\033[1;36m=== RosetteOS Micro-USB Serial Console Active (%s) ===\033[0m\n\n" "$DEVICE" > "$DEVNODE" 2>/dev/null || true
 			"$GETTY_BIN" -L 115200 "$DEVICE" vt100 2>/dev/null || sleep 1
 		done
 		rm -f "$PIDFILE"

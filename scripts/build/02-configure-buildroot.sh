@@ -135,6 +135,7 @@ mkdir -p "$BUILDROOT_DIR/board/halley5-rosetteos-overlay/opt/printer_data/comms"
 # add to this list whenever an overlay file is renamed or deleted, the same
 # way dcf7060 does for the seed archives in 04-cross-compile-app-stack.sh.
 for obsolete_rel in \
+	"etc/init.d/S11rosetteos-usb-serial" \
 	"etc/init.d/S01tmpfs-datastore" \
 	"etc/init.d/S39wifi" \
 	"etc/init.d/S03nebulaos-factory-seed" \

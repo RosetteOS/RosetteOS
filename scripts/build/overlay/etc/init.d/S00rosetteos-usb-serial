@@ -1,9 +1,10 @@
 #!/bin/sh
-# /etc/init.d/S11rosetteos-usb-serial
-# RosetteOS Micro-USB Serial Console boot service.
+# /etc/init.d/S00rosetteos-usb-serial
+# RosetteOS Early Micro-USB Serial Console service.
 #
-# If a micro-USB cable is connected at boot, /dev/ttyGS0 is present after
-# udev coldplug. This service ensures the getty supervisor starts immediately.
+# If a micro-USB cable is connected at boot, /dev/ttyGS0 is present via devtmpfs.
+# Starting this at S00 ensures serial console and getty are live immediately at
+# the beginning of userspace initialization.
 
 ROSETTEOS_CONSOLE_HELPER="${ROSETTEOS_CONSOLE_HELPER:-/usr/libexec/rosetteos-usb-serial-console}"
 DEV_PREFIX="${ROSETTEOS_DEVNODE_PREFIX:-/dev/}"
