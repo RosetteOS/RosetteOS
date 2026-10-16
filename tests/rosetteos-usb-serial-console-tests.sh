@@ -15,6 +15,8 @@ CONSOLE_HELPER="$REPO_ROOT/scripts/build/overlay/usr/libexec/rosetteos-usb-seria
 INIT_SCRIPT="$REPO_ROOT/scripts/build/overlay/etc/init.d/S00rosetteos-usb-serial"
 UDEV_RULE="$REPO_ROOT/scripts/build/overlay/etc/udev/rules.d/92-usb-serial-console.rules"
 KERNEL_FRAGMENT="$REPO_ROOT/artifacts/buildroot-halley5-v30-image/halley5-rosetteos-fragment.config"
+HALLEY5_DTS="$REPO_ROOT/artifacts/buildroot-halley5-v30-image/halley5_v30.dts"
+PATCH_KERNEL_SCRIPT="$REPO_ROOT/scripts/build/01-apply-kernel-patches.sh"
 CONFIGURE_SCRIPT="$REPO_ROOT/scripts/build/02-configure-buildroot.sh"
 RCS_SCRIPT="$REPO_ROOT/scripts/build/overlay/etc/init.d/rcS"
 
@@ -86,8 +88,10 @@ check_cmd "CONFIG_CMDLINE extends console=ttyGS0,115200" grep -q '^CONFIG_CMDLIN
 check_cmd "CONFIG_CMDLINE preserves ttyS4 as final primary console" grep -q 'console=ttyS4,115200n8"$' "$KERNEL_FRAGMENT"
 check_cmd "02-configure-buildroot.sh cleans obsolete S11 path" grep -q "etc/init.d/S11rosetteos-usb-serial" "$CONFIGURE_SCRIPT"
 check_cmd "rcS broadcasts milestone telemetry to /dev/kmsg" grep -q '/dev/kmsg' "$RCS_SCRIPT"
-check_cmd "S00rosetteos-usb-serial activates sw_switch_hsotg device mode" grep -q "sw_switch_hsotg" "$INIT_SCRIPT"
-check_cmd "rosetteos-usb-serial-console activates sw_switch_hsotg device mode" grep -q "sw_switch_hsotg" "$CONSOLE_HELPER"
+check_cmd "halley5_v30.dts configures &otg dr_mode as otg for dual-role" grep -q 'dr_mode = "otg";' "$HALLEY5_DTS"
+check_cmd "01-apply-kernel-patches.sh enforces dr_mode = otg" grep -q 'dr_mode = "otg";' "$PATCH_KERNEL_SCRIPT"
+check_cmd "S00rosetteos-usb-serial activates sw_switch_hsotg with host default" grep -q 'echo host > "$sw"' "$INIT_SCRIPT"
+check_cmd "rosetteos-usb-serial-console restores sw_switch_hsotg host mode on stop" grep -q 'echo host > "$sw"' "$CONSOLE_HELPER"
 
 # 5. Device validation and error handling
 echo "--- Device Validation and Error Handling ---"

@@ -13,7 +13,12 @@ case "$1" in
 	start)
 		for sw in /sys/devices/platform/apb/10000000.otg_phy/sw_switch_hsotg /sys/devices/platform/*.otg_phy/sw_switch_hsotg /sys/class/phy/*/sw_switch_hsotg; do
 			if [ -f "$sw" ]; then
-				echo device > "$sw" 2>/dev/null || true
+				vbus_file="${sw%/*}/vbus_detect"
+				if [ -f "$vbus_file" ] && [ "$(cat "$vbus_file" 2>/dev/null)" = "1" ]; then
+					echo device > "$sw" 2>/dev/null || true
+				else
+					echo host > "$sw" 2>/dev/null || true
+				fi
 			fi
 		done
 		for devnode in "${DEV_PREFIX}"ttyGS[0-9]*; do

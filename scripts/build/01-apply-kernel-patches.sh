@@ -44,11 +44,11 @@ test -f kernel/kernel-6.6/module_drivers/drivers/video/fbdev/ingenic/displays/pa
 grep -q "rosetteos,bcm4343x-bt" kernel/kernel-6.6/drivers/bluetooth/hci_h5.c
 grep -q "ns2009@48" kernel/kernel-6.6/module_drivers/dts/x2000/halley5_v30.dts
 
-# Ensure OTG controller runs in peripheral mode so CDC-ACM gadget (g_serial) binds to UDC
+# Ensure OTG controller runs in dual-role (otg) mode so CDC-ACM gadget (g_serial) binds to UDC and host HCD initializes
 HALLEY5_DTS="kernel/kernel-6.6/module_drivers/dts/x2000/halley5_v30.dts"
 if [ -f "$HALLEY5_DTS" ]; then
-	echo "== patching &otg dr_mode to peripheral in $HALLEY5_DTS =="
-	sed -i '/&otg {/,/};/ s/dr_mode = ".*";/dr_mode = "peripheral";/' "$HALLEY5_DTS"
+	echo "== patching &otg dr_mode to otg in $HALLEY5_DTS =="
+	sed -i '/&otg {/,/};/ s/dr_mode = ".*";/dr_mode = "otg";/' "$HALLEY5_DTS"
 fi
 
 echo "== kernel source verified =="

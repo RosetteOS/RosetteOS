@@ -775,9 +775,9 @@
 };
 
 &otg {
-	/* host-only product (NebulaOS DWC2 workstream, B1): the port only
-	 * ever drives the camera hub and USB storage; no gadget/OTG role. */
-	dr_mode = "peripheral";
+	/* dual-role (otg) mode: enables host mode for USB-A hub/webcam/flash drive
+	 * while allowing CDC-ACM gadget (g_serial) on micro-USB port. */
+	dr_mode = "otg";
 	device-using-dma = <1>;
 	status = "okay";
 };
