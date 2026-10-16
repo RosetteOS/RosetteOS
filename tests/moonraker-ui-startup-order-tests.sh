@@ -13,7 +13,7 @@ set -u
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 S56="$ROOT/scripts/build/overlay/etc/init.d/S56moonraker"
-S58="$ROOT/scripts/build/overlay/etc/init.d/S58guppyscreen"
+S58="$ROOT/scripts/build/overlay/etc/init.d/S58touch-ui"
 GUPPY="$ROOT/vendor/guppyscreen"
 W=$(mktemp -d "${TMPDIR:-/tmp}/moonraker-ui-startup-order-tests.XXXXXX")
 [ -n "${W:-}" ] && [ -e "$W" ] || { echo "FATAL: mktemp failed" >&2; exit 1; }

@@ -672,13 +672,13 @@ index_of() {
 }
 i_klipper=$(index_of S55klipper)
 i_moonraker=$(index_of S56moonraker)
-i_guppy=$(index_of S58guppyscreen)
+i_touch=$(index_of S58touch-ui)
 i_mcurecovery=$(index_of S95mcu-boot-recovery)
 i_ours=$(index_of S97rosetteos-display-qualified-apply)
 i_sleepwake=$(index_of S98rosetteos-display-sleep-wake-controller)
 i_confirmgood=$(index_of S99confirm-good)
 
-expected_scripts="i_klipper:$i_klipper i_moonraker:$i_moonraker i_guppy:$i_guppy i_mcurecovery:$i_mcurecovery i_ours:$i_ours i_sleepwake:$i_sleepwake"
+expected_scripts="i_klipper:$i_klipper i_moonraker:$i_moonraker i_touch:$i_touch i_mcurecovery:$i_mcurecovery i_ours:$i_ours i_sleepwake:$i_sleepwake"
 if [ -n "$i_confirmgood" ]; then
 	expected_scripts="$expected_scripts i_confirmgood:$i_confirmgood"
 fi
@@ -690,11 +690,11 @@ for name_idx in $expected_scripts; do
 	fi
 done
 
-if [ -n "$i_klipper" ] && [ -n "$i_moonraker" ] && [ -n "$i_guppy" ] && [ -n "$i_ours" ]; then
-	if [ "$i_ours" -gt "$i_klipper" ] && [ "$i_ours" -gt "$i_moonraker" ] && [ "$i_ours" -gt "$i_guppy" ]; then
+if [ -n "$i_klipper" ] && [ -n "$i_moonraker" ] && [ -n "$i_touch" ] && [ -n "$i_ours" ]; then
+	if [ "$i_ours" -gt "$i_klipper" ] && [ "$i_ours" -gt "$i_moonraker" ] && [ "$i_ours" -gt "$i_touch" ]; then
 		pass
 	else
-		fail "S97nebulaos-display-qualified-apply does not sort strictly after S55klipper/S56moonraker/S58guppyscreen"
+		fail "S97nebulaos-display-qualified-apply does not sort strictly after S55klipper/S56moonraker/S58touch-ui"
 	fi
 	if [ -n "$i_mcurecovery" ] && [ "$i_ours" -gt "$i_mcurecovery" ]; then
 		pass

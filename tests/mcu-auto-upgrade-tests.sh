@@ -46,14 +46,14 @@ index_of() { printf '%s\n' "$sorted" | grep -n "^$1\$" | cut -d: -f1; }
 i_klipper=$(index_of S55klipper)
 i_moonraker=$(index_of S56moonraker)
 i_mcu=$(index_of S57rosetteos-mcu-upgrade)
-i_guppy=$(index_of S58guppyscreen)
-if [ -n "$i_klipper" ] && [ -n "$i_moonraker" ] && [ -n "$i_mcu" ] && [ -n "$i_guppy" ] \
+i_touch=$(index_of S58touch-ui)
+if [ -n "$i_klipper" ] && [ -n "$i_moonraker" ] && [ -n "$i_mcu" ] && [ -n "$i_touch" ] \
 	&& [ "$i_klipper" -lt "$i_moonraker" ] \
 	&& [ "$i_moonraker" -lt "$i_mcu" ] \
-	&& [ "$i_mcu" -lt "$i_guppy" ]; then
+	&& [ "$i_mcu" -lt "$i_touch" ]; then
 	pass
 else
-	fail "MCU service is not ordered S55klipper < S56moonraker < S57 MCU < S58guppyscreen"
+	fail "MCU service is not ordered S55klipper < S56moonraker < S57 MCU < S58touch-ui"
 fi
 
 if [ "$FAIL" -eq 0 ]; then

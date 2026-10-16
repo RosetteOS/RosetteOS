@@ -1,13 +1,9 @@
 #!/bin/sh
 #
-# RosetteOS addition: starts GuppyScreen for real local visual feedback during
-# the first real boot test - draws directly to the framebuffer/touch device
-# built in FIRMWARE.md sec 8-10, independent of network state entirely.
-# Real reason this exists now rather than later (originally planned as a
-# manual smoke test only): if WiFi doesn't come up on first boot, this is
-# the only way to see what's actually happening on the device at all.
+# RosetteOS addition: starts touchscreen UI (GuppyScreen, HelixScreen, or custom touch UI)
+# draws directly to the framebuffer/touch device independent of network state entirely.
 #
-# Numbered after Moonraker - GuppyScreen is a real-time client of Moonraker's
+# Numbered after Moonraker - Touch UI is a real-time client of Moonraker's
 # websocket API, though it degrades to a reconnecting/error state rather than
 # failing outright if Moonraker isn't up yet.
 
@@ -55,7 +51,7 @@ start() {
 	TOUCH_BIN=$(get_touch_binary)
 	echo "Starting touchscreen UI: $TOUCH_BIN"
 	# OOM priority at birth (MEM-T07): expendable UI tier (0).
-	rosetteos_start_with_adj "$ROSETTEOS_ADJ_GUPPYSCREEN" \
+	rosetteos_start_with_adj "$ROSETTEOS_ADJ_TOUCH_UI" \
 		start-stop-daemon -S -b -m -p "$PIDFILE" \
 		-x "$TOUCH_BIN"
 }

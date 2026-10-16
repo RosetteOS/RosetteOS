@@ -2481,7 +2481,7 @@ def set_active_touch(target: str, force: bool = False):
         f.write(target + "\n")
 
     # Trigger restart of display service
-    init_script = "/etc/init.d/S58guppyscreen"
+    init_script = "/etc/init.d/S58touch-ui"
     if os.path.isfile(init_script) and os.access(init_script, os.X_OK):
         try:
             subprocess.run([init_script, "restart"], check=False)

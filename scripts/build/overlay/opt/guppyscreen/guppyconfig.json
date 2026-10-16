@@ -23,7 +23,7 @@
       "moonraker_port": 7125
     }
   },
-  "guppy_init_script": "/etc/init.d/S58guppyscreen",
+  "guppy_init_script": "/etc/init.d/S58touch-ui",
   "thumbnail_path": "/opt/guppyscreen/thumbnails",
   "wpa_supplicant": "/var/run/wpa_supplicant"
 }

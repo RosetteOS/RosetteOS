@@ -2,7 +2,7 @@
 #
 # RosetteOS Custom Boot Animation init service
 # Starts earliest in boot sequence (S00) to provide visual feedback on /dev/fb0
-# until GuppyScreen / HelixScreen takes over at S58guppyscreen.
+# until GuppyScreen / HelixScreen takes over at S58touch-ui.
 #
 
 BOOTANIM=/usr/bin/rosetteos-bootanim

@@ -20,8 +20,8 @@ During early boot, between Linux kernel initialization and GuppyScreen/HelixScre
   - `S54rosetteos-host-mcu`: *"Connecting controller board..."*
   - `S55klipper`: *"Starting Klipper firmware..."*
   - `S56moonraker`: *"Starting Moonraker API..."*
-  - `S58guppyscreen`: *"Starting touchscreen interface..."*
-- **Seamless Hand-Off**: On `SIGTERM` (sent by `S58guppyscreen` before starting the touchscreen interface), smoothly fades out over ~250ms, releases framebuffer memory, and exits cleanly.
+  - `S58touch-ui`: *"Starting touchscreen interface..."*
+- **Seamless Hand-Off**: On `SIGTERM` (sent by `S58touch-ui` before starting the touchscreen interface), smoothly fades out over ~250ms, releases framebuffer memory, and exits cleanly.
 - **Ultra-Lightweight Resource Profile**:
   - Binary size: ~700 KB (statically linked MIPS32 executable).
   - Memory consumption: < 1.5 MB RAM total.
@@ -38,7 +38,7 @@ flowchart LR
     B --> C["S00bootanimation start"]
     C --> D["rosetteos-bootanim background daemon"]
     D --> E["S00-S57 init scripts run & update status"]
-    E --> F["S58guppyscreen start"]
+    E --> F["S58touch-ui start"]
     F --> G["S00bootanimation stop (fade out)"]
     G --> H["GuppyScreen / HelixScreen launches"]
 ```

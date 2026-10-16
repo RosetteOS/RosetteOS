@@ -44,7 +44,7 @@
 #     see ndq_stage2_stack() below for why) - the exact same Moonraker
 #     /server/info klippy_state=ready + klippy_connected=true check
 #     S99confirm-good and S95mcu-boot-recovery both already rely on.
-#   - GuppyScreen running: its own S58guppyscreen PIDFILE
+#   - Touchscreen UI running: its own S58touch-ui PIDFILE
 #     (/var/run/guppyscreen.pid), checked the same way S58 itself manages
 #     it (start-stop-daemon's pidfile convention) - `kill -0` against the
 #     recorded PID.

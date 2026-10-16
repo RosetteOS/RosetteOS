@@ -68,7 +68,7 @@ _bt_start() {
 		S54rosetteos-host-mcu) echo "Connecting controller board..." > /run/rosetteos-boot-status 2>/dev/null || true ;;
 		S55klipper) echo "Starting Klipper firmware..." > /run/rosetteos-boot-status 2>/dev/null || true ;;
 		S56moonraker) echo "Starting Moonraker API..." > /run/rosetteos-boot-status 2>/dev/null || true ;;
-		S58guppyscreen) echo "Starting touchscreen interface..." > /run/rosetteos-boot-status 2>/dev/null || true ;;
+		S58touch-ui) echo "Starting touchscreen interface..." > /run/rosetteos-boot-status 2>/dev/null || true ;;
 	esac
 }
 

@@ -11,7 +11,7 @@
 #   4. Clean signal handling and fade-out termination on SIGTERM
 #   5. Cross-compiled MIPS binary integrity (MIPS32 little-endian, statically linked)
 #   6. Init script syntax, start/stop lifecycle, and OOM policy integration
-#   7. Display handoff coordination in S58guppyscreen
+#   7. Display handoff coordination in S58touch-ui
 #   8. Milestone notifications in rcS
 #
 # Usage: sh tests/rosetteos-bootanimation-tests.sh
@@ -25,7 +25,7 @@ OVERLAY="$REPO_ROOT/scripts/build/overlay"
 BOOTANIM_SRC="$REPO_ROOT/tools/rosetteos-bootanim/rosetteos-bootanim.c"
 MIPS_BIN="$OVERLAY/usr/bin/rosetteos-bootanim"
 INIT_SCRIPT="$OVERLAY/etc/init.d/S00bootanimation"
-GUPPY_INIT="$OVERLAY/etc/init.d/S58guppyscreen"
+TOUCH_INIT="$OVERLAY/etc/init.d/S58touch-ui"
 RCS_SCRIPT="$OVERLAY/etc/init.d/rcS"
 
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/bootanim-tests.XXXXXX")
@@ -174,10 +174,10 @@ else
 fi
 
 echo "=== Test 8: Handoff to Touchscreen UI & rcS Status ==="
-if grep -q "S00bootanimation stop" "$GUPPY_INIT"; then
-	pass "S58guppyscreen cleanly stops boot animation before starting touch UI"
+if grep -q "S00bootanimation stop" "$TOUCH_INIT"; then
+	pass "S58touch-ui cleanly stops boot animation before starting touch UI"
 else
-	fail "S58guppyscreen missing boot animation stop call"
+	fail "S58touch-ui missing boot animation stop call"
 fi
 
 if grep -q "rosetteos-boot-status" "$RCS_SCRIPT"; then
@@ -191,13 +191,13 @@ init_files=$(cd "$OVERLAY/etc/init.d" && ls -1 S??*)
 s00_idx=$(printf '%s\n' "$init_files" | grep -n "^S00bootanimation$" | cut -d: -f1)
 mmc_idx=$(printf '%s\n' "$init_files" | grep -n "^S00mount_mmc_ext4$" | cut -d: -f1)
 klipper_idx=$(printf '%s\n' "$init_files" | grep -n "^S55klipper$" | cut -d: -f1)
-guppy_idx=$(printf '%s\n' "$init_files" | grep -n "^S58guppyscreen$" | cut -d: -f1)
+touch_idx=$(printf '%s\n' "$init_files" | grep -n "^S58touch-ui$" | cut -d: -f1)
 
-if [ -n "$s00_idx" ] && [ -n "$mmc_idx" ] && [ -n "$klipper_idx" ] && [ -n "$guppy_idx" ]; then
-	if [ "$s00_idx" -lt "$mmc_idx" ] && [ "$s00_idx" -lt "$klipper_idx" ] && [ "$s00_idx" -lt "$guppy_idx" ]; then
-		pass "S00bootanimation ($s00_idx) runs strictly first, before S00mount_mmc_ext4 ($mmc_idx), S55klipper ($klipper_idx), and S58guppyscreen ($guppy_idx)"
+if [ -n "$s00_idx" ] && [ -n "$mmc_idx" ] && [ -n "$klipper_idx" ] && [ -n "$touch_idx" ]; then
+	if [ "$s00_idx" -lt "$mmc_idx" ] && [ "$s00_idx" -lt "$klipper_idx" ] && [ "$s00_idx" -lt "$touch_idx" ]; then
+		pass "S00bootanimation ($s00_idx) runs strictly first, before S00mount_mmc_ext4 ($mmc_idx), S55klipper ($klipper_idx), and S58touch-ui ($touch_idx)"
 	else
-		fail "incorrect init ordering: S00=$s00_idx, mmc=$mmc_idx, klipper=$klipper_idx, guppy=$guppy_idx"
+		fail "incorrect init ordering: S00=$s00_idx, mmc=$mmc_idx, klipper=$klipper_idx, touch=$touch_idx"
 	fi
 else
 	fail "could not determine indices for init scripts"

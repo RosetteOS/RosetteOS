@@ -19,7 +19,7 @@ pass() { echo "PASS: $1"; PASS=$((PASS + 1)); }
 
 sh -n "$POLICY" && pass "policy file parses" || fail "policy file does not parse"
 
-for s in S54rosetteos-host-mcu S55klipper S56moonraker S58guppyscreen S50webcam S59rosetteos-update-supervisor; do
+for s in S54rosetteos-host-mcu S55klipper S56moonraker S58touch-ui S50webcam S59rosetteos-update-supervisor; do
 	f="$OV/etc/init.d/$s"
 	grep -q 'rosetteos_start_with_adj "\$ROSETTEOS_ADJ_' "$f" && pass "$s starts its daemon through rosetteos_start_with_adj" || fail "$s does not use rosetteos_start_with_adj"
 	grep -q 'ROSETTEOS_OOM_POLICY' "$f" && pass "$s sources the policy" || fail "$s does not source the policy"
@@ -33,9 +33,9 @@ fi
 # shellcheck disable=SC1090
 . "$POLICY"
 [ "$ROSETTEOS_ADJ_KLIPPER_MCU" -lt "$ROSETTEOS_ADJ_KLIPPY" ] && [ "$ROSETTEOS_ADJ_KLIPPY" -lt "$ROSETTEOS_ADJ_MOONRAKER" ] \
-	&& [ "$ROSETTEOS_ADJ_MOONRAKER" -lt "$ROSETTEOS_ADJ_GUPPYSCREEN" ] && [ "$ROSETTEOS_ADJ_GUPPYSCREEN" -lt "$ROSETTEOS_ADJ_USTREAMER" ] \
+	&& [ "$ROSETTEOS_ADJ_MOONRAKER" -lt "$ROSETTEOS_ADJ_TOUCH_UI" ] && [ "$ROSETTEOS_ADJ_TOUCH_UI" -lt "$ROSETTEOS_ADJ_USTREAMER" ] \
 	&& [ "$ROSETTEOS_ADJ_USTREAMER" -lt "$ROSETTEOS_ADJ_UPDATE_SUPERVISOR" ] \
-	&& pass "priority order: klipper_mcu < klippy < moonraker < guppyscreen < ustreamer < updates" \
+	&& pass "priority order: klipper_mcu < klippy < moonraker < touch_ui < ustreamer < updates" \
 	|| fail "priority order broken"
 [ "$ROSETTEOS_ADJ_KLIPPY" -gt -1000 ] && pass "klippy stays killable (not -1000)" || fail "klippy is OOM-immune"
 

@@ -26,7 +26,7 @@ if [ ! -f "$MANIFEST" ]; then
 	fi
 fi
 S01="$OVERLAY/etc/init.d/S01persistent-datastore"
-S58="$OVERLAY/etc/init.d/S58guppyscreen"
+S58="$OVERLAY/etc/init.d/S58touch-ui"
 NGINX_CONF="$OVERLAY/etc/nginx/nginx.conf"
 
 PASS=0
@@ -372,11 +372,11 @@ else
 	fail "nginx.conf not pointing to /var/run/rosetteos-web-root"
 fi
 
-# S58guppyscreen assertions
+# S58touch-ui assertions
 if grep -q "get_touch_binary" "$S58" && grep -q "active_touch_ui" "$S58"; then
-	pass "S58guppyscreen supports dynamic touchscreen UI selection with fallback"
+	pass "S58touch-ui supports dynamic touchscreen UI selection with fallback"
 else
-	fail "S58guppyscreen missing dynamic touch UI selection"
+	fail "S58touch-ui missing dynamic touch UI selection"
 fi
 
 # S60rosetteos-services assertions
