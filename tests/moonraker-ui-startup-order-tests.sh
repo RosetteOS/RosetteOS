@@ -119,8 +119,26 @@ env S56MOONRAKER_NO_AUTORUN=1 MOONRAKER_RECOVERY_PIDFILE="$C/recovery.pid" sh -c
 kill -0 $SL 2>/dev/null && [ ! -e "$C/recovery.pid" ] && pass || fail "cancel killed an unrelated process or kept the pidfile"
 kill $SL 2>/dev/null
 
-# 7. S58 has no dependency on Moonraker being ready
-grep -v '^[[:space:]]*#' "$S58" | grep -qE 'wget|curl|7125|server/info|sleep' && fail "S58 waits on Moonraker" || pass
+# 7. S58 coordinates with Moonraker/Klipper readiness with a bounded timeout
+if grep -q 'wait_for_printer_ready' "$S58" && grep -q 'TOUCH_UI_WAIT_TIMEOUT' "$S58"; then
+	pass
+else
+	fail "S58 missing printer readiness coordination"
+fi
+
+fixture 18806 0 "$HEALTHY"
+ready_t0=$(date +%s)
+env TOUCH_UI_NO_AUTORUN=1 TOUCH_UI_WAIT_TIMEOUT=5 MOONRAKER_URL="http://127.0.0.1:18806" sh -c ". '$S58'; wait_for_printer_ready" > "$W/ready.log" 2>&1
+ready_rc=$?
+ready_t1=$(date +%s)
+stop_fixture
+
+[ "$ready_rc" -eq 0 ] && [ $((ready_t1 - ready_t0)) -le 2 ] && pass || fail "wait_for_printer_ready failed on ready stack ($ready_rc)"
+
+nowait_t0=$(date +%s)
+env TOUCH_UI_NO_AUTORUN=1 TOUCH_UI_NO_WAIT=1 TOUCH_UI_WAIT_TIMEOUT=10 MOONRAKER_URL="http://127.0.0.1:18806" sh -c ". '$S58'; wait_for_printer_ready" > "$W/nowait.log" 2>&1
+nowait_t1=$(date +%s)
+[ $((nowait_t1 - nowait_t0)) -le 1 ] && pass || fail "TOUCH_UI_NO_WAIT did not bypass wait"
 
 # 8. GuppyScreen (pinned source) tolerates a backend that is not up yet
 if [ -f "$GUPPY/src/websocket_client.cpp" ]; then

@@ -44,7 +44,60 @@ get_touch_binary() {
 ROSETTEOS_OOM_POLICY="${ROSETTEOS_OOM_POLICY:-/etc/rosetteos-oom-policy.sh}"
 if [ -r "$ROSETTEOS_OOM_POLICY" ]; then . "$ROSETTEOS_OOM_POLICY"; else rosetteos_start_with_adj() { shift; "$@"; }; fi
 
+wait_for_printer_ready() {
+	[ "${TOUCH_UI_NO_WAIT:-0}" = "1" ] && return 0
+	timeout="${TOUCH_UI_WAIT_TIMEOUT:-20}"
+	elapsed=0
+	poll_int="${TOUCH_UI_POLL_INTERVAL:-1}"
+
+	moonraker_pid="${MOONRAKER_PIDFILE:-/var/run/moonraker.pid}"
+	klipper_pid="${KLIPPER_PIDFILE:-/var/run/klippy.pid}"
+	if [ -z "${MOONRAKER_URL:-}" ] && [ ! -f "$moonraker_pid" ] && [ ! -f "$klipper_pid" ]; then
+		return 0
+	fi
+
+	echo "Waiting for printer services to become ready (max ${timeout}s)..."
+	url="${MOONRAKER_URL:-http://127.0.0.1:7125}/server/info"
+
+	while [ "$elapsed" -lt "$timeout" ]; do
+		info=$(wget -q -O - --timeout=1 "$url" 2>/dev/null || true)
+		if [ -n "$info" ]; then
+			case "$info" in
+				*'"klippy_connected":true'*|*'"klippy_connected": true'*)
+					case "$info" in
+						*'"klippy_state"'*)
+							case "$info" in
+								*'"klippy_state":"ready"'*|*'"klippy_state": "ready"'*)
+									echo "Printer services ready (klippy_connected=true, klippy_state=ready)"
+									return 0
+									;;
+								*'"klippy_state":"error"'*|*'"klippy_state": "error"'*|*'"klippy_state":"shutdown"'*|*'"klippy_state": "shutdown"'*)
+									echo "Printer stack in error/shutdown; proceeding with UI launch"
+									return 0
+									;;
+							esac
+							;;
+						*)
+							echo "Printer services ready (klippy_connected=true)"
+							return 0
+							;;
+					esac
+					;;
+			esac
+		fi
+
+		echo "Waiting for printer to initialize..." > /run/rosetteos-boot-status 2>/dev/null || true
+		sleep "$poll_int"
+		elapsed=$((elapsed + poll_int))
+	done
+
+	echo "Printer readiness wait timed out after ${timeout}s; proceeding with UI launch"
+	return 0
+}
+
 start() {
+	wait_for_printer_ready
+	echo "Starting touchscreen interface..." > /run/rosetteos-boot-status 2>/dev/null || true
 	if [ -x /etc/init.d/S00bootanimation ]; then
 		/etc/init.d/S00bootanimation stop 2>/dev/null || true
 	fi
@@ -63,21 +116,22 @@ stop() {
 	rm -f "$PIDFILE"
 }
 
-case "$1" in
-	start)
-		start
-		;;
-	stop)
-		stop
-		;;
-	restart)
-		stop
-		start
-		;;
-	*)
-		echo "Usage: $0 {start|stop|restart}"
-		exit 1
-		;;
-esac
-
-exit 0
+if [ -z "${TOUCH_UI_NO_AUTORUN:-}" ]; then
+	case "${1:-}" in
+		start)
+			start
+			;;
+		stop)
+			stop
+			;;
+		restart)
+			stop
+			start
+			;;
+		*)
+			echo "Usage: $0 {start|stop|restart}"
+			exit 1
+			;;
+	esac
+	exit 0
+fi
