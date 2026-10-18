@@ -102,7 +102,7 @@ ids = [a["id"] for a in data["apps"]]
 assert len(ids) == len(set(ids)), "duplicate app ids in manifest"
 assert "mainsail" in ids, "mainsail missing from catalog"
 assert "fluidd" in ids, "fluidd missing from catalog"
-assert "guppyscreen" in ids, "guppyscreen missing from catalog"
+assert "roseui" in ids, "roseui missing from catalog"
 assert "helixscreen" in ids, "helixscreen missing from catalog"
 assert "timelapse" in ids, "timelapse missing from catalog"
 assert "mobileraker" in ids, "mobileraker missing from catalog"
@@ -270,11 +270,11 @@ fi
 
 echo "=== Test 4: Touchscreen UI Switching & Safety Checks ==="
 # Default state
-python3 "$ROSETTEOS_APP" set-active-touch guppyscreen
-if [ "$(cat "$ROSETTEOS_STATE_DIR/active_touch_ui")" = "guppyscreen" ]; then
-	pass "set-active-touch guppyscreen sets active_touch_ui to guppyscreen"
+python3 "$ROSETTEOS_APP" set-active-touch roseui
+if [ "$(cat "$ROSETTEOS_STATE_DIR/active_touch_ui")" = "roseui" ]; then
+	pass "set-active-touch roseui sets active_touch_ui to roseui"
 else
-	fail "set-active-touch guppyscreen failed"
+	fail "set-active-touch roseui failed"
 fi
 
 # Attempt switch to uninstalled helixscreen should fail
@@ -338,10 +338,10 @@ else
 	fail "rosetteos-app remove helixscreen left directory behind"
 fi
 
-if [ "$(cat "$ROSETTEOS_STATE_DIR/active_touch_ui")" = "roseui" ] || [ "$(cat "$ROSETTEOS_STATE_DIR/active_touch_ui")" = "guppyscreen" ]; then
-	pass "removing active Touch UI automatically fallback to RoseUI/GuppyScreen"
+if [ "$(cat "$ROSETTEOS_STATE_DIR/active_touch_ui")" = "roseui" ]; then
+	pass "removing active Touch UI automatically fallback to RoseUI"
 else
-	fail "removing active Touch UI failed to fallback to RoseUI/GuppyScreen"
+	fail "removing active Touch UI failed to fallback to RoseUI"
 fi
 
 # Builtin removal protection
@@ -351,10 +351,10 @@ else
 	pass "rosetteos-app remove mainsail rejected for builtin component"
 fi
 
-if python3 "$ROSETTEOS_APP" remove guppyscreen >/dev/null 2>&1; then
-	fail "rosetteos-app remove guppyscreen should be rejected as builtin"
+if python3 "$ROSETTEOS_APP" remove roseui >/dev/null 2>&1; then
+	fail "rosetteos-app remove roseui should be rejected as builtin"
 else
-	pass "rosetteos-app remove guppyscreen rejected for builtin component"
+	pass "rosetteos-app remove roseui rejected for builtin component"
 fi
 
 echo "=== Test 6: System Init & Nginx Configuration Verification ==="
@@ -476,13 +476,13 @@ fi
 # Case 2: Extruder heating -> touch switch blocked without --force, allowed with --force
 curl -s "$ROSETTEOS_MOONRAKER_URL/set_state?print_state=standby&ext_target=220&bed_target=0" >/dev/null
 
-if python3 "$ROSETTEOS_APP" set-active-touch guppyscreen >/dev/null 2>&1; then
+if python3 "$ROSETTEOS_APP" set-active-touch roseui >/dev/null 2>&1; then
 	fail "set-active-touch should be blocked while hotend is heating"
 else
 	pass "set-active-touch blocked while hotend target is active"
 fi
 
-if python3 "$ROSETTEOS_APP" set-active-touch guppyscreen --force >/dev/null 2>&1; then
+if python3 "$ROSETTEOS_APP" set-active-touch roseui --force >/dev/null 2>&1; then
 	pass "set-active-touch --force overrides thermal safeguard"
 else
 	fail "set-active-touch --force failed to override thermal safeguard"
@@ -1209,8 +1209,8 @@ python3 -c '
 import json, sys
 data = json.loads(sys.argv[1])
 ids = {a["id"] for a in data}
-assert ids == {"mainsail", "guppyscreen"}, f"Expected built-in fallback apps, got {ids}"
-' "$list_offline_json" && pass "seedless offline fallback provides built-in mainsail and guppyscreen" || fail "seedless offline fallback failed"
+assert ids == {"mainsail", "roseui"}, f"Expected built-in fallback apps, got {ids}"
+' "$list_offline_json" && pass "seedless offline fallback provides built-in mainsail and roseui" || fail "seedless offline fallback failed"
 
 unset ROSETTEOS_CATALOG_FILE
 export ROSETTEOS_CATALOG_URL="file://$MANIFEST"

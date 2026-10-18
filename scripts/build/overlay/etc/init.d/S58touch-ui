@@ -7,10 +7,8 @@
 # websocket API, though it degrades to a reconnecting/error state rather than
 # failing outright if Moonraker isn't up yet.
 
-GUPPY_DIR=/opt/guppyscreen
 ROSEUI_DIR=/opt/roseui
 PIDFILE=/var/run/roseui.pid
-LEGACY_PIDFILE=/var/run/guppyscreen.pid
 DATA_ROOT=/usr/data/rosetteos
 ACTIVE_TOUCH_FILE=$DATA_ROOT/active_touch_ui
 APPS_DIR=$DATA_ROOT/apps
@@ -19,7 +17,7 @@ get_touch_binary() {
 	active_touch="roseui"
 	[ -f "$ACTIVE_TOUCH_FILE" ] && active_touch=$(cat "$ACTIVE_TOUCH_FILE" 2>/dev/null | tr -d ' \r\n')
 
-	if [ "$active_touch" != "roseui" ] && [ "$active_touch" != "guppyscreen" ]; then
+	if [ "$active_touch" != "roseui" ]; then
 		# Check app folder for matching binary or known touchscreen entrypoints
 		if [ -x "$APPS_DIR/$active_touch/bin/helix-screen" ]; then
 			echo "$APPS_DIR/$active_touch/bin/helix-screen"
@@ -36,20 +34,11 @@ get_touch_binary() {
 		elif [ -x "$APPS_DIR/$active_touch/roseui" ]; then
 			echo "$APPS_DIR/$active_touch/roseui"
 			return 0
-		elif [ -x "$APPS_DIR/$active_touch/guppyscreen" ]; then
-			echo "$APPS_DIR/$active_touch/guppyscreen"
-			return 0
 		fi
 		echo "WARNING: Custom touch UI '$active_touch' not found or not executable. Falling back to RoseUI." >&2
 	fi
 
-	if [ -x "$ROSEUI_DIR/roseui" ]; then
-		echo "$ROSEUI_DIR/roseui"
-	elif [ -x "$GUPPY_DIR/roseui" ]; then
-		echo "$GUPPY_DIR/roseui"
-	else
-		echo "$GUPPY_DIR/guppyscreen"
-	fi
+	echo "$ROSEUI_DIR/roseui"
 }
 
 ROSETTEOS_OOM_POLICY="${ROSETTEOS_OOM_POLICY:-/etc/rosetteos-oom-policy.sh}"
@@ -123,9 +112,8 @@ start() {
 stop() {
 	echo "Stopping touchscreen UI"
 	start-stop-daemon -K -p "$PIDFILE" -q || true
-	start-stop-daemon -K -p "$LEGACY_PIDFILE" -q 2>/dev/null || true
 	# Clean up any residual PID file
-	rm -f "$PIDFILE" "$LEGACY_PIDFILE"
+	rm -f "$PIDFILE"
 }
 
 if [ -z "${TOUCH_UI_NO_AUTORUN:-}" ]; then

@@ -369,10 +369,10 @@ if sh "$GEN_CL" "$CL_OUT" 5 5 >/dev/null 2>&1; then
         fail "combined changelog missing RosetteOS System section"
     fi
 
-    if grep -q "### GuppyScreen UI" "$CL_OUT"; then
-        pass "combined changelog contains GuppyScreen UI section"
+    if grep -q "### RoseUI" "$CL_OUT"; then
+        pass "combined changelog contains RoseUI section"
     else
-        fail "combined changelog missing GuppyScreen UI section"
+        fail "combined changelog missing RoseUI section"
     fi
 else
     fail "generate-changelog.sh failed execution"

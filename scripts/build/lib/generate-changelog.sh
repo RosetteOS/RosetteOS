@@ -128,9 +128,9 @@ if not guppy_commits:
                 pass
 
 if not guppy_commits:
-    guppy_commits = ["• GuppyScreen Touchscreen UI Release"]
+    guppy_commits = ["• RoseUI Touchscreen UI Release"]
 
-lines.append("### GuppyScreen UI")
+lines.append("### RoseUI")
 lines.extend(guppy_commits)
 lines.append("")
 

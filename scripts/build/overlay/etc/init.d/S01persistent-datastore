@@ -47,7 +47,7 @@
 
 DATA_ROOT=/usr/data/rosetteos
 PDATA=$DATA_ROOT/printer_data
-GUPPY_STATE=$DATA_ROOT/guppyscreen
+ROSEUI_STATE=$DATA_ROOT/roseui
 
 seed_once() {
 	src="$1"
@@ -81,7 +81,7 @@ start() {
 	# clobbered by a later boot just because this script runs again.
 	seed_once /opt/printer_data "$PDATA"
 	mkdir -p "$PDATA/config/GuppyScreen/scripts"
-	seed_once /opt/guppyscreen/guppyconfig.json "$GUPPY_STATE/guppyconfig.json"
+	seed_once /opt/roseui/roseuiconfig.json "$ROSEUI_STATE/roseuiconfig.json"
 
 	# /opt/printer_data ships baked-in defaults on the read-only squashfs
 	# (printer.cfg, moonraker.conf) for the seed step above - bind-mounting
@@ -90,16 +90,9 @@ start() {
 	# writable and persistent, without changing either service's config.
 	mount --bind "$PDATA" /opt/printer_data
 
-	# GuppyScreen hardcodes its own config path as
-	# /proc/self/exe's-directory/guppyconfig.json (main.cpp) - i.e.
-	# /opt/guppyscreen/guppyconfig.json, on the read-only squashfs, not
-	# reachable via any override flag. A single-file bind mount is the only
-	# way to make just this one file persistent without also having to
-	# duplicate the guppyscreen/guppybeep binaries or themes/ into real
-	# storage. Without this, touch_calibrated (sysinfo_panel.cpp) can never
-	# actually save - not just "resets every boot," writes fail outright,
-	# which is why GuppyScreen was stuck showing the recalibration wizard.
-	mount --bind "$GUPPY_STATE/guppyconfig.json" /opt/guppyscreen/guppyconfig.json
+	# RoseUI loads its own config path as /proc/self/exe's-directory/roseuiconfig.json
+	# A single-file bind mount makes this file persistent across reboots.
+	mount --bind "$ROSEUI_STATE/roseuiconfig.json" /opt/roseui/roseuiconfig.json
 
 	# GuppyScreen's static_ip_panel.cpp separately hardcodes
 	# /usr/data/printer_data/config/GuppyScreen/scripts/static_ip.py (a
@@ -127,7 +120,7 @@ start() {
 	# this partition - if either path already has ANY content, real or
 	# leftover from us, this leaves it alone rather than guessing.
 	[ -e /usr/data/printer_data ] || ln -s /opt/printer_data /usr/data/printer_data
-	[ -e /usr/data/guppyscreen ] || ln -s /opt/guppyscreen /usr/data/guppyscreen
+	[ -e /usr/data/roseui ] || ln -s /opt/roseui /usr/data/roseui
 
 	# Initialize persistent package manager directory structure (/usr/data/opt)
 	# for opkg / Entware packages, and establish the default runtime layout.

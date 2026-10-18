@@ -11,7 +11,7 @@
 # if the persistent application tree it operates on is damaged or absent.
 #
 # Scope, using the classification in docs/NEBULAOS_PERSISTENT_LIFECYCLE.md:
-#   ARCHIVED + RESET : apps/{klipper,moonraker,mainsail,guppyscreen}
+#   ARCHIVED + RESET : apps/{klipper,moonraker,mainsail,roseui}
 #                       (IMAGE OWNED), envs/{klipper,moonraker} (GENERATED,
 #                       cheaper to reseed than to hand-classify), system/*
 #                       (RosetteOS's own generation/known-good/activation
