@@ -163,11 +163,13 @@ else
 	echo "OK   vendor/system working tree is dirty, as expected after apply-qualified-baseline.sh:"
 	printf '%s\n' "$system_dirty" | sed 's/^/     /'
 fi
-# GuppyScreen is pinned by GUPPYSCREEN_PIN; verify both the pinned HEAD and the
+# RoseUI is pinned by ROSEUI_PIN; verify both the pinned HEAD and the
 # expected remote URL. The three allowlisted submodules are modified
 # deterministically by the fetch/build stages (spdlog, lvgl, and libhv).
-check_vendor_pin guppyscreen "$GUPPYSCREEN_PIN" \
-	"$GUPPYSCREEN_REPO" 0 \
+ROSEUI_PIN="${ROSEUI_PIN:-$GUPPYSCREEN_PIN}"
+ROSEUI_REPO="${ROSEUI_REPO:-$GUPPYSCREEN_REPO}"
+check_vendor_pin guppyscreen "$ROSEUI_PIN" \
+	"$ROSEUI_REPO" 0 \
 	libhv \
 	lvgl \
 	spdlog

@@ -60,12 +60,12 @@ guppy_pin = ""
 if os.path.isfile(manifest_path):
     with open(manifest_path, "r", encoding="utf-8", errors="replace") as f:
         for line in f:
-            if line.startswith("GUPPYSCREEN_REPO="):
+            if line.startswith("ROSEUI_REPO=") or line.startswith("GUPPYSCREEN_REPO="):
                 val = line.split("=", 1)[1].strip().strip("\"'")
                 m = re.search(r"github\.com[/:]([^/]+/[^/.]+)", val)
                 if m:
                     guppy_repo = m.group(1).rstrip(".git")
-            elif line.startswith("GUPPYSCREEN_PIN="):
+            elif line.startswith("ROSEUI_PIN=") or line.startswith("GUPPYSCREEN_PIN="):
                 guppy_pin = line.split("=", 1)[1].strip().strip("\"'")
 
 guppy_commits = []

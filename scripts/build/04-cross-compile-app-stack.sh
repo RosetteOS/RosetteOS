@@ -819,16 +819,17 @@ GUPPY_ARTIFACT_DIR="$REPO_ROOT/artifacts/guppyscreen-mips"
 GUPPY_ARTIFACT_MANIFEST="$REPO_ROOT/artifacts/buildroot-halley5-v30-image/build-manifest.txt"
 GUPPY_BIN="$GUPPY_ARTIFACT_DIR/guppyscreen"
 GUPPY_BEEP="$GUPPY_ARTIFACT_DIR/guppybeep"
-GUPPYSCREEN_COMMIT="$GUPPYSCREEN_PIN"
+ROSEUI_PIN="${ROSEUI_PIN:-$GUPPYSCREEN_PIN}"
+ROSEUI_COMMIT="$ROSEUI_PIN"
 GUPPY_ARTIFACT_COMMIT=$(grep '^git_commit_guppyscreen=' "$GUPPY_ARTIFACT_MANIFEST" 2>/dev/null | cut -d= -f2)
-if [ "$GUPPY_ARTIFACT_COMMIT" = "$GUPPYSCREEN_PIN" ] && \
+if [ "$GUPPY_ARTIFACT_COMMIT" = "$ROSEUI_PIN" ] && \
 	[ -s "$GUPPY_BIN" ] && [ -s "$GUPPY_BEEP" ] && \
 	file "$GUPPY_BIN" 2>/dev/null | grep -q 'MIPS.*statically linked' && \
 	file "$GUPPY_BEEP" 2>/dev/null | grep -q 'MIPS.*statically linked'; then
-	echo "== reusing GuppyScreen binaries from pinned commit $GUPPYSCREEN_PIN =="
+	echo "== reusing RoseUI binaries from pinned commit $ROSEUI_PIN =="
 else
-	GUPPYSCREEN_COMMIT=$(git -C "$GUPPYSCREEN_SRC" rev-parse HEAD)
-	echo "== cross-compiling GuppyScreen (pinned commit $GUPPYSCREEN_COMMIT; Bootlin mips32el-musl toolchain) =="
+	ROSEUI_COMMIT=$(git -C "$GUPPYSCREEN_SRC" rev-parse HEAD)
+	echo "== cross-compiling RoseUI (pinned commit $ROSEUI_COMMIT; Bootlin mips32el-musl toolchain) =="
 	rm -rf "$GUPPYSCREEN_SRC/build" "$GUPPYSCREEN_SRC/spdlog/build" "$GUPPYSCREEN_SRC/spdlog/build-mips" "$GUPPYSCREEN_SRC/libhv/build" "$GUPPYSCREEN_SRC/libhv/build-mips"
 	(
 	set -e

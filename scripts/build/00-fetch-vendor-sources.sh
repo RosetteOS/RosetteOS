@@ -36,7 +36,7 @@ for required in SYSTEM_REPO SYSTEM_PIN \
 	MOONRAKER_REPO MOONRAKER_PIN K1_USTREAMER_REPO K1_USTREAMER_PIN \
 	MAINSAIL_TAG MAINSAIL_SHA256 \
 	WIFI_FIRMWARE_BIN_SHA256 WIFI_FIRMWARE_CLM_SHA256 \
-	GUPPYSCREEN_REPO GUPPYSCREEN_PIN ROSETTEOS_VERSION; do
+	ROSEUI_REPO ROSEUI_PIN ROSETTEOS_VERSION; do
 	require_setting "$required"
 done
 echo "== all required dependency settings present in $MANIFEST =="
@@ -276,26 +276,26 @@ if [ -e guppyscreen ] && [ ! -d guppyscreen/.git ]; then
 	exit 1
 fi
 if [ ! -d guppyscreen/.git ]; then
-	echo "== initializing GuppyScreen at pinned commit $GUPPYSCREEN_PIN =="
+	echo "== initializing RoseUI at pinned commit $ROSEUI_PIN =="
 	git init guppyscreen >/dev/null
-	git -C guppyscreen remote add origin "$GUPPYSCREEN_REPO"
+	git -C guppyscreen remote add origin "$ROSEUI_REPO"
 	git -C guppyscreen fetch origin || true
-	git -C guppyscreen checkout --detach "$GUPPYSCREEN_PIN"
+	git -C guppyscreen checkout --detach "$ROSEUI_PIN"
 else
 	guppyscreen_actual=$(git -C guppyscreen rev-parse HEAD)
-	if [ "$guppyscreen_actual" != "$GUPPYSCREEN_PIN" ]; then
-		echo "== GuppyScreen is $guppyscreen_actual, switching it to pinned $GUPPYSCREEN_PIN =="
-		git -C guppyscreen remote set-url origin "$GUPPYSCREEN_REPO"
+	if [ "$guppyscreen_actual" != "$ROSEUI_PIN" ]; then
+		echo "== RoseUI is $guppyscreen_actual, switching it to pinned $ROSEUI_PIN =="
+		git -C guppyscreen remote set-url origin "$ROSEUI_REPO"
 		git -C guppyscreen reset --hard >/dev/null
 		git -C guppyscreen clean -fdx >/dev/null
 		git -C guppyscreen submodule foreach --recursive 'git reset --hard && git clean -fdx' >/dev/null 2>&1 || true
 		git -C guppyscreen fetch origin || true
-		git -C guppyscreen checkout --detach "$GUPPYSCREEN_PIN"
+		git -C guppyscreen checkout --detach "$ROSEUI_PIN"
 	fi
 fi
 guppyscreen_actual=$(git -C guppyscreen rev-parse HEAD)
-[ "$guppyscreen_actual" = "$GUPPYSCREEN_PIN" ] || {
-	echo "FATAL: vendor/guppyscreen did not land on pinned commit $GUPPYSCREEN_PIN" >&2
+[ "$guppyscreen_actual" = "$ROSEUI_PIN" ] || {
+	echo "FATAL: vendor/guppyscreen did not land on pinned commit $ROSEUI_PIN" >&2
 	exit 1
 }
 git -C guppyscreen submodule update --init --depth 1 --jobs="$JOBS"
