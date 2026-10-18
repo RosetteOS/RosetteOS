@@ -784,8 +784,12 @@
 
 &otg_phy {
 	status = "okay";
+	/* RosetteOS: No physical ID or VBUS detect GPIO exists on Creality Nebula Pad (stock DTB
+	 * defines zero GPIO properties on PHY node except drvvbus-gpio on gpc 9).
+	 * Note: gpd 17 must NOT be claimed here because it is the active eMMC bus pin
+	 * (msc0_8bit, gpd 17-26) used for rootfs storage. Claiming it causes false VBUS IRQs
+	 * and breaks USB host / hotplug enumeration. */
 	/*ingenic,id-dete-gpio = <&gpd 18 GPIO_ACTIVE_LOW INGENIC_GPIO_NOBIAS>; Shares pins with msc1*/
-	ingenic,vbus-dete-gpio = <&gpd 17 GPIO_ACTIVE_LOW INGENIC_GPIO_NOBIAS>;
 	/* RosetteOS (2026-07-21, FIRMWARE.md sec 42): wrong pin - real, live-confirmed via stock's
 	 * own decompiled DTB (vendor/device-backups/stock-live-device-tree.dtb): stock's real,
 	 * working drvvbus-gpio is gpc pin 9 (raw value <0x07 0x09 0x01 0x00>, phandle 0x07 = gpc
