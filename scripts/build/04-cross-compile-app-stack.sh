@@ -902,10 +902,10 @@ cp "$GUPPY_BEEP" "$REPO_ROOT/scripts/build/overlay/opt/roseui/rosebeep"
 chmod 755 "$OVERLAY/opt/roseui/roseui" "$OVERLAY/opt/roseui/rosebeep" "$REPO_ROOT/scripts/build/overlay/opt/roseui/roseui" "$REPO_ROOT/scripts/build/overlay/opt/roseui/rosebeep"
 
 for target_dir in "$OVERLAY/opt/roseui" "$REPO_ROOT/scripts/build/overlay/opt/roseui"; do
-	(cd "$target_dir" && ln -sf roseui guppyscreen && ln -sf rosebeep guppybeep && ln -sf roseuiconfig.json guppyconfig.json)
+	(cd "$target_dir" && rm -f guppyscreen guppybeep guppyconfig.json && ln -s roseui guppyscreen && ln -s rosebeep guppybeep && ln -s roseuiconfig.json guppyconfig.json)
 done
 for target_parent in "$OVERLAY/opt" "$REPO_ROOT/scripts/build/overlay/opt"; do
-	(cd "$target_parent" && ln -sf roseui guppyscreen)
+	(cd "$target_parent" && rm -f guppyscreen && ln -s roseui guppyscreen)
 done
 
 if [ "$GUPPY_BIN" != "$REPO_ROOT/artifacts/guppyscreen-mips/guppyscreen" ]; then
