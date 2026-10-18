@@ -122,13 +122,6 @@ def get_active_touch_ui() -> str:
         try:
             with open(ACTIVE_TOUCH_FILE, "r", encoding="utf-8") as f:
                 val = f.read().strip()
-                if val == "guppyscreen":
-                    val = "roseui"
-                    try:
-                        with open(ACTIVE_TOUCH_FILE, "w", encoding="utf-8") as wf:
-                            wf.write("roseui\n")
-                    except Exception:
-                        pass
                 if val:
                     return val
         except Exception:

@@ -105,7 +105,6 @@ touchui_running() {
 	[ -n "$pid" ] || return 1
 	kill -0 "$pid" 2>/dev/null
 }
-guppyscreen_running() { touchui_running; }
 
 networking_up() {
 	# Any non-loopback interface with an assigned IPv4 address counts as
@@ -135,7 +134,7 @@ display_healthy() {
 wait_for_health() {
 	i=0
 	while [ "$i" -lt "$HEALTH_RETRIES" ]; do
-		if ndq_stage2_stack >/dev/null 2>&1 && guppyscreen_running && networking_up && display_healthy; then
+		if ndq_stage2_stack >/dev/null 2>&1 && touchui_running && networking_up && display_healthy; then
 			return 0
 		fi
 		i=$((i + 1))

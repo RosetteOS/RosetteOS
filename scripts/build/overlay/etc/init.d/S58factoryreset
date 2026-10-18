@@ -51,7 +51,7 @@ stop_services() {
 	[ -f /etc/init.d/S01wifi ] && /etc/init.d/S01wifi stop 2>/dev/null || true
 	[ -f /etc/init.d/S46rosetteos-dropbear-keys ] && /etc/init.d/S46rosetteos-dropbear-keys stop 2>/dev/null || true
 
-	killall guppyscreen 2>/dev/null || true
+	killall roseui 2>/dev/null || true
 	killall helix-screen 2>/dev/null || true
 	killall mjpg_streamer 2>/dev/null || true
 	killall wpa_supplicant 2>/dev/null || true
@@ -109,7 +109,7 @@ unmount_data_partition() {
 
 	log "unmounting persistent bind mounts over $DATA_MOUNT"
 	umount -f /opt/printer_data 2>/dev/null || umount -l /opt/printer_data 2>/dev/null || true
-	umount -f /opt/guppyscreen/guppyconfig.json 2>/dev/null || umount -l /opt/guppyscreen/guppyconfig.json 2>/dev/null || true
+	umount -f /opt/roseui/roseuiconfig.json 2>/dev/null || umount -l /opt/roseui/roseuiconfig.json 2>/dev/null || true
 	umount -f /var/run/rosetteos-web-root 2>/dev/null || true
 
 	# CRITICAL: Only attempt fuser/umount if DATA_MOUNT is an actual mount point in /proc/mounts!

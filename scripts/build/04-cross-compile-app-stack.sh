@@ -902,10 +902,10 @@ cp "$GUPPY_BEEP" "$REPO_ROOT/scripts/build/overlay/opt/roseui/rosebeep"
 chmod 755 "$OVERLAY/opt/roseui/roseui" "$OVERLAY/opt/roseui/rosebeep" "$REPO_ROOT/scripts/build/overlay/opt/roseui/roseui" "$REPO_ROOT/scripts/build/overlay/opt/roseui/rosebeep"
 
 for target_dir in "$OVERLAY/opt/roseui" "$REPO_ROOT/scripts/build/overlay/opt/roseui"; do
-	(cd "$target_dir" && rm -f guppyscreen guppybeep guppyconfig.json && ln -s roseui guppyscreen && ln -s rosebeep guppybeep && ln -s roseuiconfig.json guppyconfig.json)
+	(cd "$target_dir" && rm -f guppyscreen guppybeep guppyconfig.json)
 done
 for target_parent in "$OVERLAY/opt" "$REPO_ROOT/scripts/build/overlay/opt"; do
-	(cd "$target_parent" && rm -f guppyscreen && ln -s roseui guppyscreen)
+	(cd "$target_parent" && rm -rf guppyscreen)
 done
 
 if [ "$GUPPY_BIN" != "$REPO_ROOT/artifacts/guppyscreen-mips/guppyscreen" ]; then
@@ -1427,8 +1427,12 @@ for generated_path in klipper klipper-extensions rosetteos-seeds printer_data ro
 	cp -a "$OVERLAY/opt/$generated_path" \
 		"$BUILDROOT_DIR/output/target/opt/$generated_path"
 done
-rm -rf "$BUILDROOT_DIR/output/target/opt/guppyscreen"
-ln -sf roseui "$BUILDROOT_DIR/output/target/opt/guppyscreen"
+rm -rf "$BUILDROOT_DIR/output/target/opt/guppyscreen" \
+       "$BUILDROOT_DIR/output/target/etc/init.d/S58guppyscreen" \
+       "$BUILDROOT_DIR/output/build/buildroot-fs/ext2/target/etc/init.d/S58guppyscreen" \
+       "$BUILDROOT_DIR/output/target/opt/roseui/guppyscreen" \
+       "$BUILDROOT_DIR/output/target/opt/roseui/guppybeep" \
+       "$BUILDROOT_DIR/output/target/opt/roseui/guppyconfig.json"
 packaged_klipper_seed=$(gzip -dc "$BUILDROOT_DIR/output/target/opt/rosetteos-seeds/klipper.tar.gz" 2>/dev/null \
 	| tar -xOf - ./.git/refs/heads/$KLIPPER_BRANCH 2>/dev/null \
 	| tr -d '[:space:]' || true)

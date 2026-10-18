@@ -44,7 +44,7 @@ create_layout() {
 		"$ROSETTEOS_ROOT/apps/klipper" \
 		"$ROSETTEOS_ROOT/apps/moonraker" \
 		"$ROSETTEOS_ROOT/apps/mainsail" \
-		"$ROSETTEOS_ROOT/apps/guppyscreen" \
+		"$ROSETTEOS_ROOT/apps/roseui" \
 		"$ROSETTEOS_ROOT/envs/moonraker" \
 		"$ROSETTEOS_ROOT/envs/klipper" \
 		"$ROSETTEOS_ROOT/printer_data/config/GuppyScreen/scripts" \
@@ -67,14 +67,14 @@ create_layout() {
 		"$ROSETTEOS_ROOT/printer_profiles" \
 		"$ROSETTEOS_ROOT/maintenance/logs"
 
-	# apps/guppyscreen is reserved-only per this mission's own scope - a
+	# apps/roseui is reserved-only per this mission's own scope - a
 	# marker file documents why it's intentionally empty, so a future
 	# reader (or this project's own retention manager) doesn't mistake it
 	# for an abandoned/incomplete directory.
-	if [ ! -e "$ROSETTEOS_ROOT/apps/guppyscreen/.reserved-not-implemented" ]; then
-		cat > "$ROSETTEOS_ROOT/apps/guppyscreen/.reserved-not-implemented" <<'EOF'
-GuppyScreen stays served from the immutable /opt/guppyscreen copy for this
-mission. This directory is reserved layout only - GuppyScreen's own update
+	if [ ! -e "$ROSETTEOS_ROOT/apps/roseui/.reserved-not-implemented" ]; then
+		cat > "$ROSETTEOS_ROOT/apps/roseui/.reserved-not-implemented" <<'EOF'
+RoseUI stays served from the immutable /opt/roseui copy for this
+mission. This directory is reserved layout only - RoseUI's own update
 mechanism is explicitly a separate, future mission per the governing brief.
 EOF
 	fi
@@ -195,8 +195,8 @@ write_manifest() {
   "created_at": "$now",
   "created_at_caveat": "may read as an early-epoch date if this boot occurred before NTP sync - see docs/NEBULAOS_RETENTION_POLICY.md sec 2.6",
   "layout": {
-    "apps": ["klipper", "moonraker", "mainsail", "guppyscreen"],
-    "guppyscreen_status": "reserved_not_implemented",
+    "apps": ["klipper", "moonraker", "mainsail", "roseui"],
+    "roseui_status": "reserved_not_implemented",
     "envs": ["moonraker", "klipper"],
     "printer_data": "private",
     "shared_gcode_path": "/usr/data/printer_data/gcodes"
