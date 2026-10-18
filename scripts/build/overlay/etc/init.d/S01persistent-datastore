@@ -81,7 +81,14 @@ start() {
 	# clobbered by a later boot just because this script runs again.
 	seed_once /opt/printer_data "$PDATA"
 	mkdir -p "$PDATA/config/GuppyScreen/scripts"
-	seed_once /opt/roseui/roseuiconfig.json "$ROSEUI_STATE/roseuiconfig.json"
+	if [ ! -e "$ROSEUI_STATE/roseuiconfig.json" ]; then
+		if [ -e "$DATA_ROOT/guppyscreen/guppyconfig.json" ]; then
+			mkdir -p "$ROSEUI_STATE"
+			cp -a "$DATA_ROOT/guppyscreen/guppyconfig.json" "$ROSEUI_STATE/roseuiconfig.json"
+		else
+			seed_once /opt/roseui/roseuiconfig.json "$ROSEUI_STATE/roseuiconfig.json"
+		fi
+	fi
 
 	# /opt/printer_data ships baked-in defaults on the read-only squashfs
 	# (printer.cfg, moonraker.conf) for the seed step above - bind-mounting
@@ -93,6 +100,12 @@ start() {
 	# RoseUI loads its own config path as /proc/self/exe's-directory/roseuiconfig.json
 	# A single-file bind mount makes this file persistent across reboots.
 	mount --bind "$ROSEUI_STATE/roseuiconfig.json" /opt/roseui/roseuiconfig.json
+
+	# Ensure legacy symlinks inside /opt/roseui so legacy binaries or tools resolve
+	[ -e /opt/roseui/guppyconfig.json ] || ln -s roseuiconfig.json /opt/roseui/guppyconfig.json 2>/dev/null || true
+	[ -e /opt/roseui/guppyscreen ] || ln -s roseui /opt/roseui/guppyscreen 2>/dev/null || true
+	[ -e /opt/roseui/guppybeep ] || ln -s rosebeep /opt/roseui/guppybeep 2>/dev/null || true
+	[ -e /opt/guppyscreen ] || ln -s /opt/roseui /opt/guppyscreen 2>/dev/null || true
 
 	# GuppyScreen's static_ip_panel.cpp separately hardcodes
 	# /usr/data/printer_data/config/GuppyScreen/scripts/static_ip.py (a
@@ -121,6 +134,7 @@ start() {
 	# leftover from us, this leaves it alone rather than guessing.
 	[ -e /usr/data/printer_data ] || ln -s /opt/printer_data /usr/data/printer_data
 	[ -e /usr/data/roseui ] || ln -s /opt/roseui /usr/data/roseui
+	[ -e /usr/data/guppyscreen ] || ln -s /opt/roseui /usr/data/guppyscreen
 
 	# Initialize persistent package manager directory structure (/usr/data/opt)
 	# for opkg / Entware packages, and establish the default runtime layout.

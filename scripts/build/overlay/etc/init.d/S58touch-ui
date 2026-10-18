@@ -16,6 +16,10 @@ APPS_DIR=$DATA_ROOT/apps
 get_touch_binary() {
 	active_touch="roseui"
 	[ -f "$ACTIVE_TOUCH_FILE" ] && active_touch=$(cat "$ACTIVE_TOUCH_FILE" 2>/dev/null | tr -d ' \r\n')
+	if [ "$active_touch" = "guppyscreen" ]; then
+		active_touch="roseui"
+		echo "roseui" > "$ACTIVE_TOUCH_FILE" 2>/dev/null || true
+	fi
 
 	if [ "$active_touch" != "roseui" ]; then
 		# Check app folder for matching binary or known touchscreen entrypoints

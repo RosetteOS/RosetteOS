@@ -892,10 +892,19 @@ file "$GUPPY_BIN" | grep -q "statically linked" || {
 }
 echo "== RoseUI build verified: $(file "$GUPPY_BIN") =="
 
-mkdir -p "$OVERLAY/opt/roseui" "$REPO_ROOT/artifacts/guppyscreen-mips"
+mkdir -p "$OVERLAY/opt/roseui" "$REPO_ROOT/artifacts/guppyscreen-mips" "$REPO_ROOT/scripts/build/overlay/opt/roseui"
 cp "$GUPPY_BIN" "$OVERLAY/opt/roseui/roseui"
 cp "$GUPPY_BEEP" "$OVERLAY/opt/roseui/rosebeep"
-chmod 755 "$OVERLAY/opt/roseui/roseui" "$OVERLAY/opt/roseui/rosebeep"
+cp "$GUPPY_BIN" "$REPO_ROOT/scripts/build/overlay/opt/roseui/roseui"
+cp "$GUPPY_BEEP" "$REPO_ROOT/scripts/build/overlay/opt/roseui/rosebeep"
+chmod 755 "$OVERLAY/opt/roseui/roseui" "$OVERLAY/opt/roseui/rosebeep" "$REPO_ROOT/scripts/build/overlay/opt/roseui/roseui" "$REPO_ROOT/scripts/build/overlay/opt/roseui/rosebeep"
+
+for target_dir in "$OVERLAY/opt/roseui" "$REPO_ROOT/scripts/build/overlay/opt/roseui"; do
+	(cd "$target_dir" && ln -sf roseui guppyscreen && ln -sf rosebeep guppybeep && ln -sf roseuiconfig.json guppyconfig.json)
+done
+for target_parent in "$OVERLAY/opt" "$REPO_ROOT/scripts/build/overlay/opt"; do
+	(cd "$target_parent" && ln -sf roseui guppyscreen)
+done
 
 if [ "$GUPPY_BIN" != "$REPO_ROOT/artifacts/guppyscreen-mips/guppyscreen" ]; then
 	cp "$GUPPY_BIN" "$REPO_ROOT/artifacts/guppyscreen-mips/guppyscreen"
@@ -1410,7 +1419,7 @@ cp -a "$PRINTER_PROFILES_SRC" "$OVERLAY/opt/rosetteos-seeds/printer_profiles"
 # the tracked overlay. Buildroot's output/target sync is additive, so refresh
 # the exact generated paths here; otherwise a previous klipper.tar.gz (and
 # its previous Git commit) can remain in the image indefinitely.
-for generated_path in klipper klipper-extensions rosetteos-seeds printer_data; do
+for generated_path in klipper klipper-extensions rosetteos-seeds printer_data roseui; do
 	rm -rf "$BUILDROOT_DIR/output/target/opt/$generated_path"
 	mkdir -p "$(dirname "$BUILDROOT_DIR/output/target/opt/$generated_path")"
 	cp -a "$OVERLAY/opt/$generated_path" \
