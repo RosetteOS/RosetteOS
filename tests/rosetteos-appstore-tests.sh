@@ -338,10 +338,10 @@ else
 	fail "rosetteos-app remove helixscreen left directory behind"
 fi
 
-if [ "$(cat "$ROSETTEOS_STATE_DIR/active_touch_ui")" = "guppyscreen" ]; then
-	pass "removing active Touch UI automatically fallback to GuppyScreen"
+if [ "$(cat "$ROSETTEOS_STATE_DIR/active_touch_ui")" = "roseui" ] || [ "$(cat "$ROSETTEOS_STATE_DIR/active_touch_ui")" = "guppyscreen" ]; then
+	pass "removing active Touch UI automatically fallback to RoseUI/GuppyScreen"
 else
-	fail "removing active Touch UI failed to fallback to GuppyScreen"
+	fail "removing active Touch UI failed to fallback to RoseUI/GuppyScreen"
 fi
 
 # Builtin removal protection

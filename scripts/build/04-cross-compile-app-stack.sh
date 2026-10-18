@@ -867,9 +867,18 @@ else
 	# project, strips both binaries before shipping them - matches the
 	# previously hand-built binary being replaced here, and there is no
 	# reason to ship debug symbols on the printer.
-	mipsel-linux-strip build/bin/guppyscreen build/bin/guppybeep
+	if [ -f build/bin/roseui ]; then
+		mipsel-linux-strip build/bin/roseui build/bin/guppybeep 2>/dev/null || true
+		[ -f build/bin/guppyscreen ] && mipsel-linux-strip build/bin/guppyscreen 2>/dev/null || true
+	else
+		mipsel-linux-strip build/bin/guppyscreen build/bin/guppybeep
+	fi
 	)
-	GUPPY_BIN="$GUPPYSCREEN_SRC/build/bin/guppyscreen"
+	if [ -f "$GUPPYSCREEN_SRC/build/bin/roseui" ]; then
+		GUPPY_BIN="$GUPPYSCREEN_SRC/build/bin/roseui"
+	else
+		GUPPY_BIN="$GUPPYSCREEN_SRC/build/bin/guppyscreen"
+	fi
 	GUPPY_BEEP="$GUPPYSCREEN_SRC/build/bin/guppybeep"
 fi
 # Phase 11 (2026-08-15): the alpine:latest chown-fixup container that used
@@ -890,11 +899,20 @@ file "$GUPPY_BIN" | grep -q "statically linked" || {
 	echo "FATAL: $GUPPY_BIN is not statically linked - this rootfs has no dynamic linker entry for it (see the ustreamer section above for the exact ABI-mismatch failure mode a dynamically-linked binary hits here)" >&2
 	exit 1
 }
-echo "== GuppyScreen build verified: $(file "$GUPPY_BIN") =="
+echo "== RoseUI / GuppyScreen build verified: $(file "$GUPPY_BIN") =="
 
-mkdir -p "$OVERLAY/opt/guppyscreen" "$REPO_ROOT/artifacts/guppyscreen-mips"
+mkdir -p "$OVERLAY/opt/guppyscreen" "$OVERLAY/opt/roseui" "$REPO_ROOT/artifacts/guppyscreen-mips"
 cp "$GUPPY_BIN" "$OVERLAY/opt/guppyscreen/guppyscreen"
+ln -sf guppyscreen "$OVERLAY/opt/guppyscreen/roseui"
 cp "$GUPPY_BEEP" "$OVERLAY/opt/guppyscreen/guppybeep"
+ln -sf guppybeep "$OVERLAY/opt/guppyscreen/rosebeep"
+
+# Setup /opt/roseui compatibility links
+ln -sf /opt/guppyscreen/guppyscreen "$OVERLAY/opt/roseui/roseui"
+ln -sf /opt/guppyscreen/guppyscreen "$OVERLAY/opt/roseui/guppyscreen"
+ln -sf /opt/guppyscreen/guppybeep "$OVERLAY/opt/roseui/rosebeep"
+ln -sf /opt/guppyscreen/guppybeep "$OVERLAY/opt/roseui/guppybeep"
+
 if [ "$GUPPY_BIN" != "$REPO_ROOT/artifacts/guppyscreen-mips/guppyscreen" ]; then
 	cp "$GUPPY_BIN" "$REPO_ROOT/artifacts/guppyscreen-mips/guppyscreen"
 fi
