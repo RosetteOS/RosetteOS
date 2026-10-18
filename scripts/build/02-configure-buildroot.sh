@@ -183,7 +183,8 @@ for obsolete_rel in \
 	"var/www/swupdate" \
 	"opt/nebulaos" \
 	"opt/nebulaos-seeds" \
-	"opt/nebulaos-version.json"; do
+	"opt/nebulaos-version.json" \
+	"opt/guppyscreen"; do
 	rm -rf "$BUILDROOT_DIR/output/target/$obsolete_rel" \
 	      "$BUILDROOT_DIR/output/build/buildroot-fs/ext2/target/$obsolete_rel" 2>/dev/null || true
 done

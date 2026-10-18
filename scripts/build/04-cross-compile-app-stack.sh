@@ -65,8 +65,10 @@ rm -rf "$OVERLAY/opt/klipper" \
 	"$OVERLAY/opt/klipper-extensions" \
 	"$BUILDROOT_DIR/output/target/opt/klipper" \
 	"$BUILDROOT_DIR/output/target/opt/klipper-extensions" \
+	"$BUILDROOT_DIR/output/target/opt/guppyscreen" \
 	"$BUILDROOT_DIR/output/build/buildroot-fs/ext2/target/opt/klipper" \
-	"$BUILDROOT_DIR/output/build/buildroot-fs/ext2/target/opt/klipper-extensions"
+	"$BUILDROOT_DIR/output/build/buildroot-fs/ext2/target/opt/klipper-extensions" \
+	"$BUILDROOT_DIR/output/build/buildroot-fs/ext2/target/opt/guppyscreen"
 
 if [ ! -x "$TOOLCHAIN_HOST/bin/mipsel-buildroot-linux-gnu-gcc" ]; then
 	echo "Buildroot toolchain not built - run 03-build-kernel-and-rootfs.sh first" >&2
@@ -1425,6 +1427,8 @@ for generated_path in klipper klipper-extensions rosetteos-seeds printer_data ro
 	cp -a "$OVERLAY/opt/$generated_path" \
 		"$BUILDROOT_DIR/output/target/opt/$generated_path"
 done
+rm -rf "$BUILDROOT_DIR/output/target/opt/guppyscreen"
+ln -sf roseui "$BUILDROOT_DIR/output/target/opt/guppyscreen"
 packaged_klipper_seed=$(gzip -dc "$BUILDROOT_DIR/output/target/opt/rosetteos-seeds/klipper.tar.gz" 2>/dev/null \
 	| tar -xOf - ./.git/refs/heads/$KLIPPER_BRANCH 2>/dev/null \
 	| tr -d '[:space:]' || true)
