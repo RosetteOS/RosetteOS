@@ -87,12 +87,14 @@ echo "=== Test 2: Package Generation with Mock Fixtures ==="
 
 MOCK_KERNEL="$WORK/mock_xImage"
 MOCK_ROOTFS="$WORK/mock_rootfs.squashfs"
+MOCK_RTOS="$WORK/mock_zero.bin"
 OUT_DIR="$WORK/out"
 
 echo "MOCK_KERNEL_DATA_12345" > "$MOCK_KERNEL"
 echo "MOCK_ROOTFS_DATA_67890" > "$MOCK_ROOTFS"
+echo "MOCK_RTOS_DATA_ABCDE" > "$MOCK_RTOS"
 
-KERNEL_IMAGE="$MOCK_KERNEL" ROOTFS_IMAGE="$MOCK_ROOTFS" \
+KERNEL_IMAGE="$MOCK_KERNEL" ROOTFS_IMAGE="$MOCK_ROOTFS" RTOS_IMAGE="$MOCK_RTOS" \
     sh "$PACKAGE_SWU_SCRIPT" "$OUT_DIR" "test-1.2.3" > "$WORK/build.log" 2>&1
 
 SWU_FILE="$OUT_DIR/rosetteos-update-test-1.2.3.swu"
@@ -114,7 +116,7 @@ else
     fail "sw-description is not the first member (found: $FIRST_MEMBER)"
 fi
 
-for expected in "sw-description" "changelog.txt" "xImage" "rootfs.squashfs" "postinstall.sh"; do
+for expected in "sw-description" "changelog.txt" "zero.bin" "xImage" "rootfs.squashfs" "postinstall.sh"; do
     if echo "$MEMBERS" | grep -q "^${expected}$"; then
         pass "CPIO archive contains $expected"
     else
@@ -151,21 +153,28 @@ if [ -f "$SW_DESC" ]; then
         fail "sw-description missing installed-directly = true;"
     fi
 
-    if grep -q 'device = "/dev/mmcblk0p5";' "$SW_DESC" && grep -q 'device = "/dev/mmcblk0p7";' "$SW_DESC"; then
-        pass "sw-description targets /dev/mmcblk0p5 and /dev/mmcblk0p7 for slot1"
+    if grep -q 'device = "/dev/mmcblk0p3";' "$SW_DESC" && grep -q 'device = "/dev/mmcblk0p5";' "$SW_DESC" && grep -q 'device = "/dev/mmcblk0p7";' "$SW_DESC"; then
+        pass "sw-description targets /dev/mmcblk0p3, /dev/mmcblk0p5, and /dev/mmcblk0p7 for slot1"
     else
         fail "sw-description missing slot1 partition targets"
     fi
 
-    if grep -q 'device = "/dev/mmcblk0p6";' "$SW_DESC" && grep -q 'device = "/dev/mmcblk0p8";' "$SW_DESC"; then
-        pass "sw-description targets /dev/mmcblk0p6 and /dev/mmcblk0p8 for slot2"
+    if grep -q 'device = "/dev/mmcblk0p4";' "$SW_DESC" && grep -q 'device = "/dev/mmcblk0p6";' "$SW_DESC" && grep -q 'device = "/dev/mmcblk0p8";' "$SW_DESC"; then
+        pass "sw-description targets /dev/mmcblk0p4, /dev/mmcblk0p6, and /dev/mmcblk0p8 for slot2"
     else
         fail "sw-description missing slot2 partition targets"
     fi
 
+    EXPECTED_RTOS_SHA=$(sha256sum "$MOCK_RTOS" | awk '{print $1}')
     EXPECTED_KERNEL_SHA=$(sha256sum "$MOCK_KERNEL" | awk '{print $1}')
     EXPECTED_ROOTFS_SHA=$(sha256sum "$MOCK_ROOTFS" | awk '{print $1}')
     EXPECTED_POSTINSTALL_SHA=$(sha256sum "$EXTRACT_DIR/postinstall.sh" | awk '{print $1}')
+
+    if grep -q "$EXPECTED_RTOS_SHA" "$SW_DESC"; then
+        pass "sw-description contains correct rtos SHA256"
+    else
+        fail "sw-description rtos SHA256 mismatch"
+    fi
 
     if grep -q "$EXPECTED_KERNEL_SHA" "$SW_DESC"; then
         pass "sw-description contains correct kernel SHA256"
@@ -210,10 +219,10 @@ if [ -f "$EXTRACT_DIR/postinstall.sh" ]; then
         fail "postinstall.sh missing slot1/slot2 boot marker handling"
     fi
 
-    if grep -q 'mmcblk0p3.*mmcblk0p4' "$EXTRACT_DIR/postinstall.sh"; then
-        pass "postinstall.sh populates partition 4 (rtos2) from partition 3 (rtos)"
+    if grep -q 'zero.bin' "$SW_DESC"; then
+        pass "sw-description streams zero.bin directly to RTOS partition"
     else
-        fail "postinstall.sh missing rtos2 sync logic"
+        fail "sw-description missing zero.bin deployment"
     fi
 
     if grep -q 'preinst' "$EXTRACT_DIR/postinstall.sh"; then
@@ -263,7 +272,7 @@ fi
 echo "=== Test 7: Custom Changelog Passing ==="
 
 CUSTOM_CL_TEXT="• Feature A: High-speed input shaping\n• Feature B: Filament runout detection"
-KERNEL_IMAGE="$MOCK_KERNEL" ROOTFS_IMAGE="$MOCK_ROOTFS" \
+KERNEL_IMAGE="$MOCK_KERNEL" ROOTFS_IMAGE="$MOCK_ROOTFS" RTOS_IMAGE="$MOCK_RTOS" \
     sh "$PACKAGE_SWU_SCRIPT" "$OUT_DIR" "test-cl-7.8.9" "$CUSTOM_CL_TEXT" > "$WORK/build_cl.log" 2>&1
 
 CUSTOM_SWU="$OUT_DIR/rosetteos-update-test-cl-7.8.9.swu"

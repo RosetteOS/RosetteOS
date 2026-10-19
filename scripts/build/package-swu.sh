@@ -3,9 +3,11 @@
 # Builds a self-contained, verified SWUpdate package (.swu) for RosetteOS.
 #
 # Generates a libconfig-formatted sw-description with SHA256 digests, bundles
-# the kernel image (xImage -> /dev/mmcblk0p6), rootfs image (rootfs.squashfs
-# -> /dev/mmcblk0p8), and post-install boot-marker script into a compliant CPIO
-# archive where sw-description is strictly the first member.
+# the RTOS bootloader image (zero.bin -> /dev/mmcblk0p3 or /dev/mmcblk0p4),
+# kernel image (xImage -> /dev/mmcblk0p5 or /dev/mmcblk0p6), rootfs image
+# (rootfs.squashfs -> /dev/mmcblk0p7 or /dev/mmcblk0p8), and post-install
+# boot-marker script into a compliant CPIO archive where sw-description is
+# strictly the first member.
 #
 # Usage: sh scripts/build/package-swu.sh [output-dir] [version]
 #
@@ -34,6 +36,7 @@ fi
 
 KERNEL_IMAGE="${KERNEL_IMAGE:-$ARTIFACT_DIR/xImage}"
 ROOTFS_IMAGE="${ROOTFS_IMAGE:-$ARTIFACT_DIR/rootfs.squashfs}"
+RTOS_IMAGE="${RTOS_IMAGE:-$REPO_ROOT/assets/zero.bin}"
 
 if [ ! -f "$KERNEL_IMAGE" ]; then
 	echo "FATAL: kernel image not found at $KERNEL_IMAGE" >&2
@@ -42,6 +45,11 @@ fi
 
 if [ ! -f "$ROOTFS_IMAGE" ]; then
 	echo "FATAL: rootfs image not found at $ROOTFS_IMAGE" >&2
+	exit 1
+fi
+
+if [ ! -f "$RTOS_IMAGE" ]; then
+	echo "FATAL: RTOS image not found at $RTOS_IMAGE" >&2
 	exit 1
 fi
 
@@ -83,12 +91,13 @@ fi
 
 cp "$KERNEL_IMAGE" "$WORK_DIR/xImage"
 cp "$ROOTFS_IMAGE" "$WORK_DIR/rootfs.squashfs"
+cp "$RTOS_IMAGE" "$WORK_DIR/zero.bin"
 
 cat > "$WORK_DIR/postinstall.sh" <<'EOF'
 #!/bin/sh
 # RosetteOS SWUpdate post-installation script
 # Pre-install (preinst): Verifies print/heater safety interlocks and target partition health.
-# Post-install (postinst): Arms target boot slot (ota:kernel / ota:kernel2) and clones RTOS for Slot 2.
+# Post-install (postinst): Arms target boot slot (ota:kernel / ota:kernel2).
 
 set -e
 
@@ -139,21 +148,19 @@ if [ "$HOOK_ACTION" = "preinst" ]; then
 	# 2. Block Device Mount Validation
 	if [ "$TARGET_SLOT" = "slot1" ]; then
 		TARGET_ROOTFS="/dev/mmcblk0p7"
+		TARGET_RTOS="/dev/mmcblk0p3"
 	else
 		TARGET_ROOTFS="/dev/mmcblk0p8"
+		TARGET_RTOS="/dev/mmcblk0p4"
 	fi
 
 	if [ -e "$TARGET_ROOTFS" ] && grep -q "$TARGET_ROOTFS" /proc/mounts 2>/dev/null; then
 		echo "FATAL: Target partition $TARGET_ROOTFS is currently mounted! Cannot safely write to a mounted partition." >&2
 		exit 1
 	fi
-
-	# 3. RTOS source verification for Slot 2
-	if [ "$TARGET_SLOT" = "slot2" ] && [ -e /dev/mmcblk0p3 ]; then
-		if ! dd if=/dev/mmcblk0p3 of=/dev/null bs=512 count=1 2>/dev/null; then
-			echo "FATAL: RTOS partition /dev/mmcblk0p3 is not readable." >&2
-			exit 1
-		fi
+	if [ -e "$TARGET_RTOS" ] && grep -q "$TARGET_RTOS" /proc/mounts 2>/dev/null; then
+		echo "FATAL: Target partition $TARGET_RTOS is currently mounted! Cannot safely write to a mounted partition." >&2
+		exit 1
 	fi
 
 	# 4. Klipper / Moonraker Active Print and Heater Safety Interlocks
@@ -218,11 +225,6 @@ if [ "$TARGET_SLOT" = "slot1" ]; then
 		dd if=/dev/zero of=/dev/mmcblk0p1 bs=1 seek=12 count=500 2>/dev/null || true
 	fi
 elif [ "$TARGET_SLOT" = "slot2" ]; then
-	echo "Ensuring RTOS partition 4 (rtos2) is populated from partition 3 (rtos)..."
-	if [ -e /dev/mmcblk0p3 ] && [ -e /dev/mmcblk0p4 ]; then
-		dd if=/dev/mmcblk0p3 of=/dev/mmcblk0p4 bs=1M conv=fsync 2>/dev/null || true
-	fi
-
 	echo "Setting next boot target to Slot 2 (ota:kernel2)..."
 	if [ -f /etc/ota_marker.sh ]; then
 		. /etc/ota_marker.sh
@@ -280,6 +282,7 @@ with open('$WORK_DIR/postinstall.sh', 'w') as pf:
 
 chmod +x "$WORK_DIR/postinstall.sh"
 
+RTOS_SHA=$(sha256sum "$WORK_DIR/zero.bin" | awk '{print $1}')
 KERNEL_SHA=$(sha256sum "$WORK_DIR/xImage" | awk '{print $1}')
 ROOTFS_SHA=$(sha256sum "$WORK_DIR/rootfs.squashfs" | awk '{print $1}')
 POSTINSTALL_SHA=$(sha256sum "$WORK_DIR/postinstall.sh" | awk '{print $1}')
@@ -300,6 +303,13 @@ software =
 		stable = {
 			slot1 = {
 				images: (
+					{
+						filename = "zero.bin";
+						device = "/dev/mmcblk0p3";
+						type = "raw";
+						installed-directly = true;
+						sha256 = "${RTOS_SHA}";
+					},
 					{
 						filename = "xImage";
 						device = "/dev/mmcblk0p5";
@@ -328,6 +338,13 @@ software =
 
 			slot2 = {
 				images: (
+					{
+						filename = "zero.bin";
+						device = "/dev/mmcblk0p4";
+						type = "raw";
+						installed-directly = true;
+						sha256 = "${RTOS_SHA}";
+					},
 					{
 						filename = "xImage";
 						device = "/dev/mmcblk0p6";
@@ -363,7 +380,7 @@ SWU_OUTPUT="$OUTPUT_DIR/$SWU_NAME"
 
 (
 	cd "$WORK_DIR"
-	for f in sw-description changelog.txt xImage rootfs.squashfs postinstall.sh; do
+	for f in sw-description changelog.txt zero.bin xImage rootfs.squashfs postinstall.sh; do
 		echo "$f"
 	done | cpio -ov -H crc > "$SWU_OUTPUT"
 )
