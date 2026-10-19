@@ -1,0 +1,41 @@
+#!/bin/sh
+# /usr/bin/sudo - RosetteOS embedded system sudo shim
+#
+# On RosetteOS, services (including Moonraker) already run as root.
+# Moonraker's machine component invokes "sudo reboot" and "sudo poweroff"
+# via its BaseProvider / exec_sudo_command implementation.
+# This shim strips common sudo flags and executes the target command directly.
+
+# Ensure standard binary paths are available even if the invoking daemon has a minimal PATH
+PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+export PATH
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+		-u|-g|-p|-a|-c|-r|-t|-C)
+			# Options that take a separate argument
+			shift 2 2>/dev/null || shift 1
+			;;
+		--help|--version)
+			echo "sudo (RosetteOS embedded shim)"
+			exit 0
+			;;
+		--)
+			shift
+			break
+			;;
+		-*)
+			shift
+			;;
+		*)
+			break
+			;;
+	esac
+done
+
+if [ $# -eq 0 ]; then
+	echo "usage: sudo [-u user] command [args...]" >&2
+	exit 1
+fi
+
+exec "$@"
